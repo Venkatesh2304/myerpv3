@@ -4,11 +4,12 @@ import multiprocessing
 bind = "0.0.0.0:5000"
 
 # Workers
-workers = 5
-worker_class = "sync"
+workers = 3
+worker_class = "gthread"
+threads = 4
 
 # App loading
-preload_app = True
+preload_app = False
 
 # Logging
 accesslog = "-"
