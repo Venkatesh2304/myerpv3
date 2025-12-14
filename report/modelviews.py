@@ -1,0 +1,19 @@
+from rest_framework import viewsets
+from django_filters import rest_framework as filters
+from report.models import OutstandingReport
+from report.serializers import OutstandingReportSerializer
+
+class OutstandingReportViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = OutstandingReport.objects.all()
+    serializer_class = OutstandingReportSerializer
+    filter_backends = (filters.DjangoFilterBackend,)
+    
+    class OutstandingFilter(filters.FilterSet):
+        company = filters.CharFilter(field_name='company_id', lookup_expr='exact')
+        party = filters.CharFilter(field_name='party_id', lookup_expr='exact')
+        
+        class Meta:
+            model = OutstandingReport
+            fields = ['company', 'beat', 'party']
+
+    filterset_class = OutstandingFilter

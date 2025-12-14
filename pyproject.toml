@@ -1,0 +1,7 @@
+# pyproject.toml
+[tool.pyrefly]
+typeCheckingMode = "standard"
+
+reportUnusedImport = true
+reportUnusedVariable = true
+reportMissingImports = true
