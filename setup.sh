@@ -2,20 +2,14 @@
 set -eu
 git pull -ff
 
-PYTHON="python3.10"
-PROJECT_NAME="myerpv2" #For the service name
-DB_NAME="myerpv2all"
-
+PYTHON="python3.9"
+PROJECT_NAME="myerpv3" #For the service name
+DB_NAME="myerpv3"
 
 PROJECT_DIR="$(cd "$(dirname "$0")" && pwd)"
 VENV_DIR="$PROJECT_DIR/.venv"
-SERVICE_NAME="$PROJECT_NAME-gunicorn.service"
+SERVICE_NAME="backend.service"
 SERVICE_PATH="/etc/systemd/system/$SERVICE_NAME"
-
-#Cron job details
-JOB_TAG="monthly_gst"
-CRON_SCHEDULE="0 23 3 * *" # At 23:00 on day-of-month 3
-CRON_CMD="$PROJECT_DIR/cron.sh devaki > $PROJECT_DIR/cron.log 2>&1"
 
 echo "==> Checking for $PYTHON"
 if ! command -v "$PYTHON" >/dev/null 2>&1; then
@@ -26,10 +20,10 @@ fi
 echo "==> Creating virtual environment ($VENV_DIR) if missing"
 if [ ! -d "$VENV_DIR" ]; then
   if ! "$PYTHON" -m venv "$VENV_DIR" 2>/dev/null; then
-    echo "python3.10 venv module not available. Attempting to install..."
+    echo "$PYTHON venv module not available. Attempting to install..."
     if command -v apt-get >/dev/null 2>&1; then
       sudo apt-get update -y
-      sudo apt-get install -y python3.10-venv
+      sudo apt-get install -y $PYTHON-venv
       "$PYTHON" -m venv "$VENV_DIR" || true
     fi
   fi
@@ -88,11 +82,6 @@ fi
 #SET DATESTYLE
 psql -h localhost -U postgres -v ON_ERROR_STOP=1 -c "ALTER DATABASE $DB_NAME SET datestyle TO 'ISO, DMY'"
 
-chmod +x *.sh
-#Add monthly cron job
-echo "==> Setting up cron job :($JOB_TAG)"
-(sudo crontab -l 2>/dev/null | grep -v "$JOB_TAG"; echo "$CRON_SCHEDULE $CRON_CMD # $JOB_TAG") | sudo crontab -
-
 # Django migrations
 echo "==> Applying Django migrations"
 python manage.py migrate --noinput
@@ -104,10 +93,6 @@ python3 manage.py createsuperuser \
   --email "venkateshks2304@gmail.com" \
   || echo "Superuser already exists or creation failed, continuing..."
 
-if [ "$IS_NEW_DB" == "1" ]; then
-  echo "Dumping initial data into $DB_NAME..."
-  psql -h localhost -U postgres -d "$DB_NAME" -f "dump.sql"
-fi
 unset PGPASSWORD
 
 echo "==> Creating or updating systemd service ($SERVICE_NAME)"
