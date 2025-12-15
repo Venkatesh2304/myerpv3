@@ -2,7 +2,7 @@
 set -eu
 git pull -ff
 
-PYTHON="python3.9"
+PYTHON="python3.10"
 PROJECT_NAME="myerpv3" #For the service name
 DB_NAME="myerpv3"
 
