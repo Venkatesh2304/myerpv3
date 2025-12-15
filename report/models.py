@@ -463,7 +463,7 @@ class OutstandingReport(EmptyReportModel):
         max_retry = 2
 
 class BeatReport(EmptyReportModel):
-    id = models.IntegerField(primary_key=True)
+    id = models.IntegerField()
     name = models.TextField(max_length=40)
     salesman_id = models.IntegerField()
     salesman_code = models.CharField(max_length=30)
