@@ -290,7 +290,7 @@ class Ikea(IkeaReports):
     def beat_report(self) -> pd.DataFrame :
         #TODO: Clean the function
         html = self.get("/rsunify/app/rssmBeatPlgLink/loadRssmBeatPlgLink").text
-        soup = BeautifulSoup(html) 
+        soup = BeautifulSoup(html,features="lxml") 
         
         salesman_ids = [ i.get("value") for i in soup.find("tbody", {"id" : "blockEvt"}).findChildren("input",recursive=True) ][::3]
         salesman_table = pd.read_html(html)[0].rename(columns={"Salesperson Code":"salesman_code","Salesperson Name":"salesman_name"})
