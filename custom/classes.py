@@ -293,7 +293,7 @@ class Ikea(IkeaReports):
         soup = BeautifulSoup(html,features="lxml") 
         
         salesman_ids = [ i.get("value") for i in soup.find("tbody", {"id" : "blockEvt"}).findChildren("input",recursive=True) ][::3]
-        salesman_table = pd.read_html(html)[0].rename(columns={"Salesperson Code":"salesman_code","Salesperson Name":"salesman_name"})
+        salesman_table = pd.read_html(StringIO(html))[0].rename(columns={"Salesperson Code":"salesman_code","Salesperson Name":"salesman_name"})
         salesman_table["salesman_id"] = pd.Series(salesman_ids).apply(int)
 
         plg_maps = soup.find("input", {"id" : "hiddenSmBeatLnkMap"}).get("value")
