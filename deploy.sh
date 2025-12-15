@@ -1,16 +1,15 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-PROJECT_NAME="myerpv2" # For the service name
 
 # Remote SSH config
-REMOTE_HOST="ubuntu@43.205.224.85"
-SSH_KEY="/home/venkatesh/Downloads/aws/LightsailDefaultKey-ap-south-1.pem"
-REMOTE_BACKEND_DIR="/home/ubuntu/myerpv2/backend"
+REMOTE_HOST="ubuntu@ec2-65-1-147-8.ap-south-1.compute.amazonaws.com"
+SSH_KEY="/home/venkatesh/Downloads/billingv2.pem"
+REMOTE_BACKEND_DIR="/home/ubuntu/myerpv3"
 
 PROJECT_DIR="$(cd "$(dirname "$0")" && pwd)"   # backend/
 VENV_DIR="$PROJECT_DIR/.venv"
-SERVICE_NAME="$PROJECT_NAME-gunicorn.service"
+SERVICE_NAME="backend.service"
 
 echo "==> Checking git status (must be clean)"
 if [ -n "$(git status --porcelain)" ]; then

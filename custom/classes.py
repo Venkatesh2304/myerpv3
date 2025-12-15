@@ -239,7 +239,7 @@ class IkeaReports(BaseIkea):
         return self.fetch_report_dataframe("ikea/beat_mapping", "", tuple())
     
     def party_master(self) -> pd.DataFrame:
-        return self.fetch_report_dataframe("ikea/party_master", skiprows=9)
+        return self.fetch_report_dataframe("ikea/party_master")
     
     def stock_master(self) -> pd.DataFrame:
         return self.fetch_report_dataframe("ikea/stock_master", skiprows=9)

@@ -102,7 +102,6 @@ class BaseReport(Generic[ArgsT]):
             df = df.rename(columns=cls.column_map)
         if cls.date_format != "" :
             df["date"] = pd.to_datetime(df["date"], format=cls.date_format).dt.date
-        
         if cls.dropna_columns:
             df = df.dropna(subset=cls.dropna_columns, how="any")
         return df
