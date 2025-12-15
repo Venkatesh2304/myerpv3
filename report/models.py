@@ -472,7 +472,7 @@ class BeatReport(EmptyReportModel):
     plg = models.TextField(max_length=15)
     class Report(EmptyReportModel.Report):
         fetcher = Ikea.beat_report
-        column_map = { "beat_name":"name","salesman_id":"salesman_id","salesman_code":"salesman_code","salesman_name":"salesman_name","days":"days","plg":"plg"}
+        column_map = {"id": "beat_id","beat_name":"name","salesman_id":"salesman_id","salesman_code":"salesman_code","salesman_name":"salesman_name","days":"days","plg":"plg"}
         dropna_columns = ["name"]
     
     class Meta:
