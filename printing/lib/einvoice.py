@@ -1,6 +1,7 @@
+from custom.classes import Ikea
+from custom.classes import Einvoice
 from django.db.models.aggregates import Max
 from django.db.models.aggregates import Min
-from custom.classes import IkeaDownloader
 import pandas as pd
 from io import BytesIO
 from dataclasses import dataclass, field
@@ -13,27 +14,29 @@ class EinvoiceResult:
     success: bool
     error: Optional[str] = None
     failed_inums: List[str] = field(default_factory=list)
+    is_einvoice_logged_in: bool = True
 
 class EinvoiceHandler:
     def __init__(self, company):
         self.company = company
 
-    def handle_upload(self, einvoice_service, einv_qs) -> EinvoiceResult:
-        ikea = IkeaDownloader(self.company.user.pk)
+    def handle_upload(self, einv_qs) -> EinvoiceResult:
+
+        ikea = Ikea(self.company.pk)
+        einvoice_service = Einvoice(self.company.user.pk)
+        if not einvoice_service.is_logged_in() : 
+            return EinvoiceResult(success=False, error="E-Invoice service not logged in", is_einvoice_logged_in=False)
         
         # Django aggregate returns dict
         from_date = einv_qs.aggregate(d=Min("bill_date"))["d"]
         to_date = einv_qs.aggregate(d=Max("bill_date"))["d"]
         
-        if not from_date or not to_date:
-             return EinvoiceResult(success=False, error="No dates found for bills")
-
         # Generate e-invoice JSON from IkeaDownloader
         inums = list(einv_qs.values_list("bill_id", flat=True))
         try:
             bytesio = ikea.einvoice_json(fromd=from_date, tod=to_date, bills=inums)
         except Exception as e:
-            return EinvoiceResult(success=False, error=f"Failed to generate e-invoice JSON: {e}", failed_inums=inums)
+            return EinvoiceResult(success=False, error=f"Failed to generate e-invoice JSON from ikea: {e}", failed_inums=inums)
 
         err = ""
         failed_inums = []
@@ -49,7 +52,7 @@ class EinvoiceHandler:
                 return EinvoiceResult(success=False, error=f"Upload service failed: {e}", failed_inums=inums)
         else:
             failed_inums = inums
-            err = "No data generated for e-invoice upload."
+            err = "No data generated for e-invoice upload from ikea."
 
         try:
             today_einvs_bytesio = BytesIO(einvoice_service.get_today_einvs())

@@ -1,3 +1,7 @@
+from django.http.response import JsonResponse
+from requests.models import Response
+from printing.lib.einvoice import EinvoiceResult
+from printing.lib.einvoice import EinvoiceHandler
 from custom.classes import Billing
 import os
 from typing import Dict, List, Any
@@ -11,6 +15,7 @@ from .lib.pdf import LoadingSheetPDF, PendingSheetPDF, PDFEditor
 from .lib.aztec import AztecCodeGenerator
 from .lib.secondary_bills import SecondaryBillGenerator
 from custom.classes import Einvoice
+from rest_framework.response import Response
 
 class BillPrintingService:
     def __init__(self, company):
@@ -24,6 +29,7 @@ class BillPrintingService:
         self.pdf_editor = PDFEditor()
         self.aztec_generator = AztecCodeGenerator()
         self.secondary_bill_generator = SecondaryBillGenerator()
+        self.einvoice_handler = EinvoiceHandler(self.company)
         
         # Initialize Printers
         self.printers: Dict[PrintType, Printer] = {
@@ -70,12 +76,16 @@ class BillPrintingService:
         except Settings.DoesNotExist:
             einvoice_enabled = False
 
-        if einvoice_enabled:
-            einv_qs = qs.filter(bill__ctin__isnull=False, irn__isnull=True)
+        if True or einvoice_enabled:
+            einv_qs = qs.filter(ctin__isnull=False, irn__isnull=True)
             if einv_qs.exists():
-                # Einvoice handling logic removed as EinvoiceHandler is deleted
-                pass
-
+                einvoice_result:EinvoiceResult = self.einvoice_handler.handle_upload(einv_qs)
+                if not einvoice_result.success:
+                    if not einvoice_result.is_einvoice_logged_in :
+                        return {"status": "error", "error": "E-Invoice Login Failed", "is_logged_in": False}
+                    else:
+                        return {"status": "error", "error": einvoice_result.error}
+                
         # Determine Print Types
         print_types_map = {
             "both_copy": [PrintType.FIRST_COPY, PrintType.SECOND_COPY],

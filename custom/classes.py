@@ -119,8 +119,8 @@ class IkeaReports(BaseIkea):
         if "jsonObjWhereClause" in r.data:
             r.data['jsonObjWhereClause'] = curl_replace(pat, replaces, r.data['jsonObjWhereClause'])
             if "jsonObjforheaders" in r.data: del r.data['jsonObjforheaders']
-        
-        durl = r.send(self).text
+        print(r.data)
+        durl = r.send(self).text    
         if not durl:
             raise ReportFetchError(f"Failed to generate report for key: {key}")
         
@@ -978,10 +978,9 @@ class Einvoice(Session) :
 
       def upload(self,json_data:str)  :  
           bulk_home = self.get("/Invoice/BulkUpload").text
-          files = { "JsonFile" : ("eway.json", StringIO(json_data) ,'application/json') }
+          files = { "JsonFile" : ("einvoice.json", StringIO(json_data) ,'application/json') }
           form = extractForm(bulk_home)
           upload_home = self.post("/Invoice/BulkUpload" ,  files = files , data = form ).text
-          with open("a.html","w+") as f : f.write(upload_home)
           success = pd.read_excel( self.get("/Invoice/ExcelUploadedInvoiceDetails").content )
           failed = pd.read_excel( self.get("/Invoice/FailedInvoiceDetails").content )
           return success , failed 

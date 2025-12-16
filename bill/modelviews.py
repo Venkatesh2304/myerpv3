@@ -77,7 +77,6 @@ class BillViewSet(viewsets.ModelViewSet):
     serializer_class = BillSerializer
     filterset_class = BillFilter
     ordering = ["-bill_id"]
-    
-    
+
 class Pagination(LimitOffsetPagination):
     default_limit = 300
