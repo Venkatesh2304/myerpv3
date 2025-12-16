@@ -4,10 +4,7 @@ from prettytable import PrettyTable, ALL
 from typing import Callable, Dict, Optional
 
 class SecondaryBillGenerator:
-    def generate(self, txt_file_path: str, output_docx_path: str, barcode_generator: Callable, config: Optional[Dict] = None):
-        if config is None:
-            config = {'secname': 'Invoice No', 'secadd': 'Retailer Name', 'lines': 18}
-        
+    def generate(self, txt_file_path: str, output_docx_path: str, barcode_generator: Callable, config: Optional[Dict]):
         document = Document()
         self._process_file(txt_file_path, document, barcode_generator, config)
         document.save(output_docx_path)

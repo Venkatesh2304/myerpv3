@@ -93,7 +93,7 @@ class SecondCopyPrinter(Printer):
              raise FileNotFoundError(f"Generated bill TXT not found at {txt_path}")
 
         # Config for secondary bills
-        sec_config = {'lines': 25, 'secadd': 'ARIYA', 'secname': 'DEVAKI'}
+        sec_config = {'lines': 18, 'secadd': 'ARIYA', 'secname': 'DEVAKI'}
         
         self.secondary_bill_generator.generate(
             txt_path, 
