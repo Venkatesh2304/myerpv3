@@ -37,7 +37,9 @@ class EinvoiceHandler:
         try:
             bytesio = ikea.einvoice_json(fromd=from_date, tod=to_date, bills=inums)
         except Exception as e:
-            return EinvoiceResult(success=False, error=f"Failed to generate e-invoice JSON from ikea: {e}", failed_inums=inums)
+            pass
+            #TODO: Log error
+            # return EinvoiceResult(success=False, error=f"Failed to generate e-invoice JSON from ikea: {e}", failed_inums=inums)
 
         err = ""
         failed_inums = []

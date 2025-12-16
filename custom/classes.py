@@ -119,7 +119,6 @@ class IkeaReports(BaseIkea):
         if "jsonObjWhereClause" in r.data:
             r.data['jsonObjWhereClause'] = curl_replace(pat, replaces, r.data['jsonObjWhereClause'])
             if "jsonObjforheaders" in r.data: del r.data['jsonObjforheaders']
-        print(r.data)
         durl = r.send(self).text    
         if not durl:
             raise ReportFetchError(f"Failed to generate report for key: {key}")
@@ -1030,7 +1029,6 @@ class Einvoice(Session) :
           html = re.sub(r'src=".*/(.*?)"','src="\\1"',html)
           html = re.sub(r'href=".*/(.*?)"','href="\\1"',html)
           with open("print_includes/bill.html","w+") as f  : f.write(html)
-        #   os.system("google-chrome --headless --disable-gpu --print-to-pdf=print_includes/bill.pdf print_includes/bill.html")
       
       #Unverified
       def upload_eway_bill(self,json_path) : 
