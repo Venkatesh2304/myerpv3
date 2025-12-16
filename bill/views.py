@@ -15,7 +15,7 @@ class StartBillingMessage(str,Enum):
     Success = "Billing Process Started"
     Locked = "The pg for the company is locked"
     AlreadyRunning = "Someone is already running the billing process"
-    OldBilling = "This Billing is Old"
+    OldBilling = "This Billing is Old, Try Again"
     MissingCompany = "Company ID is required"
 
 @api_view(["GET","POST"])
@@ -57,7 +57,7 @@ def start_billing(request) :
                                        "message" : StartBillingMessage.AlreadyRunning })
             
             if (last_billing is not None) and (billing_id != last_billing_id) : 
-                return JsonResponse({ "billing_id" : last_billing_id , "error" : StartBillingMessage.OldBilling })
+                return JsonResponse({ "billing_id" : last_billing_id , "error" : StartBillingMessage.OldBilling , "refresh" : True})
 
             #Create Billing & Status Log in DB
             billing_log = models.Billing(company_id=company,start_time = datetime.datetime.now(), status = BillingStatus.Started, 

@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Secondary Bill</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 0.5cm;
+        }
+
+        body {
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 11.5px;
+            /* Safe fit for 108 chars */
+            line-height: 1.1;
+            margin: 0;
+            padding: 0;
+        }
+
+        .container {
+            width: 100%;
+        }
+
+        pre {
+            font-family: 'Courier New', Courier, monospace;
+            white-space: pre;
+            /* Use pre to respect spaces exactly */
+            margin: 0;
+            margin-bottom: 2px;
+            overflow-x: hidden;
+            /* Prevent overflow */
+        }
+
+        .footer {
+            width: 100%;
+            margin-top: -10px;
+        }
+
+        .signature {
+            text-align: right;
+            margin-top: 0px;
+            font-weight: bold;
+            font-size: 14px;
+            margin-right: 20px;
+        }
+
+        .barcode {
+            margin-left: 15px;
+            margin-top: 0px;
+        }
+
+        .bold {
+            font-weight: bold;
+            margin-left: 15px;
+        }
+    </style>
+
+</head>
+
+<body>
+    {% for page in pages %}
+    <div class="container">
+        <!-- We are rendering pre-formatted text mostly, but let's try to structure it if possible. 
+             However, the extraction logic gives us lines. 
+             If we want to mimic the PDF exactly using the existing extraction logic, 
+             we might just be dumping lines. 
+             But the user wants a "template". 
+             Let's try to pass the extracted structured data if possible, 
+             or just the lines if that's what the extractor gives.
+             
+             The existing extractor gives:
+             - lines (raw text lines)
+             - invoice details (parsed)
+             
+             Let's assume we pass a list of 'lines' to be printed, 
+             and maybe some specific variables for the header/footer if we can extract them.
+        -->
+
+        {% for line in page.lines %}
+        <pre>{{ line }}</pre>
+        {% endfor %}
+
+        {% if page.invoice_details %}
+        <div class="footer">
+            <p class="bold" style="font-size: 15px;">
+                {{ page.invoice_details }}
+            </p>
+        </div>
+        {% endif %}
+
+        {% if page.is_last_page %}
+        <div class="signature">
+            Signature
+        </div>
+
+        {% if page.barcode_data %}
+        <div class="barcode">
+            <img src="{{ page.barcode_data }}" style="width: 2.5cm; height: 2.5cm;">
+        </div>
+        {% endif %}
+        {% endif %}
+    </div>
+
+    {# Logic for 2 bills per page #}
+    {% if loop.index is divisibleby 2 %}
+    {% if not loop.last %}
+    <div style="page-break-after: always;"></div>
+    {% endif %}
+    {% else %}
+    {% if not loop.last %}
+    {# Add spacing lines #}
+    {% for i in range(lines_spacing) %}
+    <br>
+    {% endfor %}
+    {% endif %}
+    {% endif %}
+
+    {% endfor %}
+</body>
+
+</html>

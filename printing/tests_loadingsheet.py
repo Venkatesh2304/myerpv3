@@ -41,8 +41,8 @@ class SalesmanLoadingSheetTest(TestCase):
         super().tearDown()
         
     @patch('printing.print.Billing')
-    @patch('printing.print.LoadingSheetPDF')
-    @patch('printing.print.AztecCodeGenerator')
+    @patch('printing.printers.LoadingSheetPDF')
+    @patch('printing.printers.AztecCodeGenerator')
     def test_single_bill_loading_sheet(self, mock_aztec, mock_loading_sheet_pdf, MockBilling):
         """
         Verifies that a single bill is correctly processed for a salesman loading sheet.
@@ -87,8 +87,8 @@ class SalesmanLoadingSheetTest(TestCase):
         mock_aztec.return_value.add_aztec_code_to_loading_sheet_salesman.assert_called_once()
 
     @patch('printing.print.Billing')
-    @patch('printing.print.LoadingSheetPDF')
-    @patch('printing.print.AztecCodeGenerator')
+    @patch('printing.printers.LoadingSheetPDF')
+    @patch('printing.printers.AztecCodeGenerator')
     def test_multiple_bills_loading_sheet(self, mock_aztec, mock_loading_sheet_pdf, MockBilling):
         """
         Verifies that multiple bills selected for a loading sheet are assigned the same loading_sheet_id.
@@ -127,8 +127,8 @@ class SalesmanLoadingSheetTest(TestCase):
         self.assertEqual(SalesmanLoadingSheet.objects.count(), 1)
 
     @patch('printing.print.Billing')
-    @patch('printing.print.LoadingSheetPDF')
-    @patch('printing.print.AztecCodeGenerator')
+    @patch('printing.printers.LoadingSheetPDF')
+    @patch('printing.printers.AztecCodeGenerator')
     def test_reprint_loading_sheet(self, mock_aztec, mock_loading_sheet_pdf, MockBilling):
         """
         Verifies that reprinting a loading sheet (same bills) updates the existing loading sheet logic.
@@ -165,8 +165,8 @@ class SalesmanLoadingSheetTest(TestCase):
         self.assertTrue(self.bill1.is_reloaded)
 
     @patch('printing.print.Billing')
-    @patch('printing.print.LoadingSheetPDF')
-    @patch('printing.print.AztecCodeGenerator')
+    @patch('printing.printers.LoadingSheetPDF')
+    @patch('printing.printers.AztecCodeGenerator')
     def test_mixed_bills_loading_sheet(self, mock_aztec, mock_loading_sheet_pdf, MockBilling):
         """
         Verifies behavior when bills from different previous loading sheets are merged into a new one.

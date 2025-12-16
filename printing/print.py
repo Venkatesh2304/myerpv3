@@ -8,9 +8,8 @@ from typing import Dict, List, Any
 from PyPDF2 import PdfMerger
 from django.conf import settings
 
-from bill.models import Bill, SalesmanLoadingSheet, Settings
+from bill.models import Bill, SalesmanLoadingSheet
 from .printers import FirstCopyPrinter, SecondCopyPrinter, LoadingSheetPrinter, SalesmanLoadingSheetPrinter, PrintContext, PrintType, Printer
-from .printers import FirstCopyPrinter, SecondCopyPrinter, LoadingSheetPrinter, SalesmanLoadingSheetPrinter
 from .lib.pdf import LoadingSheetPDF, PendingSheetPDF, PDFEditor
 from .lib.aztec import AztecCodeGenerator
 from .lib.secondary_bills import SecondaryBillGenerator
@@ -24,19 +23,16 @@ class BillPrintingService:
         os.makedirs(self.files_dir, exist_ok=True)
         
         # Initialize Generators
-        self.loading_sheet_pdf = LoadingSheetPDF()
+        # Initialize Generators
         self.pending_sheet_pdf = PendingSheetPDF()
-        self.pdf_editor = PDFEditor()
-        self.aztec_generator = AztecCodeGenerator()
-        self.secondary_bill_generator = SecondaryBillGenerator()
         self.einvoice_handler = EinvoiceHandler(self.company)
         
         # Initialize Printers
         self.printers: Dict[PrintType, Printer] = {
-            PrintType.FIRST_COPY: FirstCopyPrinter(self.files_dir, self.pdf_editor, self.aztec_generator),
-            PrintType.SECOND_COPY: SecondCopyPrinter(self.files_dir, self.secondary_bill_generator, self.aztec_generator),
-            PrintType.LOADING_SHEET: LoadingSheetPrinter(self.files_dir, self.loading_sheet_pdf),
-            PrintType.LOADING_SHEET_SALESMAN: SalesmanLoadingSheetPrinter(self.files_dir, self.loading_sheet_pdf, self.aztec_generator),
+            PrintType.FIRST_COPY: FirstCopyPrinter(self.files_dir),
+            PrintType.SECOND_COPY: SecondCopyPrinter(self.files_dir),
+            PrintType.LOADING_SHEET: LoadingSheetPrinter(self.files_dir),
+            PrintType.LOADING_SHEET_SALESMAN: SalesmanLoadingSheetPrinter(self.files_dir),
         }
 
     def print_bills(self, data: Dict[str, Any]) -> Dict[str, Any]:
@@ -70,13 +66,10 @@ class BillPrintingService:
 
         # E-Invoice Handling
         error = ""
-        try:
-            einvoice_setting = Settings.objects.get(company=self.company, key="einvoice")
-            einvoice_enabled = einvoice_setting.status
-        except Settings.DoesNotExist:
-            einvoice_enabled = False
+        einvoice_enabled = self.company.einvoice_enabled
+        
 
-        if True or einvoice_enabled:
+        if einvoice_enabled:
             einv_qs = qs.filter(ctin__isnull=False, irn__isnull=True)
             if einv_qs.exists():
                 einvoice_result:EinvoiceResult = self.einvoice_handler.handle_upload(einv_qs)

@@ -1,6 +1,6 @@
 from django.test import TestCase, TransactionTestCase, RequestFactory
 from unittest.mock import patch, MagicMock
-from bill.models import Bill, SalesmanLoadingSheet, Settings
+from bill.models import Bill, SalesmanLoadingSheet
 from core.models import Company, User, UserSession
 from printing.print import BillPrintingService
 from printing.printers import PrintType
@@ -18,7 +18,7 @@ class PrintingTestMixin:
         self.user = User.objects.create(username="devaki")
         self.user.save()
 
-        self.company = Company.objects.create(name="devaki_hul", user=self.user)
+        self.company = Company.objects.create(name="devaki_hul", user=self.user, einvoice_enabled=False)
         self.company.save()
 
         UserSession.objects.update_or_create(
@@ -38,10 +38,7 @@ class PrintingTestMixin:
 class BillPrintingTest(PrintingTestMixin, TransactionTestCase):
     def setUp(self):
         super().setUp()
-        
-        # Ensure e-invoice is disabled for this test
-        Settings.objects.create(company=self.company, key="einvoice", status=False)
-
+    
         # 1. Login to IKEA (Real Credentials)
         # This will trigger network call. User says credentials are valid.
         billing = Billing(self.company.pk)
@@ -80,7 +77,7 @@ class BillPrintingTest(PrintingTestMixin, TransactionTestCase):
             "party": "Test Party",
             "inum": "12345"
         }
-        
+
         # Helper to verify and move file
         def verify_and_move(print_type_suffix):
             final_pdf = os.path.join(settings.MEDIA_ROOT, "bills", str(self.company.pk), "bill.pdf")
@@ -102,29 +99,30 @@ class BillPrintingTest(PrintingTestMixin, TransactionTestCase):
         if response.status_code != 200:
             print(f"Test failed with status {response.status_code}: {response.content}")
         
+        filepath = f'/media/bills/{self.company.pk}/bill.pdf'
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json(), {'status': 'success', 'error': ''})
+        self.assertEqual(response.json(), {'status': 'success', 'error': '', 'filepath': filepath})
         verify_and_move("first_copy")
         
         # 5. Test SECOND_COPY
         data["print_type"] = "second_copy"
         response = self.client.post(url, data, format='json')
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json(), {'status': 'success', 'error': ''})
+        self.assertEqual(response.json(), {'status': 'success', 'error': '', 'filepath': filepath})
         verify_and_move("second_copy")
             
         # 6. Test LOADING_SHEET
         data["print_type"] = "loading_sheet"
         response = self.client.post(url, data, format='json')
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json(), {'status': 'success', 'error': ''})
+        self.assertEqual(response.json(), {'status': 'success', 'error': '', 'filepath': filepath})
         verify_and_move("loading_sheet")
 
         # 7. Test LOADING_SHEET_SALESMAN
         data["print_type"] = "loading_sheet_salesman"
         response = self.client.post(url, data, format='json')
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json(), {'status': 'success', 'error': ''})
+        self.assertEqual(response.json(), {'status': 'success', 'error': '', 'filepath': filepath})
         verify_and_move("loading_sheet_salesman")
 
 

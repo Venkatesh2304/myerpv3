@@ -1,3 +1,4 @@
+from printing.lib.secondary_bills import SecondaryBillGeneratorWeasy
 import os
 import datetime
 from typing import List, Dict, Optional, TYPE_CHECKING
@@ -9,9 +10,8 @@ from bill.models import Bill, SalesmanLoadingSheet
 from .lib.pdf import LoadingSheetPDF, LoadingSheetType, PDFEditor
 from custom.classes import Billing
 
-if TYPE_CHECKING:
-    from .lib.aztec import AztecCodeGenerator
-    from .lib.secondary_bills import SecondaryBillGenerator
+from .lib.aztec import AztecCodeGenerator
+from .lib.secondary_bills import SecondaryBillGenerator
 
 class PrintType(Enum):
     FIRST_COPY = "first_copy"
@@ -45,10 +45,10 @@ class Printer(ABC):
         pass
 
 class FirstCopyPrinter(Printer):
-    def __init__(self, files_dir: str, pdf_editor: PDFEditor, aztec_generator: 'AztecCodeGenerator'):
+    def __init__(self, files_dir: str):
         self.files_dir = files_dir
-        self.pdf_editor = pdf_editor
-        self.aztec_generator = aztec_generator
+        self.pdf_editor = PDFEditor()
+        self.aztec_generator = AztecCodeGenerator()
 
     def generate(self, bills: List[str], context: PrintContext, billing: Billing) -> List[str]:
         # Download PDF
@@ -74,10 +74,10 @@ class FirstCopyPrinter(Printer):
         return [bill_pdf_path]
 
 class SecondCopyPrinter(Printer):
-    def __init__(self, files_dir: str, secondary_bill_generator: 'SecondaryBillGenerator', aztec_generator: 'AztecCodeGenerator'):
+    def __init__(self, files_dir: str):
         self.files_dir = files_dir
-        self.secondary_bill_generator = secondary_bill_generator
-        self.aztec_generator = aztec_generator
+        self.secondary_bill_generator =  SecondaryBillGeneratorWeasy() #SecondaryBillGenerator()
+        self.aztec_generator = AztecCodeGenerator()
 
     def generate(self, bills: List[str], context: PrintContext, billing: Billing) -> List[str]:
         # Download TXT
@@ -93,7 +93,7 @@ class SecondCopyPrinter(Printer):
              raise FileNotFoundError(f"Generated bill TXT not found at {txt_path}")
 
         # Config for secondary bills
-        sec_config = {'lines': 15, 'secadd': 'ARIYA', 'secname': 'DEVAKI'}
+        sec_config = {'secadd': 'ARIYA', 'secname': 'DEVAKI'}
         
         self.secondary_bill_generator.generate(
             txt_path, 
@@ -105,9 +105,9 @@ class SecondCopyPrinter(Printer):
         return [docx_path]
 
 class LoadingSheetPrinter(Printer):
-    def __init__(self, files_dir: str, loading_sheet_pdf: LoadingSheetPDF):
+    def __init__(self, files_dir: str):
         self.files_dir = files_dir
-        self.loading_sheet_pdf = loading_sheet_pdf
+        self.loading_sheet_pdf = LoadingSheetPDF()
 
     def generate(self, bills: List[str], context: PrintContext, billing: Billing) -> List[str]:
         tables = billing.loading_sheet(bills)
@@ -124,10 +124,10 @@ class LoadingSheetPrinter(Printer):
         return [output_path]
 
 class SalesmanLoadingSheetPrinter(Printer):
-    def __init__(self, files_dir: str, loading_sheet_pdf: LoadingSheetPDF, aztec_generator: 'AztecCodeGenerator'):
+    def __init__(self, files_dir: str):
         self.files_dir = files_dir
-        self.loading_sheet_pdf = loading_sheet_pdf
-        self.aztec_generator = aztec_generator
+        self.loading_sheet_pdf = LoadingSheetPDF()
+        self.aztec_generator = AztecCodeGenerator()
 
     def generate(self, bills: List[str], context: PrintContext, billing: Billing) -> List[str]:
         tables = billing.loading_sheet(bills)

@@ -129,14 +129,6 @@ class BillingProcessStatus(models.Model) :
     process = models.TextField(max_length=30)	
     time = models.FloatField(null=True,blank=True) 
 
-class Settings(CompanyModel):
-    key = models.CharField(max_length=50)
-    status = models.BooleanField(default=False)
-    pk = models.CompositePrimaryKey("company", "key")
-
-    def __str__(self):
-        return f"{self.key} - {self.status}"
-
 ## Bill/Print Models 
 class SalesmanLoadingSheet(CompanyModel) : 
      inum = models.CharField(max_length=30)

@@ -5,10 +5,14 @@ from report.models import SalesRegisterReport
 
 
 i = Billing("devaki_hul")
-date = datetime.date.today() #(2025,12,7)
-x = i.einvoice_json(fromd=date,tod=date,bills=["AB66985"])
-with open("x.json","w+") as f:
-    f.write(x.getvalue().decode('utf-8'))
+bytesio = i.fetch_bill_txts(["AB66985","AB66986"])
+with open("x.txt","w+") as f:
+    f.write(bytesio.getvalue().decode('utf-8'))
+
+# date = datetime.date.today() #(2025,12,7)
+# x = i.einvoice_json(fromd=date,tod=date,bills=["AB66985"])
+# with open("x.json","w+") as f:
+    # f.write(x.getvalue().decode('utf-8'))
 
 # x = i.get_creditlock({ "partyCode" : "D-P25086","parCodeRef":"D-P25086","parHllCode":"HUL-41A392D-P25086","showPLG":"DETS+PP" })
 # print(x)
