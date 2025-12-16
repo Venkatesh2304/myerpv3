@@ -91,7 +91,7 @@ class SecondaryBillGenerator:
             run.font.size = Pt(12)
             run.bold = True
             
-            paragraph3 = document.add_paragraph().add_run(' ' * 60 + 'Signature')
+            paragraph3 = document.add_paragraph().add_run(' ' * 50 + 'Signature')
             # paragraph3.alignment = 2 # WD_ALIGN_PARAGRAPH.RIGHT is 2
             # But run doesn't have alignment, paragraph does.
             document.paragraphs[-1].alignment = 2 # Right align
