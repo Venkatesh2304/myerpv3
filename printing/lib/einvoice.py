@@ -1,3 +1,4 @@
+import datetime
 from custom.classes import Ikea
 from custom.classes import Einvoice
 from django.db.models.aggregates import Max
@@ -55,7 +56,7 @@ class EinvoiceHandler:
             err = "No data generated for e-invoice upload from ikea."
 
         try:
-            today_einvs_bytesio = BytesIO(einvoice_service.get_today_einvs())
+            today_einvs_bytesio = einvoice_service.get_filed_einvs(datetime.date.today())
             response = ikea.upload_irn(today_einvs_bytesio)
             
             if not response.get("valid"):

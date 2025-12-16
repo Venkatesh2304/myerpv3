@@ -985,7 +985,7 @@ class Einvoice(Session) :
           failed = pd.read_excel( self.get("/Invoice/FailedInvoiceDetails").content )
           return success , failed 
       
-      def get_filed_einvs(self,date) -> pd.DataFrame : 
+      def get_filed_einvs(self,date) -> BytesIO : 
           """This functions works on today - 2 to today (Only 3 past days data available)"""
           form = extractForm( self.get("/MisRpt").text )
           form["submit"] = "Date"
@@ -995,7 +995,7 @@ class Einvoice(Session) :
           if "<td>2154</td>" in table_html :
               return None
           irn_gen_by_me_excel_bytesio = self.get('/MisRpt/ExcelGenerratedIrnDetails?noofRec=1&Actn=GEN').content
-          return pd.read_excel(BytesIO(irn_gen_by_me_excel_bytesio))
+          return BytesIO(irn_gen_by_me_excel_bytesio)
           
       #Unverified
       def getinvs(self) : 
