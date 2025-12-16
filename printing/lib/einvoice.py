@@ -34,6 +34,7 @@ class EinvoiceHandler:
         
         # Generate e-invoice JSON from IkeaDownloader
         inums = list(einv_qs.values_list("bill_id", flat=True))
+        bytesio = None
         try:
             bytesio = ikea.einvoice_json(fromd=from_date, tod=to_date, bills=inums)
         except Exception as e:
