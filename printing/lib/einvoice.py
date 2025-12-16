@@ -55,8 +55,10 @@ class EinvoiceHandler:
             except Exception as e:
                 return EinvoiceResult(success=False, error=f"Upload service failed: {e}", failed_inums=inums)
         else:
-            failed_inums = inums
-            err = "No data generated for e-invoice upload from ikea."
+            pass
+            #TODO: Log error
+            # failed_inums = inums
+            # err = "No data generated for e-invoice upload from ikea."
 
         try:
             today_einvs_bytesio = einvoice_service.get_filed_einvs(datetime.date.today())
