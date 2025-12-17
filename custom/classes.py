@@ -426,7 +426,8 @@ class Billing(Ikea) :
         credit_value_utilised = party_credit["creditLimitUtilised"]
         credit_bills_utilised = party_credit["creditBillsUtilised"]
         #10 is for buffer
-        new_credit_limit = (credit_value_utilised + party_data["increase_value"] + 10) if old_credit_value_limit else 0 
+        #Disable the creditvalue release for temporarily
+        new_credit_limit = old_credit_value_limit #(credit_value_utilised + party_data["increase_value"] + 10) if old_credit_value_limit else 0 
         new_credit_bills = (credit_bills_utilised + party_data["increase_count"]) if old_credit_bills_limit else 0
         params = { 
             "partyCodeRef":party_data["partyCode"],
@@ -525,7 +526,13 @@ class Billing(Ikea) :
         uid = self._client_id_generator()
         post_market_order = get_curl("ikea/billing/postmarketorder")
         post_market_order.json |= {"mol": order_data , "id": self.today.strftime("%d/%m/%Y"), "CLIENT_REQ_UID": uid}
-        log_durl = post_market_order.send(self).json()["filePath"]
+        res = post_market_order.send(self)
+        try : 
+            log_durl = res.json()["filePath"]
+        except : 
+            with open("post_market_order_response.html", "w+") as f : 
+                f.write(res.text)
+            log_durl = ""
         self.logger.info(f"Post Market Order Response (FilePath): {log_durl}")
 
     def Delivery(self):
@@ -956,7 +963,6 @@ class Einvoice(Session) :
                                  "UserLogin.HiddenPasswordSha":sha_pwd,
                                  "UserLogin.PasswordMD5":md5pwd}
           response  = r.send(self)
-          with open("a.html","w+") as f : f.write(response.text)
           is_success = (response.url == f"{self.base_url}/Home/MainMenu")
           error_div  = BeautifulSoup(response.text, 'html.parser').find("div",{"class":"divError"})
           error = error_div.text.strip() if (not is_success) and (error_div is not None) else ""
@@ -1040,9 +1046,7 @@ class Einvoice(Session) :
 
         form = extractForm(res.text)        
         res = self.post("https://ewaybillgst.gov.in/BillGeneration/BulkUploadEwayBill.aspx",files = files,data =form)
-        with open("a.html","w+") as f : f.write(res.text)
 
         buffer.seek(0)
         form = extractForm(res.text) | {"ctl00$ContentPlaceHolder1$hdnConfirm": "Y"}
         res = self.post("https://ewaybillgst.gov.in/BillGeneration/BulkUploadEwayBill.aspx",files = files,data =form)        
-        with open("a.html","w+") as f : f.write(res.text)

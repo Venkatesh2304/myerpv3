@@ -20,5 +20,5 @@ curl 'https://leveredge18.hulcd.com/rsunify/app/quantumImport/validateload' \
   -H 'user-agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Safari/537.36' \
   -H 'x-newrelic-id: VQYGVFVXDxABUVRWBQgCVlcH' \
   -H 'x-requested-with: XMLHttpRequest' \
-  --data-raw $'{"qtmBeatList":[],"qtmSalesList":[],"qtmPartyList":[],"orderDate":null,"importDate":"2024-05-25T18:30:00.000Z","futureData":false,"uniqueId":0,"qtmPONumberList":[],"qtmShikharList":["90SMN00006D-P1575920240522","93SMN00005D-P2510220240525"],"sourceOfOrder":"\'R\',\'N\',\'B\'","paymentType":"ALL","isRaPartialBilled":1,"isSePartialBilled":0}' \
+  --data-raw $'{"qtmBeatList":[],"qtmSalesList":[],"qtmPartyList":[],"orderDate":null,"importDate":"2024-05-25T18:30:00.000Z","futureData":false,"uniqueId":0,"qtmPONumberList":[],"qtmShikharList":["90SMN00006D-P1575920240522","93SMN00005D-P2510220240525"],"sourceOfOrder":"\'R\',\'N\',\'B\'","paymentType":"ALL","isRaPartialBilled":0,"isSePartialBilled":0}' \
   --compressed

@@ -258,7 +258,7 @@ class SecondaryBillGeneratorWeasy:
         # I'll update data with barcode.
         
         # Default lines if not in config
-        lines_spacing =  18
+        lines_spacing =  24
 
         html_out = template.render(pages=data['pages'], barcode_svg=None, lines_spacing=lines_spacing)
 

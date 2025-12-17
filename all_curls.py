@@ -696,7 +696,7 @@ data = {
     'jsonObjforheaders': '[{},{}]',
     'jsonObjfileInfi': '[{"title":"E Invoice,E Invoice","reportfilename":"E_Invoice","viewpage":"Utility/eInvoiceGeneration","viewname":"E_Invoice_Generation_SP","querycount":1}]',
     'orderBy': '[Vehicle No],[Trans Date],[Doc.No]',
-    'jsonObjWhereClause': '{":val1":"20241015",":val2":"20241017",":val3":1,":val4":"",":val5":"",":val6":"",":val7":"",":val8":"SecBills,SalesReturn",":val9":"A49554",":val10":1}',
+    'jsonObjWhereClause': '{":val1":"20241015",":val2":"20241017",":val3":1,":val4":"",":val5":"",":val6":"",":val7":"",":val8":"SecBills",":val9":"A49554",":val10":1}',
 }
 
 ikea_einvoice_json = CurlRequest('POST','https://leveredge18.hulcd.com/rsunify/app/jsonController/generateJsonFile', headers=headers, data=data)
@@ -1857,7 +1857,7 @@ json_data = {
     ],
     'sourceOfOrder': "'R','N','B'",
     'paymentType': 'ALL',
-    'isRaPartialBilled': 1,
+    'isRaPartialBilled': 0,
     'isSePartialBilled': 0,
 }
 
@@ -1870,7 +1870,7 @@ ikea_billing_getmarketorder = CurlRequest('POST',
 
 # Note: json_data will not be serialized by requests
 # exactly as it was in the original request.
-#data = '{"qtmBeatList":[],"qtmSalesList":[],"qtmPartyList":[],"orderDate":null,"importDate":"2024-05-25T18:30:00.000Z","futureData":false,"uniqueId":0,"qtmPONumberList":[],"qtmShikharList":["90SMN00006D-P1575920240522","93SMN00005D-P2510220240525"],"sourceOfOrder":"\'R\',\'N\',\'B\'","paymentType":"ALL","isRaPartialBilled":1,"isSePartialBilled":0}'
+#data = '{"qtmBeatList":[],"qtmSalesList":[],"qtmPartyList":[],"orderDate":null,"importDate":"2024-05-25T18:30:00.000Z","futureData":false,"uniqueId":0,"qtmPONumberList":[],"qtmShikharList":["90SMN00006D-P1575920240522","93SMN00005D-P2510220240525"],"sourceOfOrder":"\'R\',\'N\',\'B\'","paymentType":"ALL","isRaPartialBilled":0,"isSePartialBilled":0}'
 #ikea_billing_getmarketorder = CurlRequest('POST',
 #    'https://leveredge18.hulcd.com/rsunify/app/quantumImport/validateload',
 #    cookies=cookies,
