@@ -35,7 +35,7 @@
 
         .footer {
             width: 100%;
-            margin-top: -10px;
+            margin-top: 4px;
         }
 
         .signature {
@@ -54,6 +54,7 @@
         .bold {
             font-weight: bold;
             margin-left: 15px;
+            font-size: 15px;
         }
     </style>
 
@@ -82,13 +83,11 @@
         <pre>{{ line }}</pre>
         {% endfor %}
 
-        {% if page.invoice_details %}
-        <div class="footer">
-            <p class="bold" style="font-size: 15px;">
-                {{ page.invoice_details }}
-            </p>
+        <div class="footer" style="display: flex;">
+            <span class="bold">{{ page.bill_no }}</span>
+            <span class="bold">{{ page.party_name }}</span>
+            <span class="bold">Amt : {{ page.bill_amount }}</span>
         </div>
-        {% endif %}
 
         {% if page.is_last_page %}
         <div class="signature">

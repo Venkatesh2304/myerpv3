@@ -197,8 +197,10 @@ class SecondaryBillGeneratorWeasy:
             try:
                 inv_part = invoice[i].split('Invoice')[1].split(':')[1]
                 inum = inv_part.strip()
-                name_part = name[i].split(':')[1]
-                amt_part = billvalue2.split(':')[1]
+                name_part = name[i].split(':')[1].strip()
+                amt_part = billvalue2.split(':')[1].strip()
+                
+                # Keep the original string for backward compatibility if needed, or just for reference
                 imp = f"{inv_part}*{name_part}*Amt :{amt_part}"
                 imp = ' '.join(imp.split())
                 invoice_details = '  ' + '   '.join(imp.split('*'))
@@ -230,13 +232,22 @@ class SecondaryBillGeneratorWeasy:
             except IndexError:
                 invoice_details = "Error parsing invoice details"
                 inum = ""
+                name_part = ""
+                amt_part = ""
                 barcode_data = None
             except Exception as e :
                 print(e)
+                inum = ""
+                name_part = ""
+                amt_part = ""
+                barcode_data = None
                 
             pages.append({
                 'lines': page_lines,
                 'invoice_details': invoice_details,
+                'bill_no': inum,
+                'party_name': name_part,
+                'bill_amount': amt_part.split(".")[0],
                 'inum': inum,
                 'barcode_data': barcode_data,
                 'is_last_page': True 
@@ -248,25 +259,13 @@ class SecondaryBillGeneratorWeasy:
     def _render_pdf(self, data: Dict[str, Any], output_path: str, config: Optional[Dict], html_output_path: Optional[str] = None):
         env = Environment(loader=FileSystemLoader(os.path.join(os.path.dirname(__file__), '../templates')))
         template = env.get_template('secondary_bill.html')
-        
-        # We need to handle barcode generation here if possible, or pass a helper.
-        # Since we don't have the barcode generator in the template context easily unless we pre-generate.
-        # Let's assume we don't have barcode for now or we mock it.
-        # The user passed barcode_generator to generate().
-        
-        # Wait, I need to pass barcode_svg to template.
-        # I'll update data with barcode.
-        
-        # Default lines if not in config
         lines_spacing =  24
-
         html_out = template.render(pages=data['pages'], barcode_svg=None, lines_spacing=lines_spacing)
 
-        
         if html_output_path:
             with open(html_output_path, 'w') as f:
                 f.write(html_out)
-
+                
         # WeasyPrint
         weasyprint.HTML(string=html_out).write_pdf(output_path)
 
