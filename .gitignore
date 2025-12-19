@@ -16,3 +16,5 @@ cron.log
 files/
 profile.json
 profile.html
+*.json
+*.txt

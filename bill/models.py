@@ -9,125 +9,23 @@ from core.models import CompanyModel
 
 ## Billing Models
 class Billing(CompanyModel) : 
-    start_time = models.DateTimeField()
-    end_time = models.DateTimeField(null=True,blank=True)
-    status = models.IntegerField()
-    error = models.TextField(max_length=100000,null=True,blank=True)
-    start_bill_no = models.TextField(max_length=10,null=True,blank=True)
-    end_bill_no = models.TextField(max_length=10,null=True,blank=True)
-    bill_count = models.IntegerField(null=True,blank=True,default=0)
-    date = models.DateField()
-    automatic = models.BooleanField(default=False,db_default=False)
+    company = models.ForeignKey("core.Company",on_delete=models.CASCADE)
+    process = models.CharField(max_length=20,choices=(("getorder","Get Order"),("postorder","Post Order")))
+    ongoing = models.BooleanField(default=False)
+    time = models.DateTimeField(auto_now=True)
+    date = models.DateField(default=datetime.date.today)
+    order_date = models.DateField(null=True,blank=True)
+    order_hash = models.CharField(max_length=32,null=True,blank=True)
+    market_order_data = models.JSONField(null=True,blank=True)
+    pushed_collections = models.JSONField(default=list,blank=True)
+    order_values = models.JSONField(default=dict,blank=True)
 
-    def __str__(self) -> str:
-        print("x",self.start_time)
-        return str(self.start_time.strftime("%d/%m/%y %H:%M:%S"))
-     
-class PushedCollection(models.Model) : 
-    billing = models.ForeignKey(Billing,on_delete=models.CASCADE,related_name="collection")
-    party_code = models.TextField(max_length=30)
-
-class Orders(CompanyModel) : 
-    billing = models.ForeignKey(Billing,on_delete=models.CASCADE,related_name="orders",null=True,blank=True)
-    order_no = models.TextField(max_length=60,primary_key=True)
-    salesman = models.TextField(max_length=30)
-    date = 	models.DateField()
-    type = models.TextField(max_length=15,choices=(("SH","Shikhar"),("SE","Salesman")),blank=True,null=True)
-    
-    party_id = models.TextField(max_length=30)
-    party_hul_code = models.TextField(max_length=40)
-    party_name = models.TextField(max_length=100)
-    party = models.ForeignObject(
-            report.PartyReport,
-            on_delete=models.DO_NOTHING,
-            null=True,
-            from_fields=("company", "party_id"),
-            to_fields=("company", "code"),
-    )
-
-    beat = models.TextField(max_length=30)
-    place_order = models.BooleanField(default=False,db_default=False)
-    force_order = models.BooleanField(default=False,db_default=False)
-    creditlock = models.BooleanField(default=False,db_default=False)
-    release = models.BooleanField(default=False,db_default=False)
-    delete_order = models.BooleanField(default=False,db_default=False)
-
-    ##Expressions 
-    @property
-    def bill_value(self) : 
-        return round( sum([ p.quantity * p.rate for p in self.products.all() ])   , 2 )
-
-    @property
-    def allocated_value(self) : 
-        return round( sum([ p.allocated * p.rate for p in self.products.all() ]) or 0  , 2 )
-
-    @property
-    def partial(self) : 
-        return bool( (self.products.filter(allocated = 0).count() and self.products.filter(allocated__gt = 0).count()) )  
-
-    @property
-    def pending_value(self) : 
-        return round(self.bill_value() - self.allocated_value(),2)
-    
-    @property
-    def OS(self) :
-        today = datetime.date.today()
-        bills = [  f"{round(bill.balance)}*{(today - bill.bill_date).days}"
-                     for bill in report.OutstandingReport.objects.filter(company = self.company,party_id = self.party_id,beat = self.beat).all() ]
-        return "/ ".join(bills) or "-"
-    
-    @property
-    def coll(self) : 
-        today = datetime.date.today() 
-        coll = [  f"{round(coll.amt or 0)}*{(today - coll.bill_date).days}"
-                 for coll in report.CollectionReport.objects.filter(company = self.company,party_name = self.party_name,date = today).all() ]
-        return "/ ".join(coll) or "-"
-    
-    @property
-    def phone(self) : 
-        phone = "-"
-        try: 
-            phone = self.party.phone or "-"
-        except PartyReport.DoesNotExist :
-            pass 
-        return phone
-
-    @property
-    def lines(self) : 
-        return len([ product for product in self.products.all() if product.allocated != product.quantity])
-    
-    @property
-    def partial(self) :
-        return self.partial()
-
-    class Meta : 
-        verbose_name = 'Orders'
-        verbose_name_plural = 'Billing'
-
-class OrderProducts(models.Model) : 
-    order = models.ForeignKey(Orders,on_delete=models.CASCADE,related_name="products")
-    product = models.TextField(max_length=100)
-    batch = models.TextField(max_length=10,default="00000",db_default="00000")
-    quantity =  models.IntegerField()
-    allocated =  models.IntegerField()
-    rate = models.FloatField()
-    reason = models.TextField(max_length=50)
-    
-    def __str__(self) -> str:
-         return self.product
-    
     class Meta:
-        unique_together = ('order', 'product','batch')
+        unique_together = ('company', 'date')
 
-class BillStatistics(CompanyModel) : 
-    type = models.TextField(max_length=30)	
-    count = models.TextField(max_length=30) 
-
-class BillingProcessStatus(models.Model) : 
-    billing = models.ForeignKey(Billing,on_delete=models.CASCADE,related_name="process_status",null=True,db_constraint=False)
-    status = models.IntegerField(default=0)
-    process = models.TextField(max_length=30)	
-    time = models.FloatField(null=True,blank=True) 
+    def __str__(self) -> str:
+        return f"{self.company} - {self.date} - {self.process}"
+     
 
 ## Bill/Print Models 
 class SalesmanLoadingSheet(CompanyModel) : 

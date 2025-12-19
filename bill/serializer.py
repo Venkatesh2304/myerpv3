@@ -11,60 +11,6 @@ from django.utils.translation import gettext_lazy as _
 from django.db.models import Max, F, Subquery, OuterRef, Q, Min, Sum, Count
 from report.models import CollectionReport, SalesRegisterReport, OutstandingReport
 
-class BillingProcessStatusSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = BillingProcessStatus
-        fields = ["process", "status", "time"]
-
-class OrderSerializer(serializers.ModelSerializer):
-    party = serializers.CharField(source="party_name", read_only=True)
-    potential_release = serializers.SerializerMethodField()
-
-    class Meta:
-        model = Orders
-        fields = [
-            "order_no",
-            "party",
-            "lines",
-            "bill_value",
-            "OS",
-            "coll",
-            "salesman",
-            "beat",
-            "phone",
-            "type",
-            "potential_release",
-        ]
-
-    def get_potential_release(self, order):
-        if not order.place_order : return False 
-        today = datetime.date.today()
-        outstanding_qs = OutstandingReport.objects.filter(
-            party_id=order.party_id , beat=order.beat , company_id = order.company_id
-        )
-        today_bill_count = SalesRegisterReport.objects.filter(
-            party_id=order.party_id, company_id = order.company_id , date=today, type = "sales"
-        ).count()
-        if (today_bill_count == 0) and (outstanding_qs.count() == 1):
-            bill_value = order.bill_value
-            outstanding_bill = outstanding_qs.first()
-            outstanding_value = -outstanding_bill.balance
-            if bill_value < 200:
-                return False
-
-            max_outstanding_day = (today - outstanding_bill.bill_date).days
-            max_collection_day = CollectionReport.objects.filter(
-                party_name=order.party_name, date=today, company_id = order.company_id
-            ).aggregate(date=Max("bill_date"))["date"]
-            max_collection_day = (
-                (today - max_collection_day).days if max_collection_day else 0
-            )
-            if (max_collection_day > 21) or (max_outstanding_day > 21):
-                return False
-            if (bill_value <= 500) or (outstanding_value <= 500):
-                return True
-        return False
-
 class BillingSerializer(serializers.ModelSerializer):
     stats = serializers.SerializerMethodField()
 
@@ -85,13 +31,9 @@ class BillingSerializer(serializers.ModelSerializer):
             )
         )
 
-        today_stats |= Billing.objects.filter(start_time__gte=today,company_id = obj.company_id).aggregate(
-            success=Count("status", filter=Q(status=BillingStatus.Success)),
-            failures=Count("status", filter=Q(status=BillingStatus.Failed)),
-        )
-
-        orders_qs = Orders.objects.filter(billing=obj).exclude(
-            beat__contains="WHOLE"
+        today_stats |= Billing.objects.filter(time__date=today,company_id = obj.company_id).aggregate(
+            success=Count("status", filter=Q(status="postorder")),
+            failures=Count("status", filter=Q(status="failed")), # Assuming failed status might be added later or just 0
         )
 
         stats = {
@@ -102,22 +44,17 @@ class BillingSerializer(serializers.ModelSerializer):
                 "FAILURES": today_stats["failures"],
             },
             "last": {
-                "LAST BILLS COUNT": obj.bill_count
-                or "-", 
-                "LAST BILLS": f'{obj.start_bill_no or ""} - {obj.end_bill_no or ""}',
-                "LAST STATUS": BillingStatus(obj.status).name.upper(),
-                "LAST TIME": f'{obj.start_time.strftime("%H:%M:%S") if obj.start_time else "-"}',
-                "LAST REJECTED": orders_qs.filter(place_order=False).count(),
-                "LAST PENDING": orders_qs.filter(
-                    place_order=True, creditlock=False
-                ).count(),
+                "LAST BILLS COUNT": "-", 
+                "LAST BILLS": "-",
+                "LAST STATUS": obj.status.upper(),
+                "LAST TIME": f'{obj.time.strftime("%H:%M:%S") if obj.time else "-"}',
+                "LAST REJECTED": "-",
+                "LAST PENDING": "-",
             },
             "bill_counts": {
-                "rejected": orders_qs.filter(place_order=False).count(),
-                "pending": orders_qs.filter(place_order=True, creditlock=False).count(),
-                "creditlock": orders_qs.filter(
-                    place_order=True, creditlock=True
-                ).count(),
+                "rejected": 0,
+                "pending": 0,
+                "creditlock": 0,
             },
         }
         return stats

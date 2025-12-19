@@ -9,25 +9,10 @@ from django_filters import rest_framework as filters
 from rest_framework.pagination import LimitOffsetPagination
 from report.models import DateRangeArgs,SalesRegisterReport
 
-class BillingProcessStatusViewSet(viewsets.ModelViewSet):
-    queryset = BillingProcessStatus.objects.all()
-    serializer_class = BillingProcessStatusSerializer
-    filterset_fields = ['billing']
-    ordering = ['id']
-
 class BillingViewSet(mixins.RetrieveModelMixin,
                   viewsets.GenericViewSet):
     queryset = Billing.objects.all()
     serializer_class = BillingSerializer
-
-class OrderViewSet(viewsets.ModelViewSet):
-    queryset = Orders.objects.all()
-    serializer_class = OrderSerializer
-    filterset_fields = ['creditlock','place_order','billing']
-    def get_queryset(self):
-        qs = super().get_queryset()
-        qs = qs.exclude(beat__contains = "WHOLE")
-        return qs 
     
 class BillViewSet(viewsets.ModelViewSet):
     class BillFilter(filters.FilterSet):

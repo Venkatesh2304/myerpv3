@@ -102,7 +102,7 @@ WSGI_APPLICATION = "myerpv2.wsgi.application"
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
-        "NAME": "myerpv3",
+        "NAME": "myerpv3_exp",
         "USER": "postgres",
         "PASSWORD": "Ven2004",
         "HOST": "localhost",

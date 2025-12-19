@@ -360,12 +360,10 @@ class Ikea(IkeaReports):
 
 class Billing(Ikea) :
 
-    def __init__(self,user,order_date = datetime.date.today(),filter_orders_fn = (lambda : False)):
+    def __init__(self,user):
         super().__init__(user)
-        self.filter_orders_fn = filter_orders_fn
-        self.prev_collection = []
         self.today = datetime.date.today()
-        self.order_date = order_date
+
     
     def log_order_status(self, df, status, additional_cols=[]):
         """Logs order status for a DataFrame of orders in a table format."""
@@ -400,10 +398,10 @@ class Billing(Ikea) :
         return np.base_repr(self._date_epochs(), base=36).lower() + np.base_repr(random.randint(pow(10, 17), pow(10, 18)),
                  base=36).lower()[:11]
 
-    def _get_import_dates(self):
+    def _get_import_dates(self, order_date):
         return {
             "importDate": (self.today - datetime.timedelta(days=1)).strftime("%Y-%m-%d") + "T18:30:00.000Z",
-            "orderDate": (self.order_date - datetime.timedelta(days=1)).strftime("%Y-%m-%d") + "T18:30:00.000Z"
+            "orderDate": (order_date - datetime.timedelta(days=1)).strftime("%Y-%m-%d") + "T18:30:00.000Z"
         }
       
     def get_creditlock(self,party_data) : 
@@ -458,12 +456,12 @@ class Billing(Ikea) :
         self.prevbills = [ bill['blhRefrNo'] for bill in delivery ]
         self.logger.info(f"Previous Delivery Bills: {self.prevbills}")
 
-    def Collection(self):
+    def Collection(self, order_date, previous_collections):
         self.get("/rsunify/app/quantumImport/init")
         self.get("/rsunify/app/quantumImport/filterValidation")
         self.get(f"/rsunify/app/quantumImport/futureDataValidation?importDate={self.today.strftime('%d/%m/%Y')}")
 
-        self.import_dates = self._get_import_dates()
+        self.import_dates = self._get_import_dates(order_date)
         get_collection_req = get_curl("ikea/billing/getmarketorder")
         get_collection_req.url = self.base_url + "/rsunify/app/quantumImport/validateloadcollection"
         get_collection_req.json |= self.import_dates 
@@ -472,68 +470,67 @@ class Billing(Ikea) :
         
         collection_data = self.market_collection["mcl"]
         for coll in collection_data : 
-            coll["ck"] = (coll["pc"] not in self.prev_collection)
+            coll["ck"] = (coll["pc"] not in previous_collections)
             coll["bf"] = True
         self.pushed_collection_party_ids = [ coll["pc"] for coll in collection_data if coll["ck"]  ]
 
-        coll_payload = {"mcl": collection_data, "id": self.today.strftime("%d/%m/%Y"), "CLIENT_REQ_UID": self._client_id_generator() , "ri" : 0 }
-        coll_payload = {"mcl": collection_data, "id": self.today.strftime("%d/%m/%Y"), "CLIENT_REQ_UID": self._client_id_generator() , "ri" : 0 }
+        coll_payload = {"mcl": collection_data, "id": self.today.strftime("%d/%m/%Y"), "CLIENT_REQ_UID": self._client_id_generator() , "ri" : 0}
         self.logger.info(f"Imported Collection Party IDs: {self.pushed_collection_party_ids}. Total items: {len(collection_data)}")
         postcollection = self.post("/rsunify/app/quantumImport/importSelectedCollection", json=coll_payload).json()
         self.logger.info(f"Post Collection Response: {postcollection}")
         
-    def Order(self,delete_order_numbers = []):
-        self.logger.info(f"Processing Order for Date: {self.order_date}")
+    def get_market_order(self, order_date: datetime.date) -> list:
+        self.logger.info(f"Processing Order for Date: {order_date}")
         get_shikhar = get_curl("ikea/billing/getshikhar")
         get_shikhar.json["importDate"] =  self.today.strftime("%d/%m/%Y")
         shikhar_data = get_shikhar.send(self).json()["shikharOrderList"]
-        shikhar_ids = [order[11] for order in shikhar_data[1:]] #no date condition on shikar if order[9] == self.order_date.strftime("%d/%m/%Y")]
+        shikhar_ids = [order[11] for order in shikhar_data[1:]] 
         self.logger.info(f"Found {len(shikhar_ids)} Shikhar IDs")
     
-        if not hasattr(self, 'import_dates'):
-            self.import_dates = self._get_import_dates()
+        self.import_dates = self._get_import_dates(order_date)
 
         get_order_req = get_curl("ikea/billing/getmarketorder")
         get_order_req.json |= (self.import_dates | {"qtmShikharList" : shikhar_ids})
         self.market_order = get_order_req.send(self).json()
-        order_data = self.market_order["mol"]
         
-        if delete_order_numbers :
-            self.logger.info(f"Deleting Orders: {delete_order_numbers}")
-            delete_orders_data = copy.deepcopy(order_data)
-            for order in delete_orders_data :
-                order["ck"] = (order["on"] in delete_order_numbers)
-            delete_market_order = get_curl("ikea/billing/delete_orders")
-            delete_market_order.json |= {"mol": delete_orders_data , "id": self.today.strftime("%d/%m/%Y")}
-            delete_res = delete_market_order.send(self).text
-            self.logger.info(f"Delete Orders Response: {delete_res}")
-            order_data = [order for order in order_data if order["on"] not in delete_order_numbers] 
-        
-        self.all_orders = pd.DataFrame(order_data)
-        self.log_dataframe_metadata(self.all_orders, "All Orders")
-        if len(self.all_orders.index) : 
-            orders = self.all_orders.groupby("on", as_index=False)
-            orders = orders.filter(self.filter_orders_fn)
-            self.filtered_orders = orders
-            self.log_dataframe_metadata(self.filtered_orders, "Filtered Orders")  
-        else : 
-            self.logger.info("No orders found in all_orders dataframe.")
-            return       
-            
-        for order in order_data :
-            order["ck"] = (order["on"] in orders.on.values)
+        # Return full raw response as requested
+        return self.market_order.get("mol")
 
+    def post_market_order(self, order_data: dict, order_numbers: list[str]):
+        # Accept market_order_data (full JSON object) and order_numbers
+        # Filter orders: Set ck=True if 'on' is in order_numbers, else False
+        # Note: mol is a flat list of products, so multiple entries can have same 'on'
+        for item in order_data:
+            item["ck"] = (item["on"] in order_numbers)
+        
         uid = self._client_id_generator()
         post_market_order = get_curl("ikea/billing/postmarketorder")
-        post_market_order.json |= {"mol": order_data , "id": self.today.strftime("%d/%m/%Y"), "CLIENT_REQ_UID": uid}
+    
+        reallocated_data = self.post("/rsunify/app/quantumImport/reAllocation",
+                    json={"mol": order_data , "id": self.today.strftime("%d/%m/%Y")}).json()
+        
+        reallocated_data = reallocated_data["mol"]
+        for item in reallocated_data:
+            item["ck"] = (item["on"] in order_numbers)
+
+        with open("post_market_order.json", "w") as f:
+            json.dump(order_data, f)
+
+        with open("reallocated_data.json", "w") as f:
+            json.dump(reallocated_data, f)
+
+        post_market_order.json |= {"mol": reallocated_data , 
+                                        "id": self.today.strftime("%d/%m/%Y"), "CLIENT_REQ_UID": uid}
         res = post_market_order.send(self)
-        try : 
+        
+        try:
             log_durl = res.json()["filePath"]
-        except : 
-            with open("post_market_order_response.html", "w+") as f : 
-                f.write(res.text)
-            log_durl = ""
-        self.logger.info(f"Post Market Order Response (FilePath): {log_durl}")
+            if log_durl:
+                log_content = self.fetch_durl_content(log_durl).read()
+                with open("log.txt", "wb") as f:
+                    f.write(log_content)
+        except Exception as e:
+            self.logger.error(f"Failed to download/save log: {e}")
 
     def Delivery(self):
         if not self.config["auto_delivery_process"] : 
