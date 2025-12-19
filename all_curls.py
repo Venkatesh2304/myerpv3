@@ -322,6 +322,44 @@ ikea_collection = CurlRequest('POST',
 )
 
 cookies = {
+    'JSESSIONID': '79A1AEB5BE3893CA9057F6304A4D8C35',
+    'isUserLoggedOut': 'No',
+    'maitabOpened': 'Yes',
+    'tabsOpened': '{"date":"2025-12-19T06:09:59.595Z","openedTabs":["Login","Bill Ageing Analysis Report"]}',
+}
+
+headers = {
+    'accept': '*/*',
+    'accept-language': 'en-US,en;q=0.9',
+    'content-type': 'application/x-www-form-urlencoded; charset=UTF-8',
+    # 'cookie': 'JSESSIONID=79A1AEB5BE3893CA9057F6304A4D8C35; isUserLoggedOut=No; maitabOpened=Yes; tabsOpened={"date":"2025-12-19T06:09:59.595Z","openedTabs":["Login","Bill Ageing Analysis Report"]}',
+    'newrelic': 'eyJ2IjpbMCwxXSwiZCI6eyJ0eSI6IkJyb3dzZXIiLCJhYyI6IjEwMTUzNDciLCJhcCI6IjE1ODg3NTgxMDAiLCJpZCI6IjAzN2IzMTlhOTIzZjFiNDAiLCJ0ciI6IjlkZDhjY2VmNDBlYWIyNDczMzRjNmNlMjBiNDMzNWJhIiwidGkiOjE3NjYxNTM2MTk5MDMsInRrIjoiOTM1NzAifX0=',
+    'origin': 'https://leveredge18.hulcd.com',
+    'priority': 'u=1, i',
+    'referer': 'https://leveredge18.hulcd.com/rsunify/app/reportsController/reportScreen?viewpage=report/billageinganalysis',
+    'sec-ch-ua': '"Not A(Brand";v="8", "Chromium";v="132", "Google Chrome";v="132"',
+    'sec-ch-ua-mobile': '?0',
+    'sec-ch-ua-platform': '"Linux"',
+    'sec-fetch-dest': 'empty',
+    'sec-fetch-mode': 'cors',
+    'sec-fetch-site': 'same-origin',
+    'traceparent': '00-9dd8ccef40eab247334c6ce20b4335ba-037b319a923f1b40-01',
+    'tracestate': '93570@nr=0-1-1015347-1588758100-037b319a923f1b40----1766153619903',
+    'user-agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36',
+    'x-newrelic-id': 'VQYGVFVXDxABUVRWBQgCVlcH',
+    'x-requested-with': 'XMLHttpRequest',
+}
+
+data = 'jsonData=%5B%5D&jsonObjforheaders=%5B%7B%221%22%3A%22RS+Name%3A%22%2C%222%22%3A%22%22%2C%223%22%3A%22From+Date%3A%22%2C%224%22%3A%22To+Date%3A%22%2C%22val1%22%3A%22DEVAKI+ENTERPRISES%22%2C%22val2%22%3A%22+%22%2C%22val3%22%3A%2218%2F11%2F2025%22%2C%22val4%22%3A%2219%2F12%2F2025%22%7D%5D&jsonObjfileInfi=%5B%7B%22title%22%3A%22Bill+Ageing+Analysis+Report%2CBill_Ageing_Analysis+Report%22%2C%22reportfilename%22%3A%22Bill_Ageing_Analysis%22%2C%22viewpage%22%3A%22report%2Fbillageinganalysis%22%2C%22viewname%22%3A%22BILLAGEING_REPORT%22%2C%22querycount%22%3A1%7D%5D&jsonObjWhereClause=%7B%22%3Aval1%22%3A%22Party+Master+Code%22%2C%22%3Aval2%22%3A%22%22%2C%22%3Aval3%22%3A%22%22%2C%22%3Aval4%22%3A%22%22%2C%22%3Aval5%22%3A%22%22%2C%22%3Aval6%22%3A%22%22%2C%22%3Aval7%22%3A%222025-11-18%22%2C%22%3Aval8%22%3A%222025-12-19%22%7D&orderBy=%5BParty+Name%5D%2Cconvert(datetime%2C%5BBill+Date%5D%2C103)%2C%5BBill+Number%5D'
+
+ikea_bill_ageing = CurlRequest('POST',
+    'https://leveredge18.hulcd.com/rsunify/app/reportsController/generatereport',
+    cookies=cookies,
+    headers=headers,
+    data=data,
+)
+
+cookies = {
     'JSESSIONID': '6B868DF69D66EA7AE0F74A22EB6CF433',
     'mocProcesStatus': 'Completed',
     'processLastUpdatedTime': '0',

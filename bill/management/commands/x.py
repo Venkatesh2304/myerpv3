@@ -1,13 +1,18 @@
+from core.models import Company
+from report.models import BillAgeingReport
 from report.models import DateRangeArgs
 from custom.classes import Ikea,Billing
 import datetime
 from report.models import SalesRegisterReport
 import json
 from bill.models import Billing
-b = Billing.objects.get(company_id="devaki_hul")
-b = [ i for i in b.market_order_data["mol"] if i["on"] == "20SMN00014P1581920251218"]
-with open("x.json","w+") as f:
-    f.write(json.dumps(b))
+# b = Billing.objects.get(company_id="devaki_hul",date=datetime.date(2025,12,19))
+# b = [ i for i in b.market_order_data["mol"] if i["on"] == "20SMN00014P1581920251218"]
+# with open("x.json","w+") as f:
+#     f.write(json.dumps(b))
+i = Ikea("devaki_hul")
+company = Company.objects.get(name="devaki_hul") 
+BillAgeingReport.update_db(i,company,DateRangeArgs(datetime.date(2025,6,12),datetime.date(2025,12,19)))
 exit(0)
 
 

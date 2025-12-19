@@ -1,3 +1,6 @@
+import traceback
+from django.template.defaultfilters import default
+from bill.models import Bill
 from report.models import DateRangeArgs
 from django.shortcuts import render
 from django.http import JsonResponse
@@ -80,17 +83,17 @@ def get_order(request):
         billing_obj.pushed_collections = list(set(billing_obj.pushed_collections + billing.pushed_collection_party_ids))
         billing_obj.save()
 
-        with tracker.step("Reports"):
-            today = datetime.date.today()
-            from report.models import DateRangeArgs
-            from report.models import EmptyArgs
-            from report.models import CollectionReport
-            from report.models import OutstandingReport
+        # with tracker.step("Reports"):
+        #     today = datetime.date.today()
+        #     from report.models import DateRangeArgs
+        #     from report.models import EmptyArgs
+        #     from report.models import CollectionReport
+        #     from report.models import OutstandingReport
             
-            company = Company.objects.get(pk=company_id)
-            # Update Reports
-            CollectionReport.update_db(billing, company, DateRangeArgs(today, today))
-            OutstandingReport.update_db(billing, company, EmptyArgs())
+        #     company = Company.objects.get(pk=company_id)
+        #     # Update Reports
+        #     CollectionReport.update_db(billing, company, DateRangeArgs(today, today))
+        #     OutstandingReport.update_db(billing, company, EmptyArgs())
 
         with tracker.step("Order"):
             order_data:list = billing.get_market_order(order_date)
@@ -125,30 +128,66 @@ def get_order(request):
                 pass
             
             # OS: OutstandingReport
-            os_val = "-"
+            os_list = []
             try:
                 outstanding_bills = OutstandingReport.objects.filter(
                     company_id=company_id, 
                     party_id=first_item.get('pc'), 
                     beat=first_item.get('m')
                 )
-                os_list = [f"{round(bill.balance)}*{(today - bill.bill_date).days}" for bill in outstanding_bills]
-                os_val = "/ ".join(os_list) or "-"
+                os_list = [(round(bill.balance),(today - bill.bill_date).days) for bill in outstanding_bills]
             except Exception:
                 pass
 
+            os_val = "/ ".join([f"{bal}*{days}" for bal,days in os_list]) or "-"
+
             # Coll: CollectionReport
-            coll_val = "-"
+            coll_list = []
             try:
                 collections = CollectionReport.objects.filter(
                     company_id=company_id, 
                     party_name=first_item.get('p'), 
                     date=today
                 )
-                coll_list = [f"{round(coll.amt or 0)}*{(today - coll.bill_date).days}" for coll in collections]
-                coll_val = "/ ".join(coll_list) or "-"
+                coll_list = [(round(coll.amt or 0), (today - coll.bill_date).days) for coll in collections]
             except Exception:
                 pass
+
+            coll_val = "/ ".join([f"{amt}*{days}" for amt,days in coll_list]) or "-"
+            
+
+            allow_order = False
+            if len(os_list) == 0 : 
+                allow_order = True
+            elif len(os_list) == 1 :
+                max_collection_days = max([days for _,days in coll_list], default=0)
+                max_outstanding_days = max([days for _,days in os_list], default=0)
+                total_outstanding = sum([bal for bal,_ in os_list]) or 0
+                if max(max_collection_days,max_outstanding_days) > 21 : 
+                    allow_order = False
+                elif total_outstanding > 500 and allocated_value > 500 :
+                    allow_order = False
+                else : 
+                    allow_order = True
+            else : 
+                allow_order = False
+            
+            partial_order = (billing_obj.order_values.get(order_no, 0) - allocated_value) > 200
+
+            class OrderType :
+                Partial = "partial"
+                LessThanConfig = "less_than_config"
+                Normal = "normal"
+                
+            if allocated_value < 200 :
+                order_category = OrderType.LessThanConfig
+            elif partial_order :
+                order_category = OrderType.Partial
+            else :
+                order_category = OrderType.Normal
+
+            if order_category != OrderType.Normal : 
+                allow_order = False
 
             processed_orders.append({
                 "order_no": order_no,
@@ -161,17 +200,20 @@ def get_order(request):
                 "type": first_item.get('ot'),
                 "phone": phone,
                 "OS": os_val,
-                "coll": coll_val
+                "coll": coll_val,
+                "allow_order": allow_order,
+                "order_category": order_category
             })
 
+        processed_orders.sort(key=lambda x: (x["allow_order"],x["party"]))
         # Populate order_values from processed_orders
-        order_values = {order["order_no"]: order["bill_value"] for order in processed_orders}
+        order_values = {order["order_no"]: order["bill_value"] for order in processed_orders} 
         
         # Store state in DB (Short transaction for update)
         # Note: We can just save here as we are the only ones running due to ongoing flag
         billing_obj.market_order_data = order_data
         billing_obj.order_date = order_date
-        billing_obj.order_values = order_values
+        billing_obj.order_values = order_values | billing_obj.order_values
         
         import hashlib
         import json
@@ -196,6 +238,7 @@ def post_order(request):
     client_hash = data.get("hash")
     order_date = data.get("order_date")
     order_numbers = data.get("order_numbers")
+    delete_orders = data.get("delete_orders")
 
     
     if not company_id:
@@ -243,10 +286,8 @@ def post_order(request):
         if not stored_data:
              return JsonResponse({"error": "No market order data found. Please fetch orders first."}, status=400)
              
-        stored_data_json = json.dumps(stored_data, sort_keys=True)
-        stored_hash = hashlib.md5(stored_data_json.encode('utf-8')).hexdigest()
         
-        if stored_hash != client_hash:
+        if billing_obj.order_hash != client_hash:
              return JsonResponse({"error": "Data mismatch (Hash invalid). Please refresh orders."}, status=400)
 
         with tracker.step("Initialisation"):
@@ -256,7 +297,7 @@ def post_order(request):
             billing.Prevbills()   
             
         with tracker.step("Order"):
-            billing.post_market_order(stored_data, order_numbers)   
+            billing.post_market_order(stored_data, order_numbers, delete_orders)   
             
         with tracker.step("Delivery"):
             billing.Delivery()  
@@ -267,7 +308,8 @@ def post_order(request):
              today = datetime.date.today()
              company = Company.objects.get(pk=company_id)
              SalesRegisterReport.update_db(billing, company, DateRangeArgs(today, today))
-             
+             Bill.sync_with_salesregister(company,fromd = today,tod = today)
+
 
         # Stats
         last_bills_count = len(billing.bills) if hasattr(billing, 'bills') else 0
@@ -284,11 +326,122 @@ def post_order(request):
             "process": tracker.stats
         })
     except Exception as e:
-        return JsonResponse({"error": str(e), "process": tracker.stats}, status=500)
+        return JsonResponse({"error": str(e) + traceback.format_exc(), "process": tracker.stats}, status=500)
     finally:
         # Release lock
         if 'billing_obj' in locals() and billing_obj.ongoing:
             billing_obj.ongoing = False
             billing_obj.save()
 
+@api_view(["GET", "POST"])
+def manage_order(request):
+    import hashlib
+    import json
+    
+    data = request.data if request.method == "POST" else request.GET
+    company_id = data.get("company")
+    order_number = data.get("order")
 
+    if not company_id:
+        return JsonResponse({"error": "Company ID is required"}, status=400)
+    
+    if not order_number:
+        return JsonResponse({"error": "Order Number is required"}, status=400)
+
+    today = datetime.date.today()
+
+    def generate_row_id(row):
+        # Use MD5 of sorted JSON string for stable ID
+        row_str = json.dumps(row, sort_keys=True)
+        return hashlib.md5(row_str.encode('utf-8')).hexdigest()
+
+    if request.method == "GET":
+        try:
+            billing_obj = models.Billing.objects.get(company_id=company_id, date=today)
+            market_order_data = billing_obj.market_order_data or []
+            
+            # Filter rows for the given order number
+            order_rows = [row for row in market_order_data if row.get('on') == order_number]
+            
+            response_data = []
+            for row in order_rows:
+                response_data.append({
+                    "id": generate_row_id(row),
+                    "p": row.get('p'),
+                    "t": row.get('t'),
+                    "cq": row.get('cq'),
+                    "aq": row.get('aq'),
+                    "qp": row.get('qp'),
+                    "ar": row.get('ar'),
+                    "bd": row.get('bd')
+                })
+            
+            return JsonResponse(response_data, safe=False)
+            
+        except models.Billing.DoesNotExist:
+            return JsonResponse({"error": "Billing record not found for today"}, status=404)
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=500)
+
+    if request.method == "POST":
+        updates = data.get("items")
+        if not updates or not isinstance(updates, dict):
+             return JsonResponse({"error": "Items dictionary is required"}, status=400)
+
+        try:
+            with transaction.atomic():
+                billing_obj = models.Billing.objects.select_for_update().get(company_id=company_id, date=today)
+                
+                if billing_obj.ongoing:
+                    return JsonResponse({"error": "Billing process is ongoing. Please wait."}, status=400)
+
+                billing_obj.ongoing = True
+                billing_obj.process = "editing"
+                billing_obj.save()
+
+                market_order_data = billing_obj.market_order_data or []
+                
+                # Create a map of ID -> Row for O(1) lookup
+                row_map = {
+                    generate_row_id(row): row 
+                    for row in market_order_data 
+                    if row.get('on') == order_number
+                }
+                
+                errors = []
+                updated_count = 0
+
+                for row_id, new_qp in updates.items():
+                    row = row_map.get(row_id)
+                    if not row:
+                        errors.append(f"Row ID {row_id} not found")
+                        continue
+
+                    try:
+                        new_qp = int(new_qp)
+                    except (ValueError, TypeError):
+                        errors.append(f"Invalid QP value for ID {row_id}")
+                        continue
+
+                    aq = row.get('aq', 0) or 0
+                    if new_qp > aq:
+                        errors.append(f"To order QTY ({new_qp}) > Allocated QTY ({aq}) for ID {row_id}")
+                        continue
+                    
+                    row['qp'] = new_qp
+                    updated_count += 1
+
+                if errors:
+                    transaction.set_rollback(True)
+                    return JsonResponse({"error": "Validation failed : " + str(errors), "details": errors}, status=400)
+                
+                billing_obj.market_order_data = market_order_data
+                billing_obj.ongoing = False
+                billing_obj.save()
+                
+                return JsonResponse({"success": True, "message": f"Updated {updated_count} rows successfully"})
+
+        except models.Billing.DoesNotExist:
+            return JsonResponse({"error": "Billing record not found for today"}, status=404)
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=500)

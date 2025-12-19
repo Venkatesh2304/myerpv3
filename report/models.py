@@ -1,3 +1,4 @@
+from dateutil.relativedelta import relativedelta
 from datetime import timedelta
 from sqlalchemy.sql._elements_constructors import null
 import abc
@@ -415,7 +416,6 @@ class DmgShtReport(DateReportModel):
             df["party_id"] = df["party_id"].fillna("HUL") #For RS entries
             return df
 
-
 class CollectionReport(DateReportModel):
     collection_ref = models.CharField(max_length=15, verbose_name="Collection Ref")
     inum = models.CharField(max_length=15, verbose_name="BillRefNo")
@@ -461,6 +461,33 @@ class OutstandingReport(EmptyReportModel):
                         "Bill Number" : "inum", "Bill Date" : "bill_date","Bill Amount" : "bill_amt","O/S Amount" : "balance"}
         dropna_columns = ["inum"]
         max_retry = 2
+      
+      class Meta: # type: ignore
+        db_table = "outstanding_report"
+        
+class BillAgeingReport(EmptyReportModel):
+    inum = models.CharField(max_length=20)
+    party_name = models.CharField(max_length=100,verbose_name="Party Name") 
+    bill_amt = models.DecimalField(max_digits=10,decimal_places=2)
+    collected = models.BooleanField()
+    days = models.IntegerField()
+
+    class Report(EmptyReportModel.Report):
+        fetcher = lambda ikea : Ikea.bill_ageing(ikea, datetime.date.today() - relativedelta(months=6),  #type: ignore
+                                                       datetime.date.today())
+        column_map = {  "Bill Number" : "inum", "Party Name" : "party_name", 
+                        "Bill Amount" : "bill_amt", "Collection Status" : "collection_status",
+                        "Collected Within (Days)" : "collected_days", "Pending Since (Days)" : "pending_days"}
+        dropna_columns = ["inum"]
+        
+        @classmethod
+        def custom_preprocessing(cls, df: pd.DataFrame) -> pd.DataFrame:
+            df["collected"] = df["collection_status"] == "Collected"
+            df["days"] = df[["collected_days","pending_days"]].max(axis=1)
+            return df
+
+    class Meta: # type: ignore
+        db_table = "bill_ageing_report"
 
 class BeatReport(EmptyReportModel):
     beat_id = models.IntegerField()
@@ -598,6 +625,7 @@ class GSTR1Portal(UserReportModel[MonthArgs]):
     @classmethod
     def delete_before_insert(cls, user: User,args: MonthArgs):
         cls.objects.filter(user = user,period = str(args)).delete()
+
 
 # System check for models
 @register()

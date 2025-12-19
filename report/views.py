@@ -28,3 +28,33 @@ def party_names(request) :
         value = F("party_id")
     ).values("label","value").distinct() #warning
     return JsonResponse(list(parties),safe=False)
+@api_view(["GET"])
+def party_credibility(request):
+    from report.models import BillAgeingReport
+    from django.db.models import Avg
+
+    company = request.query_params.get("company")
+    party_name = request.query_params.get("party_name")
+
+    if not company:
+        return JsonResponse({"error": "Company is required"}, status=400)
+    
+    if not party_name:
+        return JsonResponse({"error": "Party Name is required"}, status=400)
+
+    qs = BillAgeingReport.objects.filter(company_id=company, party_name=party_name).values("bill_amt", "days", "collected")
+    
+    data = list(qs)
+    
+    all_values = [int(d["bill_amt"]) for d in data]
+    collected_days = [d["days"] for d in data if d["collected"]]
+    
+    avg_value = sum(all_values) / len(all_values) if all_values else 0
+    avg_days = sum(collected_days) / len(collected_days) if collected_days else 0
+
+    return JsonResponse({
+        "avg_days": round(avg_days),
+        "avg_value": round(avg_value),
+        "days": collected_days,
+        "values": all_values
+    })

@@ -11,5 +11,6 @@ router.register(r'bill', BillViewSet)
 urlpatterns = [
     path("get_order/", views.get_order, name="get_order"),
     path("post_order/", views.post_order, name="post_order"),
+    path("order/", views.manage_order, name="manage_order"),
     path('', include(router.urls)),
 ]

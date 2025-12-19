@@ -234,6 +234,10 @@ class IkeaReports(BaseIkea):
     def pending_bills(self, date: datetime.date) -> dict:
         return self.fetch_report_dataframe("ikea/pending_bills", r'(":val8":").{10}', (date.strftime("%Y-%m-%d"),))
     
+    def bill_ageing(self,fromd: datetime.date,tod: datetime.date) -> pd.DataFrame:
+        return self.fetch_report_dataframe("ikea/bill_ageing", r'(":val7":").{10}(":val8":").{10}', 
+                (fromd.strftime("%Y-%m-%d"),tod.strftime("%Y-%m-%d")))
+    
     def beat_mapping(self) -> pd.DataFrame:
         return self.fetch_report_dataframe("ikea/beat_mapping", "", tuple())
     
@@ -496,30 +500,37 @@ class Billing(Ikea) :
         # Return full raw response as requested
         return self.market_order.get("mol")
 
-    def post_market_order(self, order_data: dict, order_numbers: list[str]):
-        # Accept market_order_data (full JSON object) and order_numbers
-        # Filter orders: Set ck=True if 'on' is in order_numbers, else False
-        # Note: mol is a flat list of products, so multiple entries can have same 'on'
+    def post_market_order(self, order_data: list, order_numbers: list[str], delete_order_numbers: list[str]):
+
+        if delete_order_numbers :
+            delete_orders_data = copy.deepcopy(order_data)
+            for order in delete_orders_data :
+                order["ck"] = (order["on"] in delete_order_numbers)
+            delete_market_order = get_curl("ikea/billing/delete_orders")
+            delete_market_order.json |= {"mol": delete_orders_data , "id": self.today.strftime("%d/%m/%Y")}
+            delete_market_order.send(self).text
+            order_data = [order for order in order_data if order["on"] not in delete_order_numbers]
+
         for item in order_data:
             item["ck"] = (item["on"] in order_numbers)
         
         uid = self._client_id_generator()
         post_market_order = get_curl("ikea/billing/postmarketorder")
     
-        reallocated_data = self.post("/rsunify/app/quantumImport/reAllocation",
-                    json={"mol": order_data , "id": self.today.strftime("%d/%m/%Y")}).json()
+        # reallocated_data = self.post("/rsunify/app/quantumImport/reAllocation",
+        #             json={"mol": order_data , "id": self.today.strftime("%d/%m/%Y")}).json()
         
-        reallocated_data = reallocated_data["mol"]
-        for item in reallocated_data:
-            item["ck"] = (item["on"] in order_numbers)
+        # reallocated_data = reallocated_data["mol"]
+        # for item in reallocated_data:
+        #     item["ck"] = (item["on"] in order_numbers)
 
-        with open("post_market_order.json", "w") as f:
-            json.dump(order_data, f)
+        # with open("post_market_order.json", "w") as f:
+        #     json.dump(order_data, f)
 
-        with open("reallocated_data.json", "w") as f:
-            json.dump(reallocated_data, f)
+        # with open("reallocated_data.json", "w") as f:
+        #     json.dump(reallocated_data, f)
 
-        post_market_order.json |= {"mol": reallocated_data , 
+        post_market_order.json |= {"mol": order_data , 
                                         "id": self.today.strftime("%d/%m/%Y"), "CLIENT_REQ_UID": uid}
         res = post_market_order.send(self)
         
