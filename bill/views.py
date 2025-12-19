@@ -58,11 +58,13 @@ def get_order(request):
             
             if not created and billing_obj.ongoing:
                 return JsonResponse({"error": "Billing process is already ongoing"}, status=400)
-            
-            if not created:
-                billing_obj.ongoing = True
-                billing_obj.process = "getorder"
-                billing_obj.save()
+
+            billing_obj.order_date = order_date
+            billing_obj.ongoing = True
+            billing_obj.process = "getorder"
+            billing_obj.market_order_data = [] #For safety, to remove previous market values
+            billing_obj.order_hash = "dummy"
+            billing_obj.save()
                 
     except Exception as e:
         return JsonResponse({"error": f"Failed to acquire lock: {str(e)}"}, status=500)
@@ -83,17 +85,17 @@ def get_order(request):
         billing_obj.pushed_collections = list(set(billing_obj.pushed_collections + billing.pushed_collection_party_ids))
         billing_obj.save()
 
-        # with tracker.step("Reports"):
-        #     today = datetime.date.today()
-        #     from report.models import DateRangeArgs
-        #     from report.models import EmptyArgs
-        #     from report.models import CollectionReport
-        #     from report.models import OutstandingReport
+        with tracker.step("Reports"):
+            today = datetime.date.today()
+            from report.models import DateRangeArgs
+            from report.models import EmptyArgs
+            from report.models import CollectionReport
+            from report.models import OutstandingReport
             
-        #     company = Company.objects.get(pk=company_id)
-        #     # Update Reports
-        #     CollectionReport.update_db(billing, company, DateRangeArgs(today, today))
-        #     OutstandingReport.update_db(billing, company, EmptyArgs())
+            company = Company.objects.get(pk=company_id)
+            # Update Reports
+            CollectionReport.update_db(billing, company, DateRangeArgs(today, today))
+            OutstandingReport.update_db(billing, company, EmptyArgs())
 
         with tracker.step("Order"):
             order_data:list = billing.get_market_order(order_date)
@@ -212,7 +214,6 @@ def get_order(request):
         # Store state in DB (Short transaction for update)
         # Note: We can just save here as we are the only ones running due to ongoing flag
         billing_obj.market_order_data = order_data
-        billing_obj.order_date = order_date
         billing_obj.order_values = order_values | billing_obj.order_values
         
         import hashlib
@@ -222,7 +223,8 @@ def get_order(request):
         billing_obj.order_hash = data_hash
         billing_obj.save()
 
-        return JsonResponse({"orders": processed_orders, "hash": data_hash, "process": tracker.stats})
+        return JsonResponse({"orders": processed_orders, "hash": data_hash, "process": tracker.stats, 
+                                        "last_time": datetime.datetime.now().strftime("%H:%M")})
     except Exception as e:
         return JsonResponse({"error": str(e), "process": tracker.stats}, status=500)
     finally:
@@ -323,6 +325,7 @@ def post_order(request):
             "message": "Order posted successfully. Log saved.",
             "last_bills_count": last_bills_count,
             "last_bills": last_bills_text,
+            "last_time" : datetime.datetime.now().strftime("%H:%M"),
             "process": tracker.stats
         })
     except Exception as e:
