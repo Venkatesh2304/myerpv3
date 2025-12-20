@@ -235,7 +235,7 @@ class IkeaReports(BaseIkea):
         return self.fetch_report_dataframe("ikea/pending_bills", r'(":val8":").{10}', (date.strftime("%Y-%m-%d"),))
     
     def bill_ageing(self,fromd: datetime.date,tod: datetime.date) -> pd.DataFrame:
-        return self.fetch_report_dataframe("ikea/bill_ageing", r'(":val7":").{10}(":val8":").{10}', 
+        return self.fetch_report_dataframe("ikea/bill_ageing", r'(":val7":").{10}(",":val8":").{10}', 
                 (fromd.strftime("%Y-%m-%d"),tod.strftime("%Y-%m-%d")))
     
     def beat_mapping(self) -> pd.DataFrame:

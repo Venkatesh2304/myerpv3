@@ -4,6 +4,7 @@ from report.models import DateRangeArgs
 from custom.classes import Ikea,Billing
 import datetime
 from report.models import SalesRegisterReport
+from dateutil.relativedelta import relativedelta
 import json
 from bill.models import Billing
 # b = Billing.objects.get(company_id="devaki_hul",date=datetime.date(2025,12,19))
@@ -12,7 +13,9 @@ from bill.models import Billing
 #     f.write(json.dumps(b))
 i = Ikea("devaki_hul")
 company = Company.objects.get(name="devaki_hul") 
-BillAgeingReport.update_db(i,company,DateRangeArgs(datetime.date(2025,6,12),datetime.date(2025,12,19)))
+df = Ikea.bill_ageing(i, datetime.date.today() - relativedelta(months=6),  #type: ignore
+                                                       datetime.date.today())
+print(df["Bill Date"].min())
 exit(0)
 
 
