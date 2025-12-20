@@ -1,3 +1,6 @@
+from django.db.models.aggregates import Count
+from django.db.models.aggregates import Max
+from django.db.models.aggregates import Min
 import traceback
 from django.template.defaultfilters import default
 from bill.models import Bill
@@ -317,12 +320,22 @@ def post_order(request):
             # Assuming bills are sorted strings, but let's sort them to be sure
             sorted_bills = sorted(billing.bills)
             last_bills_text = f"{sorted_bills[0]} - {sorted_bills[-1]}"
-            
+        
+        today_bills = SalesRegisterReport.objects.filter(date=today, type="sales",company_id = company_id).exclude(beat__contains="WHOLE").aggregate(
+                bill_count=Count("inum"),
+                start_bill_no=Min("inum"),
+                end_bill_no=Max("inum"),
+        )
+        today_bills_count = today_bills["bill_count"] or 0
+        today_bills_text = f'{today_bills["start_bill_no"]} - {today_bills["end_bill_no"]}' if today_bills_count else "-"
+
         return JsonResponse({
             "message": "Order posted successfully. Log saved.",
             "last_bills_count": last_bills_count,
             "last_bills": last_bills_text,
             "last_time" : datetime.datetime.now().strftime("%H:%M"),
+            "today_bills" : today_bills_text,
+            "today_bills_count" : today_bills_count,
             "process": tracker.stats
         })
     except Exception as e:
