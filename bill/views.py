@@ -241,7 +241,6 @@ def post_order(request):
     order_date = data.get("order_date")
     order_numbers = data.get("order_numbers")
     delete_orders = data.get("delete_orders")
-
     
     if not company_id:
         return JsonResponse({"error": "Company ID is required"}, status=400)
