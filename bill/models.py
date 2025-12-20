@@ -94,3 +94,13 @@ class Bill(CompanyModel) :
                                 beat = inv["beat"],party_name = inv["party_name"],bill_amt = inv["amt"], ctin = inv["ctin"]) for inv in invs ],
             ignore_conflicts=True
         )
+
+class PartyCredit(CompanyModel):
+    company = models.ForeignKey("core.Company", on_delete=models.CASCADE)
+    party_id = models.CharField(max_length=30)
+    bills = models.IntegerField(default=1)
+    days = models.IntegerField(default=0)
+    value = models.IntegerField(default=0)
+
+    class Meta:
+        unique_together = ('company', 'party_id')

@@ -13,6 +13,8 @@ from custom.classes import Billing
 from report.models import CollectionReport, OutstandingReport, EmptyArgs
 import time
 import contextlib
+from bill.credit_logic import PartyCreditLogic
+from bill.models import PartyCredit
 
 class ProcessStats:
     def __init__(self):
@@ -94,11 +96,17 @@ def get_order(request):
             
             company = Company.objects.get(pk=company_id)
             # Update Reports
-            CollectionReport.update_db(billing, company, DateRangeArgs(today, today))
+            #TODO
+            try :
+                CollectionReport.update_db(billing, company, DateRangeArgs(today, today))
+            except :
+                pass
             OutstandingReport.update_db(billing, company, EmptyArgs())
 
         with tracker.step("Order"):
             order_data:list = billing.get_market_order(order_date)
+            party_ids = [item.get('pc') for item in order_data if item.get('pc')]
+            credit_logic = PartyCreditLogic(company_id, party_ids)
         
         
         from itertools import groupby
@@ -111,15 +119,16 @@ def get_order(request):
         for order_no, items in groupby(order_data, key=itemgetter('on')):
             items_list = list(items)
             first_item = items_list[0]
+            party_code = first_item.get('pc')
             
             #Skip wholesale beats
-            if "WHOLE" in first_item.get('m', "") : 
+            if "WHOLEX" in first_item.get('m', "") : 
                 continue
 
             lines_count = len(items_list)
             bill_value = sum((item.get('cq') or 0) * (item.get('t') or 0) for item in items_list)
             allocated_value = sum((item.get('aq') or 0) * (item.get('t') or 0) for item in items_list)
-            
+
             # Phone: Fetch from PartyReport
             phone = "-"
             try:
@@ -134,7 +143,7 @@ def get_order(request):
             try:
                 outstanding_bills = OutstandingReport.objects.filter(
                     company_id=company_id, 
-                    party_id=first_item.get('pc'), 
+                    party_id=party_code, 
                     beat=first_item.get('m')
                 )
                 os_list = [(round(bill.balance),(today - bill.bill_date).days) for bill in outstanding_bills]
@@ -157,23 +166,9 @@ def get_order(request):
 
             coll_val = "/ ".join([f"{amt}*{days}" for amt,days in coll_list]) or "-"
             
+            allow_order,warning = credit_logic.allow_order(party_code, os_list, coll_list, allocated_value)
+            warning = "\n".join(warning)
 
-            allow_order = False
-            if len(os_list) == 0 : 
-                allow_order = True
-            elif len(os_list) == 1 :
-                max_collection_days = max([days for _,days in coll_list], default=0)
-                max_outstanding_days = max([days for _,days in os_list], default=0)
-                total_outstanding = sum([bal for bal,_ in os_list]) or 0
-                if max(max_collection_days,max_outstanding_days) > 21 : 
-                    allow_order = False
-                elif total_outstanding > 500 and allocated_value > 500 :
-                    allow_order = False
-                else : 
-                    allow_order = True
-            else : 
-                allow_order = False
-            
             partial_order = (billing_obj.order_values.get(order_no, 0) - allocated_value) > 200
 
             class OrderType :
@@ -194,6 +189,7 @@ def get_order(request):
             processed_orders.append({
                 "order_no": order_no,
                 "party": first_item.get('p'),
+                "party_id": party_code,
                 "lines": lines_count,
                 "bill_value": round(bill_value, 2),
                 "allocated_value": round(allocated_value, 2),
@@ -204,6 +200,7 @@ def get_order(request):
                 "OS": os_val,
                 "coll": coll_val,
                 "allow_order": allow_order,
+                "warning" : warning,
                 "order_category": order_category
             })
 
@@ -446,5 +443,49 @@ def manage_order(request):
 
         except models.Billing.DoesNotExist:
             return JsonResponse({"error": "Billing record not found for today"}, status=404)
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=500)
+
+@api_view(["GET", "POST"])
+def party_credit(request):
+    data = request.data if request.method == "POST" else request.GET
+    company_id = data.get("company")
+    party_id = data.get("party_id")
+    
+    if not company_id:
+        return JsonResponse({"error": "Company ID is required"}, status=400)
+
+    if not party_id:
+        return JsonResponse({"error": "Party ID is required"}, status=400)
+    
+    if request.method == "GET":
+        try:
+            credit,_ = PartyCredit.objects.get_or_create(company_id=company_id, party_id=party_id)
+            response_data = {
+                    "party_id": party_id,
+                    "bills": credit.bills,
+                    "days": credit.days,
+                    "value": credit.value
+            }
+            return JsonResponse(response_data)
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=500)
+            
+    if request.method == "POST":
+        bills = data.get("bills")
+        days = data.get("days")
+        value = data.get("value")
+        
+        try:
+            obj, created = PartyCredit.objects.update_or_create(
+                company_id=company_id,
+                party_id=party_id,
+                defaults={
+                    "bills": bills,
+                    "days": days,
+                    "value": value
+                }
+            )
+            return JsonResponse({"success": True, "message": "Party credit updated successfully"})
         except Exception as e:
             return JsonResponse({"error": str(e)}, status=500)

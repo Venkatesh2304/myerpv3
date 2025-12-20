@@ -1,3 +1,4 @@
+from report.models import PartyReport
 from django.db.models.expressions import F
 import datetime
 from report.models import SalesRegisterReport
@@ -28,20 +29,26 @@ def party_names(request) :
         value = F("party_id")
     ).values("label","value").distinct() #warning
     return JsonResponse(list(parties),safe=False)
+
 @api_view(["GET"])
 def party_credibility(request):
     from report.models import BillAgeingReport
     from django.db.models import Avg
 
     company = request.query_params.get("company")
-    party_name = request.query_params.get("party_name")
+    party_id = request.query_params.get("party_id")
 
     if not company:
         return JsonResponse({"error": "Company is required"}, status=400)
     
-    if not party_name:
-        return JsonResponse({"error": "Party Name is required"}, status=400)
-
+    if not party_id:
+        return JsonResponse({"error": "Party Id is required"}, status=400)
+        
+    try :
+        party_name = PartyReport.objects.get(company_id=company, code=party_id).name
+    except :
+        return JsonResponse({"error": "Party not found"}, status=400)
+    
     qs = BillAgeingReport.objects.filter(company_id=company, party_name=party_name).values("bill_amt", "days", "collected")
     
     data = list(qs)
