@@ -122,7 +122,7 @@ def get_order(request):
             party_code = first_item.get('pc')
             
             #Skip wholesale beats
-            if "WHOLEX" in first_item.get('m', "") : 
+            if "WHOLE" in first_item.get('m', "") : 
                 continue
 
             lines_count = len(items_list)
