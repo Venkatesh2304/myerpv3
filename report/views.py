@@ -49,19 +49,23 @@ def party_credibility(request):
     except :
         return JsonResponse({"error": "Party not found"}, status=400)
     
-    qs = BillAgeingReport.objects.filter(company_id=company, party_name=party_name).values("bill_amt", "days", "collected")
+    qs = BillAgeingReport.objects.filter(company_id=company, party_name=party_name).values()
+    bills = list(qs)
+    all_values = [int(d["bill_amt"]) for d in bills]
+    collected_bills = [d for d in bills if d["collected"]]
+    bills = [ {"name" : d["inum"] , "amt": int(d["bill_amt"]), "days": d["days"] ,
+                                   "collected": d["collected"] } for d in bills ]
     
-    data = list(qs)
-    
-    all_values = [int(d["bill_amt"]) for d in data]
-    collected_days = [d["days"] for d in data if d["collected"]]
-    
+    #Average Bill Value
     avg_value = sum(all_values) / len(all_values) if all_values else 0
-    avg_days = sum(collected_days) / len(collected_days) if collected_days else 0
+    #Weighted average
+    avg_days = sum([d["days"] * d["bill_amt"] for d in collected_bills]) / sum([d["bill_amt"] for d in collected_bills]) if collected_bills else 0
+    #Average Monthly Value
+    avg_monthly = sum(all_values) / 6 if all_values else 0
 
     return JsonResponse({
         "avg_days": round(avg_days),
         "avg_value": round(avg_value),
-        "days": collected_days,
-        "values": all_values
+        "avg_monthly": round(avg_monthly),
+        "bills": bills
     })
