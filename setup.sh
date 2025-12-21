@@ -147,4 +147,4 @@ sudo systemctl enable "$SERVICE_NAME" "$SCHEDULER_NAME"
 sudo systemctl restart "$SERVICE_NAME" "$SCHEDULER_NAME"
 
 echo "==> Setup complete."
-sudo systemctl status "$SERVICE_NAME" --no-pager || true
+sudo systemctl status "$SERVICE_NAME" "$SCHEDULER_NAME" --no-pager || true

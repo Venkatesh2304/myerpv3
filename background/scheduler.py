@@ -60,8 +60,6 @@ def load_config(filename):
 
 def billing(company):
     logger.info(f"Running job for {company} at {datetime.datetime.now()}")    
-    time.sleep(2)
-    return 
     try:
         s = BaseSession()
         today_str = datetime.date.today().strftime("%Y-%m-%d")

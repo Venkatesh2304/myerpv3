@@ -16,7 +16,7 @@ for company in Company.objects.all() :
     # BeatReport.update_db(i,company,EmptyArgs())
     # BillAgeingReport.update_db(i,company,EmptyArgs())
     # PartyReport.update_db(i,company,EmptyArgs())
-    SalesRegisterReport.update_db(i,company,DateRangeArgs(fromd=today-relativedelta(months=6),tod=today))
+    # SalesRegisterReport.update_db(i,company,DateRangeArgs(fromd=today-relativedelta(months=6),tod=today))
 
 # CollectionReport.update_db(i,company,DateRangeArgs(fromd=today,tod=today))
 # SalesRegisterReport.update_db(i,company,DateRangeArgs(fromd=today,tod=today))
