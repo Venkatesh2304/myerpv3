@@ -507,12 +507,14 @@ def get_billing_stats(request):
     # Last Bills Stats
     last_bills_count = 0
     last_bills_text = ""
+    last_time = ""
     user = billing_obj.user
     
-    if billing_obj.last_bills:
+    if billing_obj:
         sorted_bills = sorted(billing_obj.last_bills)
         last_bills_count = len(sorted_bills)
         last_bills_text = f"{sorted_bills[0]} - {sorted_bills[-1]}"
+        last_time = billing_obj.time.strftime("%H:%M")
 
     # Today's Bills Stats
     today_bills = SalesRegisterReport.objects.filter(date=today, type="sales", company_id=company_id).exclude(beat__contains="WHOLE").aggregate(
@@ -524,12 +526,12 @@ def get_billing_stats(request):
     today_bills_text = f'{today_bills["start_bill_no"]} - {today_bills["end_bill_no"]}' if today_bills_count else "-"
 
     # Unprinted Bills Stats
-    unprinted_bills_count = Bill.objects.filter(company_id=company_id, bill_date=today, print_time__isnull=True).count()
+    unprinted_bills_count = Bill.objects.filter(company_id=company_id, bill_date=today, print_time__isnull=True, beat__contains="WHOLE").count()
 
     stats = {
         "last_bills_count": last_bills_count, 
         "last_bills": last_bills_text,      
-        "last_time": datetime.datetime.now().strftime("%H:%M"),
+        "last_time": last_time,
         "today_bills": today_bills_text,
         "today_bills_count": today_bills_count,
         "unprinted_bills_count": unprinted_bills_count,

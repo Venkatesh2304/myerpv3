@@ -145,7 +145,7 @@ def main():
     # Schedule Daily Sync at 23:30
     scheduler.add_job(
         sync_daily,
-        trigger=CronTrigger(hour=12, minute=35,second=0),
+        trigger=CronTrigger(hour=0, minute=9,second=0),
         name="daily_sync"
     )
 
