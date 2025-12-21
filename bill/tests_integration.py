@@ -12,8 +12,12 @@ class RealBillingIntegrationTest(TransactionTestCase):
         self.factory = RequestFactory()
         
         # Ensure User and Company exist (or use existing if DB is persistent across tests which it isn't usually)
-        self.user, _ = User.objects.get_or_create(username="devaki")
-        self.company, _ = Company.objects.get_or_create(name="devaki_hul", user=self.user)
+        # Ensure User and Company exist (or use existing if DB is persistent across tests which it isn't usually)
+        from core.models import Organization
+        self.org, _ = Organization.objects.get_or_create(name="HUL")
+        self.company, _ = Company.objects.get_or_create(name="devaki_hul", organization=self.org)
+        self.user, _ = User.objects.get_or_create(username="devaki", organization=self.org)
+        self.user.companies.add(self.company)
         
         # Ensure UserSession exists with REAL credentials
         UserSession.objects.update_or_create(

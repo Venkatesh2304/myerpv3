@@ -1,3 +1,4 @@
+from core.models import Organization
 from core.models import User
 from io import BytesIO
 import pandas as pd
@@ -6,11 +7,36 @@ from core.models import Company, UserSession
 
 # User.objects.filter(username='devaki').delete()
 # UserSession.objects.filter(user='devaki_hul').delete()
-
-user = User.objects.create_user(username='devaki', password='1')
+Organization.objects.all().delete()
+organization = Organization.objects.create(name='devaki')
+organization.save()
+companies = []
 for company_name in ["devaki_hul","lakme_rural","lakme_urban"] :
-    company = Company.objects.create(name=company_name,user = user,gst_types = ["sales","salesreturn","claimservice"])
+    company = Company.objects.create(name=company_name,organization = organization,gst_types = ["sales","salesreturn","claimservice"])
     company.save()
+    companies.append(company)
+
+user = User.objects.create_user(username='sathish', password='1',organization=organization)
+user.companies.add(companies[0])
+user.save()
+
+user = User.objects.create_user(username='kavitha', password='1',organization=organization)
+user.companies.add(companies[0])
+user.save()
+
+user = User.objects.create_user(username='lakme', password='1',organization=organization)
+user.companies.add(companies[1])
+user.companies.add(companies[2])
+user.save()
+
+user = User.objects.create_user(username='auto', password='1',organization=organization)
+user.companies.add(companies[0])
+user.companies.add(companies[1])
+user.companies.add(companies[2])
+user.save()
+
+
+
 
 #Ikea Session
 UserSession(

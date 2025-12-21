@@ -15,11 +15,15 @@ class PrintingTestMixin:
         from rest_framework.test import APIClient
         self.client = APIClient()
         self.factory = RequestFactory()
-        self.user = User.objects.create(username="devaki")
-        self.user.save()
-
-        self.company = Company.objects.create(name="devaki_hul", user=self.user, einvoice_enabled=False)
+        from core.models import Organization
+        self.org = Organization.objects.create(name="HUL")
+        
+        self.company = Company.objects.create(name="devaki_hul", organization=self.org, einvoice_enabled=False)
         self.company.save()
+
+        self.user = User.objects.create(username="devaki", organization=self.org)
+        self.user.companies.add(self.company)
+        self.user.save()
 
         UserSession.objects.update_or_create(
             user="devaki_hul",

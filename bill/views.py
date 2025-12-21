@@ -32,13 +32,14 @@ class ProcessStats:
         except Exception:
             self.stats[name] = -1
             raise
+            self.stats[name] = -1
+            raise
 
 @api_view(["POST"])
 def get_order(request):
     data = request.data
     company_id = data.get("company")
     order_date = data.get("order_date")
-    lines = data.get("lines", 100)
 
     if not company_id:
         return JsonResponse({"error": "Company ID is required"}, status=400)
@@ -69,6 +70,8 @@ def get_order(request):
             billing_obj.process = "getorder"
             billing_obj.market_order_data = [] #For safety, to remove previous market values
             billing_obj.order_hash = "dummy"
+            billing_obj.user = request.user.username
+            billing_obj.last_bills = []
             billing_obj.save()
                 
     except Exception as e:
@@ -223,8 +226,7 @@ def get_order(request):
         billing_obj.order_hash = data_hash
         billing_obj.save()
 
-        return JsonResponse({"orders": processed_orders, "hash": data_hash, "process": tracker.stats, 
-                                        "last_time": datetime.datetime.now().strftime("%H:%M")})
+        return JsonResponse({"orders": processed_orders, "hash": data_hash, "process": tracker.stats})
     except Exception as e:
         return JsonResponse({"error": str(e), "process": tracker.stats}, status=500)
     finally:
@@ -269,6 +271,7 @@ def post_order(request):
             
             billing_obj.ongoing = True
             billing_obj.process = "postorder"
+            billing_obj.user = request.user.username
             billing_obj.save()
     except models.Billing.DoesNotExist:
          return JsonResponse({"error": "Billing record not found. Please fetch orders first."}, status=400)
@@ -313,28 +316,14 @@ def post_order(request):
 
 
         # Stats
-        last_bills_count = len(billing.bills) if hasattr(billing, 'bills') else 0
-        last_bills_text = ""
-        if hasattr(billing, 'bills') and billing.bills:
-            # Assuming bills are sorted strings, but let's sort them to be sure
-            sorted_bills = sorted(billing.bills)
-            last_bills_text = f"{sorted_bills[0]} - {sorted_bills[-1]}"
         
-        today_bills = SalesRegisterReport.objects.filter(date=today, type="sales",company_id = company_id).exclude(beat__contains="WHOLE").aggregate(
-                bill_count=Count("inum"),
-                start_bill_no=Min("inum"),
-                end_bill_no=Max("inum"),
-        )
-        today_bills_count = today_bills["bill_count"] or 0
-        today_bills_text = f'{today_bills["start_bill_no"]} - {today_bills["end_bill_no"]}' if today_bills_count else "-"
+        # Override last_bills from local billing instance if available
+        if hasattr(billing, 'bills') and billing.bills:
+            billing_obj.last_bills = billing.bills
+            billing_obj.save()
 
         return JsonResponse({
             "message": "Order posted successfully. Log saved.",
-            "last_bills_count": last_bills_count,
-            "last_bills": last_bills_text,
-            "last_time" : datetime.datetime.now().strftime("%H:%M"),
-            "today_bills" : today_bills_text,
-            "today_bills_count" : today_bills_count,
             "process": tracker.stats
         })
     except Exception as e:
@@ -501,3 +490,49 @@ def party_credit(request):
             return JsonResponse({"success": True, "message": "Party credit updated successfully"})
         except Exception as e:
             return JsonResponse({"error": str(e)}, status=500)
+            return JsonResponse({"error": str(e)}, status=500)
+
+@api_view(["GET"])
+def get_billing_stats(request):
+    company_id = request.GET.get("company")
+    if not company_id:
+        return JsonResponse({"error": "Company ID is required"}, status=400)
+    
+    from report.models import SalesRegisterReport
+    from bill.models import Bill
+    
+    today = datetime.date.today()
+    billing_obj, _ = models.Billing.objects.get_or_create(company_id=company_id, date=today)
+
+    # Last Bills Stats
+    last_bills_count = 0
+    last_bills_text = ""
+    user = billing_obj.user
+    
+    if billing_obj.last_bills:
+        sorted_bills = sorted(billing_obj.last_bills)
+        last_bills_count = len(sorted_bills)
+        last_bills_text = f"{sorted_bills[0]} - {sorted_bills[-1]}"
+
+    # Today's Bills Stats
+    today_bills = SalesRegisterReport.objects.filter(date=today, type="sales", company_id=company_id).exclude(beat__contains="WHOLE").aggregate(
+            bill_count=Count("inum"),
+            start_bill_no=Min("inum"),
+            end_bill_no=Max("inum"),
+    )
+    today_bills_count = today_bills["bill_count"] or 0
+    today_bills_text = f'{today_bills["start_bill_no"]} - {today_bills["end_bill_no"]}' if today_bills_count else "-"
+
+    # Unprinted Bills Stats
+    unprinted_bills_count = Bill.objects.filter(company_id=company_id, bill_date=today, print_time__isnull=True).count()
+
+    stats = {
+        "last_bills_count": last_bills_count, 
+        "last_bills": last_bills_text,      
+        "last_time": datetime.datetime.now().strftime("%H:%M"),
+        "today_bills": today_bills_text,
+        "today_bills_count": today_bills_count,
+        "unprinted_bills_count": unprinted_bills_count,
+        "user": user
+    }
+    return JsonResponse(stats)

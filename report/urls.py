@@ -10,5 +10,6 @@ urlpatterns = [
     path("salesman/", views.salesman_names, name="salesman_names"),
     path("party/", views.party_names, name="party_names"),
     path("party_credibility/", views.party_credibility, name="party_credibility"),
+    path("sync_reports/", views.sync_reports, name="sync_reports"),
     path("", include(router.urls)),
 ]

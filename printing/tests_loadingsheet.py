@@ -14,8 +14,13 @@ class SalesmanLoadingSheetTest(TestCase):
     """
     def setUp(self):
         super().setUp()
-        self.user = User.objects.create(username="testuser")
-        self.company = Company.objects.create(name="testcompany", user=self.user)
+        from core.models import Organization
+        self.org = Organization.objects.create(name="HUL")
+        
+        self.company = Company.objects.create(name="testcompany", organization=self.org)
+        
+        self.user = User.objects.create(username="testuser", organization=self.org)
+        self.user.companies.add(self.company)
         
         # Create dummy bills
         self.bill1 = Bill.objects.create(

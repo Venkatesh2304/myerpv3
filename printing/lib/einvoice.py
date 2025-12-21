@@ -1,3 +1,4 @@
+from core.models import Company
 import datetime
 from custom.classes import Ikea
 from custom.classes import Einvoice
@@ -18,13 +19,13 @@ class EinvoiceResult:
     is_einvoice_logged_in: bool = True
 
 class EinvoiceHandler:
-    def __init__(self, company):
+    def __init__(self, company:Company):
         self.company = company
 
     def handle_upload(self, einv_qs) -> EinvoiceResult:
 
         ikea = Ikea(self.company.pk)
-        einvoice_service = Einvoice(self.company.user.pk)
+        einvoice_service = Einvoice(self.company.organization.pk)
         if not einvoice_service.is_logged_in() : 
             return EinvoiceResult(success=False, error="E-Invoice service not logged in", is_einvoice_logged_in=False)
         

@@ -60,5 +60,5 @@ def usersession_update(request):
 
 @api_view(["GET"])
 def get_companies(request):
-    companies = Company.objects.filter(user = request.user).values_list("name",flat=True)
+    companies = request.user.companies.values_list("name", flat=True)
     return JsonResponse(list(companies), safe=False)

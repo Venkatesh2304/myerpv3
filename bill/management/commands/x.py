@@ -1,3 +1,11 @@
+import os
+import psutil
+import requests
+import pandas
+import numpy
+
+
+
 from core.models import Company
 from report.models import BillAgeingReport
 from report.models import DateRangeArgs
@@ -6,12 +14,18 @@ import datetime
 from report.models import SalesRegisterReport
 from dateutil.relativedelta import relativedelta
 import json
-from bill.models import Billing
+
 # b = Billing.objects.get(company_id="devaki_hul",date=datetime.date(2025,12,19))
 # b = [ i for i in b.market_order_data["mol"] if i["on"] == "20SMN00014P1581920251218"]
 # with open("x.json","w+") as f:
 #     f.write(json.dumps(b))
-i = Ikea("devaki_hul")
+i = Billing("devaki_hul")
+x = i.get_market_order(datetime.date(2025,12,21))
+with open("x.json","w+") as f:
+    f.write(json.dumps(x))
+exit(0)
+
+
 company = Company.objects.get(name="devaki_hul") 
 df = Ikea.bill_ageing(i, datetime.date.today() - relativedelta(months=6),  #type: ignore
                                                        datetime.date.today())

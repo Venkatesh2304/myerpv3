@@ -1,4 +1,4 @@
-# Create a Group and Company django model
+# Create User and Company django model
 from django.db import models
 from django.conf import settings
 from django.contrib.auth import get_user_model
@@ -9,10 +9,16 @@ from django.db import models
 class User(AbstractUser):
     id = None
     username = models.CharField(max_length=150, unique=True, primary_key=True)
+    organization = models.ForeignKey("core.Organization", on_delete=models.CASCADE, related_name="users")
+    companies = models.ManyToManyField("core.Company", related_name="users")    
+    permissions = models.JSONField(default=list,null=False,blank=False)
 
+class Organization(models.Model):
+    name = models.CharField(max_length=100, primary_key=True)
+    
 class Company(models.Model):
     name = models.CharField(max_length=100, primary_key=True)
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="companies")
+    organization = models.ForeignKey("core.Organization", on_delete=models.CASCADE, related_name="companies")
     gst_types = models.JSONField(default=list,null=False,blank=False)
     einvoice_enabled = models.BooleanField(default=True,db_default=True)
 
@@ -40,7 +46,6 @@ class UserSession(models.Model):
             )
         self.cookies = cookies_list
         self.save()
-
 
 class CompanyModel(models.Model):
       company = models.ForeignKey("core.Company",on_delete=models.CASCADE,db_index=True)

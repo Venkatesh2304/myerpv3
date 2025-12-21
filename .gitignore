@@ -18,3 +18,4 @@ profile.json
 profile.html
 *.json
 *.txt
+!background/billing_config.json
