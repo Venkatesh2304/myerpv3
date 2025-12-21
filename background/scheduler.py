@@ -35,7 +35,7 @@ COMPANIES = ["devaki_hul","lakme_rural","lakme_urban"]
 class BaseSession(requests.Session):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.base_url = "http://127.0.0.1:8080/"
+        self.base_url = "http://0.0.0.0:5000/"
         self.username = f"auto"
         self.password = "1"
         self.login()
