@@ -1846,36 +1846,32 @@ ikea_billing_postmarketorder = CurlRequest('POST',
 #)
 
 cookies = {
-    'JSESSIONID': 'A65EFF42FFA416DFA74228A3F2E0EABC',
-    'mocProcesStatus': 'Completed',
-    'processLastUpdatedTime': '0',
-    '_ga': 'GA1.1.1560147661.1708583756',
-    '_ga_HG3QRT1TP7': 'GS1.1.1708620916.2.1.1708622122.60.0.0',
+    'JSESSIONID': '0C89DD0E0F5EAA88D1601C3D8D014A88',
     'isUserLoggedOut': 'No',
-    'tabsOpened': '{"date":"2024-05-25T19:13:24.052Z","openedTabs":["Login"]}',
+    'tabsOpened': '{"date":"2025-12-21T17:27:09.275Z","openedTabs":["Login"]}',
     'maitabOpened': 'Yes',
 }
 
 headers = {
-    'authority': 'leveredge18.hulcd.com',
     'accept': 'application/json, text/javascript, */*; q=0.01',
     'accept-language': 'en-US,en;q=0.9',
-    'clientdatetime': '1716665125730',
+    'clientdatetime': '1766338328576',
     'clientzonediff': '-330',
     'content-type': 'application/json; charset=UTF-8',
-    # 'cookie': 'JSESSIONID=A65EFF42FFA416DFA74228A3F2E0EABC; mocProcesStatus=Completed; processLastUpdatedTime=0; _ga=GA1.1.1560147661.1708583756; _ga_HG3QRT1TP7=GS1.1.1708620916.2.1.1708622122.60.0.0; isUserLoggedOut=No; tabsOpened={"date":"2024-05-25T19:13:24.052Z","openedTabs":["Login"]}; maitabOpened=Yes',
-    'newrelic': 'eyJ2IjpbMCwxXSwiZCI6eyJ0eSI6IkJyb3dzZXIiLCJhYyI6IjEwMTUzNDciLCJhcCI6IjE1ODg3NTgxMDAiLCJpZCI6IjYxMTU1YWQwYWI4ODdjOTYiLCJ0ciI6ImJhZDVmYWNlZjUzZTY4NWY4MDhkMWZhNmNlOGQ5ODAzIiwidGkiOjE3MTY2NjUxMjU3MzAsInRrIjoiOTM1NzAifX0=',
+    # 'cookie': 'JSESSIONID=0C89DD0E0F5EAA88D1601C3D8D014A88; isUserLoggedOut=No; tabsOpened={"date":"2025-12-21T17:27:09.275Z","openedTabs":["Login"]}; maitabOpened=Yes',
+    'newrelic': 'eyJ2IjpbMCwxXSwiZCI6eyJ0eSI6IkJyb3dzZXIiLCJhYyI6IjEwMTUzNDciLCJhcCI6IjE1ODg3NTgxMDAiLCJpZCI6IjBmOTM0ZGFkYmI3Zjg2N2IiLCJ0ciI6Ijk0ZTNkMGFlOWY0OGY4OTBjMDA0ZWM2ZDMwZjIyODI3IiwidGkiOjE3NjYzMzgzMjg1NzYsInRrIjoiOTM1NzAifX0=',
     'origin': 'https://leveredge18.hulcd.com',
+    'priority': 'u=1, i',
     'referer': 'https://leveredge18.hulcd.com/rsunify/app/user/authenSuccess',
-    'sec-ch-ua': '"Chromium";v="112", "Google Chrome";v="112", "Not:A-Brand";v="99"',
+    'sec-ch-ua': '"Not A(Brand";v="8", "Chromium";v="132", "Google Chrome";v="132"',
     'sec-ch-ua-mobile': '?0',
     'sec-ch-ua-platform': '"Linux"',
     'sec-fetch-dest': 'empty',
     'sec-fetch-mode': 'cors',
     'sec-fetch-site': 'same-origin',
-    'traceparent': '00-bad5facef53e685f808d1fa6ce8d9803-61155ad0ab887c96-01',
-    'tracestate': '93570@nr=0-1-1015347-1588758100-61155ad0ab887c96----1716665125730',
-    'user-agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Safari/537.36',
+    'traceparent': '00-94e3d0ae9f48f890c004ec6d30f22827-0f934dadbb7f867b-01',
+    'tracestate': '93570@nr=0-1-1015347-1588758100-0f934dadbb7f867b----1766338328576',
+    'user-agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36',
     'x-newrelic-id': 'VQYGVFVXDxABUVRWBQgCVlcH',
     'x-requested-with': 'XMLHttpRequest',
 }
@@ -1885,18 +1881,29 @@ json_data = {
     'qtmSalesList': [],
     'qtmPartyList': [],
     'orderDate': None,
-    'importDate': '2024-05-25T18:30:00.000Z',
+    'importDate': '2025-12-20T18:30:00.000Z',
     'futureData': False,
     'uniqueId': 0,
     'qtmPONumberList': [],
     'qtmShikharList': [
-        '90SMN00006D-P1575920240522',
-        '93SMN00005D-P2510220240525',
+        '90SMN00026P1597720251221',
+        '90SMN00026D-P1877120251221',
+        '90SMN00028D-P1938820251221',
+        '90SMN00017_1D-P1950220251220',
+        '90SMN00017D-P1950220251220',
+        '90SMN00006P1576020251221',
+        '90SMN00013P1576020251221',
+        '90SMN00027P1576020251221',
+        '90SMN00027P1607020251221',
+        '90SMN00013P1615420251221',
+        '90SMN00027P1615420251221',
     ],
-    'sourceOfOrder': "'R','N','B'",
+    'sourceOfOrder': "'P','R','N','B','S','V','PC','BA','TC','UFS','SH-A','SH-S'",
     'paymentType': 'ALL',
     'isRaPartialBilled': 0,
     'isSePartialBilled': 0,
+    'isShikharAssistedPartialBilled': 0,
+    'isShikharSelfPartialBilled': 0,
 }
 
 ikea_billing_getmarketorder = CurlRequest('POST',
@@ -1908,7 +1915,7 @@ ikea_billing_getmarketorder = CurlRequest('POST',
 
 # Note: json_data will not be serialized by requests
 # exactly as it was in the original request.
-#data = '{"qtmBeatList":[],"qtmSalesList":[],"qtmPartyList":[],"orderDate":null,"importDate":"2024-05-25T18:30:00.000Z","futureData":false,"uniqueId":0,"qtmPONumberList":[],"qtmShikharList":["90SMN00006D-P1575920240522","93SMN00005D-P2510220240525"],"sourceOfOrder":"\'R\',\'N\',\'B\'","paymentType":"ALL","isRaPartialBilled":0,"isSePartialBilled":0}'
+#data = '{"qtmBeatList":[],"qtmSalesList":[],"qtmPartyList":[],"orderDate":null,"importDate":"2025-12-20T18:30:00.000Z","futureData":false,"uniqueId":0,"qtmPONumberList":[],"qtmShikharList":["90SMN00026P1597720251221","90SMN00026D-P1877120251221","90SMN00028D-P1938820251221","90SMN00017_1D-P1950220251220","90SMN00017D-P1950220251220","90SMN00006P1576020251221","90SMN00013P1576020251221","90SMN00027P1576020251221","90SMN00027P1607020251221","90SMN00013P1615420251221","90SMN00027P1615420251221"],"sourceOfOrder":"\'P\',\'R\',\'N\',\'B\',\'S\',\'V\',\'PC\',\'BA\',\'TC\',\'UFS\',\'SH-A\',\'SH-S\'","paymentType":"ALL","isRaPartialBilled":0,"isSePartialBilled":0,"isShikharAssistedPartialBilled":0,"isShikharSelfPartialBilled":0}'
 #ikea_billing_getmarketorder = CurlRequest('POST',
 #    'https://leveredge18.hulcd.com/rsunify/app/quantumImport/validateload',
 #    cookies=cookies,
@@ -1984,44 +1991,40 @@ ikea_billing_getdelivery = CurlRequest('POST',
 #)
 
 cookies = {
-    'JSESSIONID': 'A65EFF42FFA416DFA74228A3F2E0EABC',
-    'mocProcesStatus': 'Completed',
-    'processLastUpdatedTime': '0',
-    '_ga': 'GA1.1.1560147661.1708583756',
-    '_ga_HG3QRT1TP7': 'GS1.1.1708620916.2.1.1708622122.60.0.0',
+    'JSESSIONID': '0C89DD0E0F5EAA88D1601C3D8D014A88',
     'isUserLoggedOut': 'No',
-    'tabsOpened': '{"date":"2024-05-25T19:13:24.052Z","openedTabs":["Login"]}',
+    'tabsOpened': '{"date":"2025-12-21T17:27:09.275Z","openedTabs":["Login"]}',
     'maitabOpened': 'Yes',
 }
 
 headers = {
-    'authority': 'leveredge18.hulcd.com',
     'accept': 'application/json, text/javascript, */*; q=0.01',
     'accept-language': 'en-US,en;q=0.9',
-    'clientdatetime': '1716664432152',
+    'clientdatetime': '1766338089119',
     'clientzonediff': '-330',
     'content-type': 'application/json; charset=UTF-8',
-    # 'cookie': 'JSESSIONID=A65EFF42FFA416DFA74228A3F2E0EABC; mocProcesStatus=Completed; processLastUpdatedTime=0; _ga=GA1.1.1560147661.1708583756; _ga_HG3QRT1TP7=GS1.1.1708620916.2.1.1708622122.60.0.0; isUserLoggedOut=No; tabsOpened={"date":"2024-05-25T19:13:24.052Z","openedTabs":["Login"]}; maitabOpened=Yes',
-    'newrelic': 'eyJ2IjpbMCwxXSwiZCI6eyJ0eSI6IkJyb3dzZXIiLCJhYyI6IjEwMTUzNDciLCJhcCI6IjE1ODg3NTgxMDAiLCJpZCI6IjM2MWNlMWJhNjg4OGI4NWUiLCJ0ciI6IjExZDAyYjU2MzNlOTBmMmYwNDk0MzkwODU4NWY2YzBjIiwidGkiOjE3MTY2NjQ0MzIxNTMsInRrIjoiOTM1NzAifX0=',
+    # 'cookie': 'JSESSIONID=0C89DD0E0F5EAA88D1601C3D8D014A88; isUserLoggedOut=No; tabsOpened={"date":"2025-12-21T17:27:09.275Z","openedTabs":["Login"]}; maitabOpened=Yes',
+    'newrelic': 'eyJ2IjpbMCwxXSwiZCI6eyJ0eSI6IkJyb3dzZXIiLCJhYyI6IjEwMTUzNDciLCJhcCI6IjE1ODg3NTgxMDAiLCJpZCI6IjBlYjI2MWNkNzlmNzI1MjMiLCJ0ciI6IjRhYTJkNGM0ZmU1Y2Y4ZTk3OTI2NTQyZTA3MjExM2ExIiwidGkiOjE3NjYzMzgwODkxMjAsInRrIjoiOTM1NzAifX0=',
     'origin': 'https://leveredge18.hulcd.com',
+    'priority': 'u=1, i',
     'referer': 'https://leveredge18.hulcd.com/rsunify/app/user/authenSuccess',
-    'sec-ch-ua': '"Chromium";v="112", "Google Chrome";v="112", "Not:A-Brand";v="99"',
+    'sec-ch-ua': '"Not A(Brand";v="8", "Chromium";v="132", "Google Chrome";v="132"',
     'sec-ch-ua-mobile': '?0',
     'sec-ch-ua-platform': '"Linux"',
     'sec-fetch-dest': 'empty',
     'sec-fetch-mode': 'cors',
     'sec-fetch-site': 'same-origin',
-    'traceparent': '00-11d02b5633e90f2f04943908585f6c0c-361ce1ba6888b85e-01',
-    'tracestate': '93570@nr=0-1-1015347-1588758100-361ce1ba6888b85e----1716664432153',
-    'user-agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Safari/537.36',
+    'traceparent': '00-4aa2d4c4fe5cf8e97926542e072113a1-0eb261cd79f72523-01',
+    'tracestate': '93570@nr=0-1-1015347-1588758100-0eb261cd79f72523----1766338089120',
+    'user-agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36',
     'x-newrelic-id': 'VQYGVFVXDxABUVRWBQgCVlcH',
     'x-requested-with': 'XMLHttpRequest',
 }
 
 json_data = {
     'uniqueId': 0,
-    'importDate': '26/05/2024',
-    'sourceOfOrder': "'P','R','N','B','S','V','PC','BA','TC'",
+    'importDate': '21/12/2025',
+    'sourceOfOrder': "'P','R','N','B','S','V','PC','BA','TC','UFS','SH-A','SH-S'",
 }
 
 ikea_billing_getshikhar = CurlRequest('POST',
@@ -2033,7 +2036,7 @@ ikea_billing_getshikhar = CurlRequest('POST',
 
 # Note: json_data will not be serialized by requests
 # exactly as it was in the original request.
-#data = '{"uniqueId":0,"importDate":"26/05/2024","sourceOfOrder":"\'P\',\'R\',\'N\',\'B\',\'S\',\'V\',\'PC\',\'BA\',\'TC\'"}'
+#data = '{"uniqueId":0,"importDate":"21/12/2025","sourceOfOrder":"\'P\',\'R\',\'N\',\'B\',\'S\',\'V\',\'PC\',\'BA\',\'TC\',\'UFS\',\'SH-A\',\'SH-S\'"}'
 #ikea_billing_getshikhar = CurlRequest('POST',
 #    'https://leveredge18.hulcd.com/rsunify/app/quantumImport/shikharlist',
 #    cookies=cookies,
