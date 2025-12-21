@@ -4,12 +4,14 @@ git pull -ff
 
 PYTHON="python3.10"
 PROJECT_NAME="myerpv3" #For the service name
-DB_NAME="myerpv3"
+DB_NAME="myerpv3_exp"
 
 PROJECT_DIR="$(cd "$(dirname "$0")" && pwd)"
 VENV_DIR="$PROJECT_DIR/.venv"
 SERVICE_NAME="backend.service"
 SERVICE_PATH="/etc/systemd/system/$SERVICE_NAME"
+SCHEDULER_NAME="scheduler.service"
+SCHEDULER_PATH="/etc/systemd/system/$SCHEDULER_NAME"
 
 echo "==> Checking for $PYTHON"
 if ! command -v "$PYTHON" >/dev/null 2>&1; then
@@ -117,10 +119,32 @@ PrivateTmp=true
 WantedBy=multi-user.target
 EOF
 
+echo "==> Creating or updating systemd service ($SCHEDULER_NAME)"
+sudo bash -c "cat > '$SCHEDULER_PATH'" <<EOF
+[Unit]
+Description=Background Scheduler for $PROJECT_NAME
+After=network.target
+
+[Service]
+Type=simple
+User=$(whoami)
+Group=$(id -gn)
+WorkingDirectory=$PROJECT_DIR
+Environment=PATH=$VENV_DIR/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin
+ExecStart=$VENV_DIR/bin/python3 background/scheduler.py
+Restart=on-failure
+KillSignal=SIGQUIT
+TimeoutStopSec=120
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
 echo "==> Reloading and restarting systemd service"
 sudo systemctl daemon-reload
-sudo systemctl enable "$SERVICE_NAME"
-sudo systemctl restart "$SERVICE_NAME"
+sudo systemctl enable "$SERVICE_NAME" "$SCHEDULER_NAME"
+sudo systemctl restart "$SERVICE_NAME" "$SCHEDULER_NAME"
 
 echo "==> Setup complete."
 sudo systemctl status "$SERVICE_NAME" --no-pager || true
