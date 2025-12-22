@@ -67,7 +67,8 @@ def billing(company):
         
         get_order_payload = {
             "company": company,
-            "order_date": today_str
+            "order_date": today_str,
+            "timeout": 600
         }
         
         response = s.post("/get_order/", json=get_order_payload)
