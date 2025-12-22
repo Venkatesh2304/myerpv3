@@ -8,3 +8,4 @@ pip install -r requirements.txt
 python3 manage.py migrate
 deactivate
 sudo systemctl restart backend.service
+sudo systemctl restart scheduler.service
