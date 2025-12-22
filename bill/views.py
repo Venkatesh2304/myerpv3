@@ -40,7 +40,7 @@ def get_order(request):
     data = request.data
     company_id = data.get("company")
     order_date = data.get("order_date")
-    timeout = data.get("timeout",0)
+    timeout = data.get("timeout",30)
 
     if not company_id:
         return JsonResponse({"error": "Company ID is required"}, status=400)
@@ -63,10 +63,13 @@ def get_order(request):
                 defaults={"ongoing": True, "process": "getorder"}
             )
             
-            if not created and billing_obj.ongoing and (billing_obj.process == "getorder") and (
-                                datetime.datetime.now() - billing_obj.time) > datetime.timedelta(seconds=timeout):
-                return JsonResponse({"error": "Billing process is already ongoing"}, status=400)
+            if not created and billing_obj.ongoing :
+                return JsonResponse({"error": "Billing process is already running by {}".format(billing_obj.user)}, status=400)
 
+            last_fetch_seconds = (datetime.datetime.now() - billing_obj.time).total_seconds()
+            if (billing_obj.process == "getorder") and (last_fetch_seconds < timeout):
+                return JsonResponse({"error": "{} fetched order recently < {} seconds ago".format(billing_obj.user, last_fetch_seconds)}, status=400)
+            
             billing_obj.order_date = order_date
             billing_obj.ongoing = True
             billing_obj.process = "getorder"
