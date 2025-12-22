@@ -175,7 +175,7 @@ def get_order(request):
             allow_order,warning = credit_logic.allow_order(party_code, os_list, coll_list, allocated_value)
             warning = "\n".join(warning)
 
-            partial_order = (billing_obj.order_values.get(order_no, 0) - allocated_value) > 200
+            partial_order = (billing_obj.order_values.get(order_no, 0) - bill_value) > 200
 
             class OrderType :
                 Partial = "partial"
@@ -512,9 +512,9 @@ def get_billing_stats(request):
     
     if billing_obj:
         sorted_bills = sorted(billing_obj.last_bills)
-        last_bills_count = len(sorted_bills)
-        last_bills_text = f"{sorted_bills[0]} - {sorted_bills[-1]}"
-        last_time = billing_obj.time.strftime("%H:%M")
+        last_bills_count = len(sorted_bills) 
+        last_bills_text = f"{sorted_bills[0]} - {sorted_bills[-1]}" if last_bills_count else "-"
+        last_time = billing_obj.time.strftime("%H:%M") 
 
     # Today's Bills Stats
     today_bills = SalesRegisterReport.objects.filter(date=today, type="sales", company_id=company_id).exclude(beat__contains="WHOLE").aggregate(
