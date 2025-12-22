@@ -11,6 +11,7 @@ from core.models import CompanyModel
 class Billing(CompanyModel) : 
     company = models.ForeignKey("core.Company",on_delete=models.CASCADE)
     process = models.CharField(max_length=20,choices=(("getorder","Get Order"),("postorder","Post Order")))
+    stop = models.BooleanField(default=False)
     ongoing = models.BooleanField(default=False)
     time = models.DateTimeField(auto_now=True)
     date = models.DateField(default=datetime.date.today)

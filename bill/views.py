@@ -63,6 +63,9 @@ def get_order(request):
                 defaults={"ongoing": True, "process": "getorder"}
             )
             
+            if billing_obj.stop:
+                return JsonResponse({"error": "Billing is stopped for this company"}, status=400)
+
             if not created and billing_obj.ongoing :
                 return JsonResponse({"error": "Billing process is already running by {}".format(billing_obj.user)}, status=400)
 
@@ -271,6 +274,9 @@ def post_order(request):
             # We expect the billing object to exist for today (created by get_order)
             billing_obj = models.Billing.objects.select_for_update().get(company_id=company_id, date=today)
             
+            if billing_obj.stop:
+                return JsonResponse({"error": "Billing is stopped for this company"}, status=400)
+
             if billing_obj.ongoing:
                 return JsonResponse({"error": "Billing process is already ongoing"}, status=400)
             
@@ -543,3 +549,36 @@ def get_billing_stats(request):
         "user": user
     }
     return JsonResponse(stats)
+
+@api_view(["GET", "POST"])
+def billing_stop(request):
+    company_id = request.GET.get("company") if request.method == "GET" else request.data.get("company")
+    
+    if not company_id:
+        return JsonResponse({"error": "Company ID is required"}, status=400)
+        
+    today = datetime.date.today()
+    
+    if request.method == "GET":
+        try:
+            billing_obj = models.Billing.objects.get(company_id=company_id, date=today)
+            return JsonResponse({"stop": billing_obj.stop})
+        except models.Billing.DoesNotExist:
+            return JsonResponse({"stop": False}) # Default is False if no record exists
+            
+    if request.method == "POST":
+        stop = request.data.get("stop")
+        if stop is None:
+             return JsonResponse({"error": "Stop status is required"}, status=400)
+             
+        try:
+            billing_obj, _ = models.Billing.objects.get_or_create(
+                company_id=company_id, 
+                date=today,
+                defaults={"process": "created"} # Default process if creating just for stop
+            )
+            billing_obj.stop = stop
+            billing_obj.save()
+            return JsonResponse({"success": True, "stop": billing_obj.stop})
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=500)
