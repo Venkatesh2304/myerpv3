@@ -64,8 +64,7 @@ def get_captcha(request):
     if not Client:
         return Response({"error": "invalid key"}, status=400)
 
-    user = request.user.get_username()
-    client = Client(user)
+    client = Client(request.user.organization.pk)
     # Expect client.captcha() to return a BytesIO or bytes
     img_io = client.captcha()  # type: ignore
     data = img_io.getvalue() if hasattr(img_io, "getvalue") else bytes(img_io)  # type: ignore
