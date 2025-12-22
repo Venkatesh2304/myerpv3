@@ -42,7 +42,7 @@ def check_login(
         @wraps(func)
         def wrapper(*args: P.args, **kwargs: P.kwargs):
             request = args[0]
-            client = Client(request.user.get_username()) # type: ignore
+            client = Client(request.user.organization.pk) # type: ignore
             if not client.is_logged_in():  # type: ignore
                 print("Client not logged in")
                 return Response({"key": client.key}, status=501)
