@@ -79,8 +79,7 @@ def captcha_login(request):
     Client = CLIENTS.get(str(key).lower())
     if not Client or not captcha_text:
         return Response({"error": "invalid payload"}, status=400)
-    user = request.user.get_username()
-    client = Client(user)
+    client = Client(request.user.organization.pk)
     try:
         client.login(captcha_text)  # type: ignore
         ok = client.is_logged_in()
