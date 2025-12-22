@@ -13,10 +13,10 @@ today = datetime.now().date()
 for company in Company.objects.all() :
     print("Running sync for " + company.name)
     i = Ikea(company.pk)
+    SalesRegisterReport.update_db(i,company,DateRangeArgs(fromd=today-relativedelta(months=6),tod=today))
     # BeatReport.update_db(i,company,EmptyArgs())
     # BillAgeingReport.update_db(i,company,EmptyArgs())
     # PartyReport.update_db(i,company,EmptyArgs())
-    # SalesRegisterReport.update_db(i,company,DateRangeArgs(fromd=today-relativedelta(months=6),tod=today))
 
 # CollectionReport.update_db(i,company,DateRangeArgs(fromd=today,tod=today))
 # SalesRegisterReport.update_db(i,company,DateRangeArgs(fromd=today,tod=today))

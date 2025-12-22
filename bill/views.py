@@ -68,7 +68,7 @@ def get_order(request):
 
             last_fetch_seconds = (datetime.datetime.now() - billing_obj.time).total_seconds()
             if (billing_obj.process == "getorder") and (last_fetch_seconds < timeout):
-                return JsonResponse({"error": "{} fetched order recently < {} seconds ago".format(billing_obj.user, last_fetch_seconds)}, status=400)
+                return JsonResponse({"error": "{} fetched order recently < {.2f} seconds ago".format(billing_obj.user, last_fetch_seconds)}, status=400)
             
             billing_obj.order_date = order_date
             billing_obj.ongoing = True
