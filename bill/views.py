@@ -526,7 +526,7 @@ def get_billing_stats(request):
     today_bills_text = f'{today_bills["start_bill_no"]} - {today_bills["end_bill_no"]}' if today_bills_count else "-"
 
     # Unprinted Bills Stats
-    unprinted_bills_count = Bill.objects.filter(company_id=company_id, bill_date=today, print_time__isnull=True, beat__contains="WHOLE").count()
+    unprinted_bills_count = Bill.objects.filter(company_id=company_id, bill_date=today, print_time__isnull=True).exclude(beat__contains="WHOLE").count()
 
     stats = {
         "last_bills_count": last_bills_count, 
