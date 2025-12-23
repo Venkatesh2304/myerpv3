@@ -40,6 +40,7 @@ def get_order(request):
     data = request.data
     company_id = data.get("company")
     order_date = data.get("order_date")
+    beat_type = data.get("beat_type")
     timeout = data.get("timeout",30)
 
     if not company_id:
@@ -49,6 +50,9 @@ def get_order(request):
         return JsonResponse({"error": "Order Date is required"}, status=400)
     else:
         order_date = datetime.datetime.strptime(order_date, "%Y-%m-%d").date()
+
+    if not beat_type or (beat_type not in ["retail", "wholesale"]):
+        return JsonResponse({"error": "Beat Type is required or invalid"}, status=400)
 
     tracker = ProcessStats()
     
@@ -114,7 +118,7 @@ def get_order(request):
             OutstandingReport.update_db(billing, company, EmptyArgs())
 
         with tracker.step("Order"):
-            order_data:list = billing.get_market_order(order_date)
+            order_data:list = billing.get_market_order(order_date,beat_type = beat_type)
             party_ids = [item.get('pc') for item in order_data if item.get('pc')]
             credit_logic = PartyCreditLogic(company_id, party_ids)
         
@@ -130,10 +134,11 @@ def get_order(request):
             items_list = list(items)
             first_item = items_list[0]
             party_code = first_item.get('pc')
+            beat = first_item.get('m')
             
             #Skip wholesale beats
-            if "WHOLE" in first_item.get('m', "") : 
-                continue
+            # if "WHOLE" in first_item.get('m', "") : 
+            #     continue
 
             lines_count = len(items_list)
             bill_value = sum((item.get('cq') or 0) * (item.get('t') or 0) for item in items_list)
@@ -155,7 +160,7 @@ def get_order(request):
                     company_id=company_id, 
                     party_id=party_code, 
                     beat=first_item.get('m')
-                )
+                ).order_by("bill_date")
                 os_list = [(round(bill.balance),(today - bill.bill_date).days) for bill in outstanding_bills]
             except Exception:
                 pass
@@ -169,7 +174,7 @@ def get_order(request):
                     company_id=company_id, 
                     party_name=first_item.get('p'), 
                     date=today
-                )
+                ).order_by("bill_date")
                 coll_list = [(round(coll.amt or 0), (today - coll.bill_date).days) for coll in collections]
             except Exception:
                 pass
@@ -177,6 +182,7 @@ def get_order(request):
             coll_val = "/ ".join([f"{amt}*{days}" for amt,days in coll_list]) or "-"
             
             allow_order,warning = credit_logic.allow_order(party_code, os_list, coll_list, allocated_value)
+            allow_order = False if "WHOLESALE" in beat else allow_order
             warning = "\n".join(warning)
 
             partial_order = (billing_obj.order_values.get(order_no, 0) - bill_value) > 200
@@ -204,7 +210,7 @@ def get_order(request):
                 "bill_value": round(bill_value, 2),
                 "allocated_value": round(allocated_value, 2),
                 "salesman": first_item.get('s'),
-                "beat": first_item.get('m'),
+                "beat": beat,
                 "type": first_item.get('ot'),
                 "phone": phone,
                 "OS": os_val,
@@ -381,6 +387,7 @@ def manage_order(request):
                     "aq": row.get('aq'),
                     "qp": row.get('qp'),
                     "ar": row.get('ar'),
+                    "n": row.get('n'),
                     "bd": row.get('bd')
                 })
             

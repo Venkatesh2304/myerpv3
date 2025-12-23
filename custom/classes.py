@@ -483,18 +483,23 @@ class Billing(Ikea) :
         postcollection = self.post("/rsunify/app/quantumImport/importSelectedCollection", json=coll_payload).json()
         self.logger.info(f"Post Collection Response: {postcollection}")
         
-    def get_market_order(self, order_date: datetime.date) -> list:
+    def get_market_order(self, order_date: datetime.date, beat_type: Literal['retail', 'wholesale']) -> list:
+        is_beat_allowed =  lambda beat_name : ("WHOLESALE" in beat_name) == (beat_type == "wholesale")
         self.logger.info(f"Processing Order for Date: {order_date}")
+        #Get beats
+        beats = self.post("/rsunify/app/quantumImport/beatlist", json={"uniqueId":0,"menu":"orderimport"}).json()
+        beat_ids = [ str(beat_id) for beat_id,beat_name in beats[1:] if is_beat_allowed(beat_name)]
+
         get_shikhar = get_curl("ikea/billing/getshikhar")
         get_shikhar.json["importDate"] =  self.today.strftime("%d/%m/%Y")
         shikhar_data = get_shikhar.send(self).json()["shikharOrderList"]
-        shikhar_ids = [order[11] for order in shikhar_data[1:]] 
+        shikhar_ids = [order[11] for order in shikhar_data[1:] if is_beat_allowed(order[3])]
         self.logger.info(f"Found {len(shikhar_ids)} Shikhar IDs")
     
         self.import_dates = self._get_import_dates(order_date)
 
         get_order_req = get_curl("ikea/billing/getmarketorder")
-        get_order_req.json |= (self.import_dates | {"qtmShikharList" : shikhar_ids})
+        get_order_req.json |= (self.import_dates | {"qtmShikharList" : shikhar_ids, "qtmBeatList" : beat_ids})
         self.market_order = get_order_req.send(self).json()
         
         # Return full raw response as requested

@@ -68,6 +68,7 @@ def billing(company):
         get_order_payload = {
             "company": company,
             "order_date": today_str,
+            "beat_type": "retail",
             "timeout": 600
         }
         
