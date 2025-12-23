@@ -18,7 +18,6 @@ class Billing(CompanyModel) :
     order_date = models.DateField(null=True,blank=True)
     order_hash = models.CharField(max_length=32,null=True,blank=True)
     market_order_data = models.JSONField(null=True,blank=True)
-    pushed_collections = models.JSONField(default=list,blank=True)
     last_bills = models.JSONField(default=list,blank=True)
     order_values = models.JSONField(default=dict,blank=True)
     user = models.CharField(max_length=100,null=True,blank=True)

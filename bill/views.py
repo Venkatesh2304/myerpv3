@@ -95,12 +95,8 @@ def get_order(request):
             
         with tracker.step("Collection"):
             # Pass previous collections from DB
-            billing.Collection(order_date, previous_collections=billing_obj.pushed_collections)
+            billing.Collection(order_date)
         
-        # Update pushed_collections in DB
-        billing_obj.pushed_collections = list(set(billing_obj.pushed_collections + billing.pushed_collection_party_ids))
-        billing_obj.save()
-
         with tracker.step("Reports"):
             today = datetime.date.today()
             from report.models import DateRangeArgs

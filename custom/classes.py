@@ -460,7 +460,7 @@ class Billing(Ikea) :
         self.prevbills = [ bill['blhRefrNo'] for bill in delivery ]
         self.logger.info(f"Previous Delivery Bills: {self.prevbills}")
 
-    def Collection(self, order_date, previous_collections):
+    def Collection(self, order_date):
         self.get("/rsunify/app/quantumImport/init")
         self.get("/rsunify/app/quantumImport/filterValidation")
         self.get(f"/rsunify/app/quantumImport/futureDataValidation?importDate={self.today.strftime('%d/%m/%Y')}")
@@ -474,10 +474,10 @@ class Billing(Ikea) :
         
         collection_data = self.market_collection["mcl"]
         for coll in collection_data : 
-            coll["ck"] = (coll["pc"] not in previous_collections)
+            coll["ck"] = True
             coll["bf"] = True
-        self.pushed_collection_party_ids = [ coll["pc"] for coll in collection_data if coll["ck"]  ]
 
+        self.pushed_collection_party_ids = [ coll["pc"] for coll in collection_data if coll["ck"]  ]
         coll_payload = {"mcl": collection_data, "id": self.today.strftime("%d/%m/%Y"), "CLIENT_REQ_UID": self._client_id_generator() , "ri" : 0}
         self.logger.info(f"Imported Collection Party IDs: {self.pushed_collection_party_ids}. Total items: {len(collection_data)}")
         postcollection = self.post("/rsunify/app/quantumImport/importSelectedCollection", json=coll_payload).json()
