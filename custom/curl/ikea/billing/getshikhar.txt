@@ -1,11 +1,11 @@
 curl 'https://leveredge18.hulcd.com/rsunify/app/quantumImport/shikharlist' \
   -H 'accept: application/json, text/javascript, */*; q=0.01' \
   -H 'accept-language: en-US,en;q=0.9' \
-  -H 'clientdatetime: 1766338089119' \
+  -H 'clientdatetime: 1767199383134' \
   -H 'clientzonediff: -330' \
   -H 'content-type: application/json; charset=UTF-8' \
-  -H 'cookie: JSESSIONID=0C89DD0E0F5EAA88D1601C3D8D014A88; isUserLoggedOut=No; tabsOpened={"date":"2025-12-21T17:27:09.275Z","openedTabs":["Login"]}; maitabOpened=Yes' \
-  -H 'newrelic: eyJ2IjpbMCwxXSwiZCI6eyJ0eSI6IkJyb3dzZXIiLCJhYyI6IjEwMTUzNDciLCJhcCI6IjE1ODg3NTgxMDAiLCJpZCI6IjBlYjI2MWNkNzlmNzI1MjMiLCJ0ciI6IjRhYTJkNGM0ZmU1Y2Y4ZTk3OTI2NTQyZTA3MjExM2ExIiwidGkiOjE3NjYzMzgwODkxMjAsInRrIjoiOTM1NzAifX0=' \
+  -H 'cookie: JSESSIONID=83A7ABA281E442C5CBA54F6660BBC7F6; isUserLoggedOut=No; tabsOpened={"date":"2025-12-31T16:42:39.365Z","openedTabs":["Login"]}; maitabOpened=Yes' \
+  -H 'newrelic: eyJ2IjpbMCwxXSwiZCI6eyJ0eSI6IkJyb3dzZXIiLCJhYyI6IjEwMTUzNDciLCJhcCI6IjE1ODg3NTgxMDAiLCJpZCI6IjA1MWViM2VhOTBmZTVlYjMiLCJ0ciI6ImMxY2Y2MTNhZDQxYTA1NGNkNmJlNmNiNmU0ODY0M2EyIiwidGkiOjE3NjcxOTkzODMxMzQsInRrIjoiOTM1NzAifX0=' \
   -H 'origin: https://leveredge18.hulcd.com' \
   -H 'priority: u=1, i' \
   -H 'referer: https://leveredge18.hulcd.com/rsunify/app/user/authenSuccess' \
@@ -15,9 +15,9 @@ curl 'https://leveredge18.hulcd.com/rsunify/app/quantumImport/shikharlist' \
   -H 'sec-fetch-dest: empty' \
   -H 'sec-fetch-mode: cors' \
   -H 'sec-fetch-site: same-origin' \
-  -H 'traceparent: 00-4aa2d4c4fe5cf8e97926542e072113a1-0eb261cd79f72523-01' \
-  -H 'tracestate: 93570@nr=0-1-1015347-1588758100-0eb261cd79f72523----1766338089120' \
+  -H 'traceparent: 00-c1cf613ad41a054cd6be6cb6e48643a2-051eb3ea90fe5eb3-01' \
+  -H 'tracestate: 93570@nr=0-1-1015347-1588758100-051eb3ea90fe5eb3----1767199383134' \
   -H 'user-agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36' \
   -H 'x-newrelic-id: VQYGVFVXDxABUVRWBQgCVlcH' \
   -H 'x-requested-with: XMLHttpRequest' \
-  --data-raw $'{"uniqueId":0,"importDate":"21/12/2025","sourceOfOrder":"\'P\',\'R\',\'N\',\'B\',\'S\',\'V\',\'PC\',\'BA\',\'TC\',\'UFS\',\'SH-A\',\'SH-S\'"}'
+  --data-raw $'{"uniqueId":0,"importDate":"31/12/2025","sourceOfOrder":"\'P\',\'R\',\'N\',\'B\',\'S\',\'V\',\'PC\',\'BA\',\'TC\',\'UFS\',\'SH-B\',\'SH-NB\'"}'

@@ -1821,7 +1821,7 @@ json_data = {
     'id': '26/05/2024',
     'cf': 1,
     'at': True,
-    'so': "'P','R','N','B','S','V','PC','BA','TC','UFS','SH-A','SH-S'",
+    'so': "'P','R','N','B','S','V','PC','BA','TC','UFS','SH-B','SH-NB'",
     'bm': 0,
     'bb': 0,
     'ca': 0,
@@ -1837,7 +1837,7 @@ ikea_billing_postmarketorder = CurlRequest('POST',
 
 # Note: json_data will not be serialized by requests
 # exactly as it was in the original request.
-#data = '{"mol":[{"ot":"SE","pc":"D-P18651","od":1716575400000,"bc":"70908","bd":"BRU INSTANT NRT POLY RS.5","cq":12,"aq":0,"al":0,"qp":0,"rq":0,"t":4.54,"n":12,"cs":0,"to":0,"sq":0,"ck":false,"pt":1,"ra":"B","rl":false,"op":0,"on":"20FL000004D-P1865120240525","s":"VELAN SENTHIL KUMAR ","p":"MURUGAN MALIGAI-D","ph":"HUL-41A392D-P18651","m":"HUL-BEEMA NAGAR","si":32,"pi":6347,"mi":436,"sc":"FL000004","c":4.545,"bn":"","cl":false,"po":0,"ac":"0","co":0,"pe":"RS CREDIT","ri":false,"ba":0,"br":false,"ep":false,"so":"20FL000004D-P1865120240525","pd":0,"fd":0,"rwn":0,"bpt":"NORMAL","ar":"Credit Exceeded","oqp":0,"fq":0},{"ot":"SH","pc":"D-P15759","od":1716575400000,"bc":"80335","bd":"3 ROSES DUST POLY RS 5","cq":1200,"aq":0,"al":0,"qp":0,"rq":0,"t":4.24,"n":408,"cs":0,"to":0,"sq":0,"ck":false,"pt":1,"ra":"R","rl":false,"op":0,"on":"91SMN00005D-P1575920240525","s":"JOSEPH RAJ. S ","p":"REVATHI RIBBON HOUSE-D","ph":"HUL-41A392D-P15759","m":"F-WHOLESALE 3S","si":7,"pi":3221,"mi":433,"sc":"SMN00005","c":4.237,"bn":"","cl":false,"po":0,"ac":"0","co":0,"pe":"RS CREDIT","ri":false,"ba":0,"br":false,"ep":false,"so":"91SMNSKAPPD-P1575920240525","pd":0,"fd":0,"rwn":0,"bpt":"NORMAL","ar":"No Stock","oqp":0,"fq":0},{"ot":"SH","pc":"D-P25102","od":1716575400000,"bc":"75243","bd":"KISSAN FTK LUP","cq":1260,"aq":1260,"al":0,"qp":1260,"rq":0,"t":1.83,"n":14,"cs":0,"to":0,"sq":0,"ck":true,"pt":1,"ra":"R","rl":false,"op":0,"on":"93SMN00005D-P2510220240525","s":"JOSEPH RAJ. S ","p":"ARVIND AGENCY","ph":"HUL-41A392D-P25102","m":"F-WHOLESALE 3S","si":7,"pi":15614,"mi":433,"sc":"SMN00005","c":1.835,"bn":"","cl":false,"po":0,"ac":"0","co":0,"pe":"RS CREDIT","ri":false,"ba":0,"br":false,"ep":false,"so":"93SMNSKAPPD-P2510220240525","pd":0,"fd":0,"rwn":0,"bpt":"NORMAL","ar":"","oqp":1260,"fq":0},{"ot":"SE","pc":"P15761","od":1716575400000,"bc":"80335","bd":"3 ROSES DUST POLY RS 5","cq":1200,"aq":0,"al":0,"qp":0,"rq":0,"t":4.24,"n":444,"cs":0,"to":0,"sq":0,"ck":false,"pt":1,"ra":"B","rl":false,"op":0,"on":"20SMN00005P1576120240525","s":"JOSEPH RAJ. S ","p":"GOPI KRISHNA MALIGAI-D","ph":"HUL-411701D-P15111","m":"F-WHOLESALE 3S","si":7,"pi":15761,"mi":433,"sc":"SMN00005","c":4.237,"bn":"","cl":false,"po":0,"ac":"0","co":0,"pe":"RS CREDIT","ri":false,"ba":0,"br":false,"ep":false,"so":"20SMN00005P1576120240525","pd":0,"fd":0,"rwn":0,"bpt":"NORMAL","ar":"Allocation &lt; config value","oqp":0,"fq":0},{"ot":"SH","pc":"D-P15759","od":1716316200000,"bc":"16041","bd":"RIN ADVANCED POWDER SACHETS","cq":756,"aq":0,"al":0,"qp":0,"rq":0,"t":1.79,"n":18,"cs":0,"to":0,"sq":0,"ck":false,"pt":1,"ra":"R","rl":false,"op":0,"on":"90SMN00006D-P1575920240522","s":"ARAVINTHAN. R ","p":"REVATHI RIBBON HOUSE-D","ph":"HUL-41A392D-P15759","m":"D-WHOLESALE 3S","si":8,"pi":3221,"mi":423,"sc":"SMN00006","c":1.787,"bn":"","cl":false,"po":0,"ac":"0","co":0,"pe":"RS CREDIT","ri":false,"ba":0,"br":false,"ep":false,"so":"90SMNSKAPPD-P1575920240522","pd":0,"fd":0,"rwn":0,"bpt":"NORMAL","ar":"Credit Exceeded","oqp":0,"fq":0},{"ot":"SH","pc":"D-P15759","od":1716316200000,"bc":"16338","bd":"RIN ADVANCED POWDER ANTI BAC RS.10","cq":360,"aq":0,"al":0,"qp":0,"rq":0,"t":8.77,"n":192,"cs":0,"to":0,"sq":0,"ck":false,"pt":1,"ra":"R","rl":false,"op":0,"on":"90SMN00006D-P1575920240522","s":"ARAVINTHAN. R ","p":"REVATHI RIBBON HOUSE-D","ph":"HUL-41A392D-P15759","m":"D-WHOLESALE 3S","si":8,"pi":3221,"mi":423,"sc":"SMN00006","c":8.767,"bn":"","cl":false,"po":0,"ac":"0","co":0,"pe":"RS CREDIT","ri":false,"ba":0,"br":false,"ep":false,"so":"90SMNSKAPPD-P1575920240522","pd":0,"fd":0,"rwn":0,"bpt":"NORMAL","ar":"Credit Exceeded","oqp":0,"fq":0},{"ot":"SE","pc":"P15964","od":1716575400000,"bc":"70908","bd":"BRU INSTANT NRT POLY RS.5","cq":12,"aq":0,"al":0,"qp":0,"rq":0,"t":4.54,"n":12,"cs":0,"to":0,"sq":0,"ck":false,"pt":1,"ra":"B","rl":false,"op":0,"on":"20SMN00024P1596420240525","s":"SARAVANAN PONNUSAMY ","p":"Murugan Maligai-D","ph":"HUL-41A320D-P22764","m":"HUL-THENNUR","si":30,"pi":15964,"mi":550,"sc":"SMN00024","c":4.545,"bn":"","cl":false,"po":0,"ac":"0","co":0,"pe":"RS CREDIT","ri":false,"ba":0,"br":false,"ep":false,"so":"20SMN00024P1596420240525","pd":0,"fd":0,"rwn":0,"bpt":"NORMAL","ar":"Credit Exceeded","oqp":0,"fq":0}],"id":"26/05/2024","cf":1,"at":true,"so":"\'P\',\'R\',\'N\',\'B\',\'S\',\'V\',\'PC\',\'BA\',\'TC\',\'UFS\',\'SH-A\',\'SH-S\'","bm":0,"bb":0,"ca":0,"CLIENT_REQ_UID":"lwn2wma4r9ycjeiuse"}'
+#data = '{"mol":[{"ot":"SE","pc":"D-P18651","od":1716575400000,"bc":"70908","bd":"BRU INSTANT NRT POLY RS.5","cq":12,"aq":0,"al":0,"qp":0,"rq":0,"t":4.54,"n":12,"cs":0,"to":0,"sq":0,"ck":false,"pt":1,"ra":"B","rl":false,"op":0,"on":"20FL000004D-P1865120240525","s":"VELAN SENTHIL KUMAR ","p":"MURUGAN MALIGAI-D","ph":"HUL-41A392D-P18651","m":"HUL-BEEMA NAGAR","si":32,"pi":6347,"mi":436,"sc":"FL000004","c":4.545,"bn":"","cl":false,"po":0,"ac":"0","co":0,"pe":"RS CREDIT","ri":false,"ba":0,"br":false,"ep":false,"so":"20FL000004D-P1865120240525","pd":0,"fd":0,"rwn":0,"bpt":"NORMAL","ar":"Credit Exceeded","oqp":0,"fq":0},{"ot":"SH","pc":"D-P15759","od":1716575400000,"bc":"80335","bd":"3 ROSES DUST POLY RS 5","cq":1200,"aq":0,"al":0,"qp":0,"rq":0,"t":4.24,"n":408,"cs":0,"to":0,"sq":0,"ck":false,"pt":1,"ra":"R","rl":false,"op":0,"on":"91SMN00005D-P1575920240525","s":"JOSEPH RAJ. S ","p":"REVATHI RIBBON HOUSE-D","ph":"HUL-41A392D-P15759","m":"F-WHOLESALE 3S","si":7,"pi":3221,"mi":433,"sc":"SMN00005","c":4.237,"bn":"","cl":false,"po":0,"ac":"0","co":0,"pe":"RS CREDIT","ri":false,"ba":0,"br":false,"ep":false,"so":"91SMNSKAPPD-P1575920240525","pd":0,"fd":0,"rwn":0,"bpt":"NORMAL","ar":"No Stock","oqp":0,"fq":0},{"ot":"SH","pc":"D-P25102","od":1716575400000,"bc":"75243","bd":"KISSAN FTK LUP","cq":1260,"aq":1260,"al":0,"qp":1260,"rq":0,"t":1.83,"n":14,"cs":0,"to":0,"sq":0,"ck":true,"pt":1,"ra":"R","rl":false,"op":0,"on":"93SMN00005D-P2510220240525","s":"JOSEPH RAJ. S ","p":"ARVIND AGENCY","ph":"HUL-41A392D-P25102","m":"F-WHOLESALE 3S","si":7,"pi":15614,"mi":433,"sc":"SMN00005","c":1.835,"bn":"","cl":false,"po":0,"ac":"0","co":0,"pe":"RS CREDIT","ri":false,"ba":0,"br":false,"ep":false,"so":"93SMNSKAPPD-P2510220240525","pd":0,"fd":0,"rwn":0,"bpt":"NORMAL","ar":"","oqp":1260,"fq":0},{"ot":"SE","pc":"P15761","od":1716575400000,"bc":"80335","bd":"3 ROSES DUST POLY RS 5","cq":1200,"aq":0,"al":0,"qp":0,"rq":0,"t":4.24,"n":444,"cs":0,"to":0,"sq":0,"ck":false,"pt":1,"ra":"B","rl":false,"op":0,"on":"20SMN00005P1576120240525","s":"JOSEPH RAJ. S ","p":"GOPI KRISHNA MALIGAI-D","ph":"HUL-411701D-P15111","m":"F-WHOLESALE 3S","si":7,"pi":15761,"mi":433,"sc":"SMN00005","c":4.237,"bn":"","cl":false,"po":0,"ac":"0","co":0,"pe":"RS CREDIT","ri":false,"ba":0,"br":false,"ep":false,"so":"20SMN00005P1576120240525","pd":0,"fd":0,"rwn":0,"bpt":"NORMAL","ar":"Allocation &lt; config value","oqp":0,"fq":0},{"ot":"SH","pc":"D-P15759","od":1716316200000,"bc":"16041","bd":"RIN ADVANCED POWDER SACHETS","cq":756,"aq":0,"al":0,"qp":0,"rq":0,"t":1.79,"n":18,"cs":0,"to":0,"sq":0,"ck":false,"pt":1,"ra":"R","rl":false,"op":0,"on":"90SMN00006D-P1575920240522","s":"ARAVINTHAN. R ","p":"REVATHI RIBBON HOUSE-D","ph":"HUL-41A392D-P15759","m":"D-WHOLESALE 3S","si":8,"pi":3221,"mi":423,"sc":"SMN00006","c":1.787,"bn":"","cl":false,"po":0,"ac":"0","co":0,"pe":"RS CREDIT","ri":false,"ba":0,"br":false,"ep":false,"so":"90SMNSKAPPD-P1575920240522","pd":0,"fd":0,"rwn":0,"bpt":"NORMAL","ar":"Credit Exceeded","oqp":0,"fq":0},{"ot":"SH","pc":"D-P15759","od":1716316200000,"bc":"16338","bd":"RIN ADVANCED POWDER ANTI BAC RS.10","cq":360,"aq":0,"al":0,"qp":0,"rq":0,"t":8.77,"n":192,"cs":0,"to":0,"sq":0,"ck":false,"pt":1,"ra":"R","rl":false,"op":0,"on":"90SMN00006D-P1575920240522","s":"ARAVINTHAN. R ","p":"REVATHI RIBBON HOUSE-D","ph":"HUL-41A392D-P15759","m":"D-WHOLESALE 3S","si":8,"pi":3221,"mi":423,"sc":"SMN00006","c":8.767,"bn":"","cl":false,"po":0,"ac":"0","co":0,"pe":"RS CREDIT","ri":false,"ba":0,"br":false,"ep":false,"so":"90SMNSKAPPD-P1575920240522","pd":0,"fd":0,"rwn":0,"bpt":"NORMAL","ar":"Credit Exceeded","oqp":0,"fq":0},{"ot":"SE","pc":"P15964","od":1716575400000,"bc":"70908","bd":"BRU INSTANT NRT POLY RS.5","cq":12,"aq":0,"al":0,"qp":0,"rq":0,"t":4.54,"n":12,"cs":0,"to":0,"sq":0,"ck":false,"pt":1,"ra":"B","rl":false,"op":0,"on":"20SMN00024P1596420240525","s":"SARAVANAN PONNUSAMY ","p":"Murugan Maligai-D","ph":"HUL-41A320D-P22764","m":"HUL-THENNUR","si":30,"pi":15964,"mi":550,"sc":"SMN00024","c":4.545,"bn":"","cl":false,"po":0,"ac":"0","co":0,"pe":"RS CREDIT","ri":false,"ba":0,"br":false,"ep":false,"so":"20SMN00024P1596420240525","pd":0,"fd":0,"rwn":0,"bpt":"NORMAL","ar":"Credit Exceeded","oqp":0,"fq":0}],"id":"26/05/2024","cf":1,"at":true,"so":"\'P\',\'R\',\'N\',\'B\',\'S\',\'V\',\'PC\',\'BA\',\'TC\',\'UFS\',\'SH-B\',\'SH-NB\'","bm":0,"bb":0,"ca":0,"CLIENT_REQ_UID":"lwn2wma4r9ycjeiuse"}'
 #ikea_billing_postmarketorder = CurlRequest('POST',
 #    'https://leveredge18.hulcd.com/rsunify/app/quantumImport/importSelected',
 #    cookies=cookies,
@@ -1898,7 +1898,7 @@ json_data = {
         '90SMN00013P1615420251221',
         '90SMN00027P1615420251221',
     ],
-    'sourceOfOrder': "'P','R','N','B','S','V','PC','BA','TC','UFS','SH-A','SH-S'",
+    'sourceOfOrder': "'P','R','N','B','S','V','PC','BA','TC','UFS','SH-B','SH-NB'",
     'paymentType': 'ALL',
     'isRaPartialBilled': 0,
     'isSePartialBilled': 0,
@@ -1915,7 +1915,7 @@ ikea_billing_getmarketorder = CurlRequest('POST',
 
 # Note: json_data will not be serialized by requests
 # exactly as it was in the original request.
-#data = '{"qtmBeatList":[],"qtmSalesList":[],"qtmPartyList":[],"orderDate":null,"importDate":"2025-12-20T18:30:00.000Z","futureData":false,"uniqueId":0,"qtmPONumberList":[],"qtmShikharList":["90SMN00026P1597720251221","90SMN00026D-P1877120251221","90SMN00028D-P1938820251221","90SMN00017_1D-P1950220251220","90SMN00017D-P1950220251220","90SMN00006P1576020251221","90SMN00013P1576020251221","90SMN00027P1576020251221","90SMN00027P1607020251221","90SMN00013P1615420251221","90SMN00027P1615420251221"],"sourceOfOrder":"\'P\',\'R\',\'N\',\'B\',\'S\',\'V\',\'PC\',\'BA\',\'TC\',\'UFS\',\'SH-A\',\'SH-S\'","paymentType":"ALL","isRaPartialBilled":0,"isSePartialBilled":0,"isShikharAssistedPartialBilled":0,"isShikharSelfPartialBilled":0}'
+#data = '{"qtmBeatList":[],"qtmSalesList":[],"qtmPartyList":[],"orderDate":null,"importDate":"2025-12-20T18:30:00.000Z","futureData":false,"uniqueId":0,"qtmPONumberList":[],"qtmShikharList":["90SMN00026P1597720251221","90SMN00026D-P1877120251221","90SMN00028D-P1938820251221","90SMN00017_1D-P1950220251220","90SMN00017D-P1950220251220","90SMN00006P1576020251221","90SMN00013P1576020251221","90SMN00027P1576020251221","90SMN00027P1607020251221","90SMN00013P1615420251221","90SMN00027P1615420251221"],"sourceOfOrder":"\'P\',\'R\',\'N\',\'B\',\'S\',\'V\',\'PC\',\'BA\',\'TC\',\'UFS\',\'SH-B\',\'SH-NB\'","paymentType":"ALL","isRaPartialBilled":0,"isSePartialBilled":0,"isShikharAssistedPartialBilled":0,"isShikharSelfPartialBilled":0}'
 #ikea_billing_getmarketorder = CurlRequest('POST',
 #    'https://leveredge18.hulcd.com/rsunify/app/quantumImport/validateload',
 #    cookies=cookies,
@@ -1991,20 +1991,20 @@ ikea_billing_getdelivery = CurlRequest('POST',
 #)
 
 cookies = {
-    'JSESSIONID': '0C89DD0E0F5EAA88D1601C3D8D014A88',
+    'JSESSIONID': '83A7ABA281E442C5CBA54F6660BBC7F6',
     'isUserLoggedOut': 'No',
-    'tabsOpened': '{"date":"2025-12-21T17:27:09.275Z","openedTabs":["Login"]}',
+    'tabsOpened': '{"date":"2025-12-31T16:42:39.365Z","openedTabs":["Login"]}',
     'maitabOpened': 'Yes',
 }
 
 headers = {
     'accept': 'application/json, text/javascript, */*; q=0.01',
     'accept-language': 'en-US,en;q=0.9',
-    'clientdatetime': '1766338089119',
+    'clientdatetime': '1767199383134',
     'clientzonediff': '-330',
     'content-type': 'application/json; charset=UTF-8',
-    # 'cookie': 'JSESSIONID=0C89DD0E0F5EAA88D1601C3D8D014A88; isUserLoggedOut=No; tabsOpened={"date":"2025-12-21T17:27:09.275Z","openedTabs":["Login"]}; maitabOpened=Yes',
-    'newrelic': 'eyJ2IjpbMCwxXSwiZCI6eyJ0eSI6IkJyb3dzZXIiLCJhYyI6IjEwMTUzNDciLCJhcCI6IjE1ODg3NTgxMDAiLCJpZCI6IjBlYjI2MWNkNzlmNzI1MjMiLCJ0ciI6IjRhYTJkNGM0ZmU1Y2Y4ZTk3OTI2NTQyZTA3MjExM2ExIiwidGkiOjE3NjYzMzgwODkxMjAsInRrIjoiOTM1NzAifX0=',
+    # 'cookie': 'JSESSIONID=83A7ABA281E442C5CBA54F6660BBC7F6; isUserLoggedOut=No; tabsOpened={"date":"2025-12-31T16:42:39.365Z","openedTabs":["Login"]}; maitabOpened=Yes',
+    'newrelic': 'eyJ2IjpbMCwxXSwiZCI6eyJ0eSI6IkJyb3dzZXIiLCJhYyI6IjEwMTUzNDciLCJhcCI6IjE1ODg3NTgxMDAiLCJpZCI6IjA1MWViM2VhOTBmZTVlYjMiLCJ0ciI6ImMxY2Y2MTNhZDQxYTA1NGNkNmJlNmNiNmU0ODY0M2EyIiwidGkiOjE3NjcxOTkzODMxMzQsInRrIjoiOTM1NzAifX0=',
     'origin': 'https://leveredge18.hulcd.com',
     'priority': 'u=1, i',
     'referer': 'https://leveredge18.hulcd.com/rsunify/app/user/authenSuccess',
@@ -2014,8 +2014,8 @@ headers = {
     'sec-fetch-dest': 'empty',
     'sec-fetch-mode': 'cors',
     'sec-fetch-site': 'same-origin',
-    'traceparent': '00-4aa2d4c4fe5cf8e97926542e072113a1-0eb261cd79f72523-01',
-    'tracestate': '93570@nr=0-1-1015347-1588758100-0eb261cd79f72523----1766338089120',
+    'traceparent': '00-c1cf613ad41a054cd6be6cb6e48643a2-051eb3ea90fe5eb3-01',
+    'tracestate': '93570@nr=0-1-1015347-1588758100-051eb3ea90fe5eb3----1767199383134',
     'user-agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36',
     'x-newrelic-id': 'VQYGVFVXDxABUVRWBQgCVlcH',
     'x-requested-with': 'XMLHttpRequest',
@@ -2023,8 +2023,8 @@ headers = {
 
 json_data = {
     'uniqueId': 0,
-    'importDate': '21/12/2025',
-    'sourceOfOrder': "'P','R','N','B','S','V','PC','BA','TC','UFS','SH-A','SH-S'",
+    'importDate': '31/12/2025',
+    'sourceOfOrder': "'P','R','N','B','S','V','PC','BA','TC','UFS','SH-B','SH-NB'",
 }
 
 ikea_billing_getshikhar = CurlRequest('POST',
@@ -2036,7 +2036,7 @@ ikea_billing_getshikhar = CurlRequest('POST',
 
 # Note: json_data will not be serialized by requests
 # exactly as it was in the original request.
-#data = '{"uniqueId":0,"importDate":"21/12/2025","sourceOfOrder":"\'P\',\'R\',\'N\',\'B\',\'S\',\'V\',\'PC\',\'BA\',\'TC\',\'UFS\',\'SH-A\',\'SH-S\'"}'
+#data = '{"uniqueId":0,"importDate":"31/12/2025","sourceOfOrder":"\'P\',\'R\',\'N\',\'B\',\'S\',\'V\',\'PC\',\'BA\',\'TC\',\'UFS\',\'SH-B\',\'SH-NB\'"}'
 #ikea_billing_getshikhar = CurlRequest('POST',
 #    'https://leveredge18.hulcd.com/rsunify/app/quantumImport/shikharlist',
 #    cookies=cookies,
