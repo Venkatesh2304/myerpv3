@@ -49,6 +49,7 @@ INSTALLED_APPS = [
     "bill",
     "report",
     "printing",
+    "bank",
 ]
 
 REST_FRAMEWORK = {

@@ -448,7 +448,7 @@ class CollectionReport(DateReportModel):
 class OutstandingReport(EmptyReportModel):
       party_id = models.CharField(max_length=20,verbose_name="Party Code",null=True)
       party_name = models.CharField(max_length=100,verbose_name="Party Name",null=True)
-      inum = models.CharField(max_length=20,primary_key=True)
+      inum = models.CharField(max_length=20)
       beat = models.CharField(max_length=40,null=True)
       bill_date = models.DateField()
       bill_amt = models.DecimalField(max_digits=10,decimal_places=2)
@@ -464,6 +464,7 @@ class OutstandingReport(EmptyReportModel):
       
       class Meta: # type: ignore
         db_table = "outstanding_report"
+        unique_together = ("inum", "party_id")
         
 class BillAgeingReport(EmptyReportModel):
     inum = models.CharField(max_length=20)

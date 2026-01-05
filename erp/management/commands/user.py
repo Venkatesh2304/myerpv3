@@ -1,3 +1,4 @@
+from bank.models import Bank
 from core.models import Organization
 from core.models import User
 from io import BytesIO
@@ -7,6 +8,25 @@ from core.models import Company, UserSession
 
 # User.objects.filter(username='devaki').delete()
 # UserSession.objects.filter(user='devaki_hul').delete()
+
+bank = Bank.objects.create(account_number="00000042540766421",name="SBI OD",type="sbi")
+bank.companies.add(Company.objects.get(name="devaki_hul"))
+bank.save()
+
+bank = Bank.objects.create(account_number="00000044030674591",name="SBI LAKME",type="sbi")
+bank.companies.add(Company.objects.get(name="lakme_urban"))
+bank.companies.add(Company.objects.get(name="lakme_rural"))
+bank.save()
+
+bank = Bank.objects.create(account_number="00000042536033659",name="SBI CA",type="sbi")
+bank.companies.add(Company.objects.get(name="devaki_hul"))
+bank.save()
+
+bank = Bank.objects.create(account_number="1889135000001946",name="KVB CA",type="kvb")
+bank.companies.add(Company.objects.get(name="devaki_hul"))
+bank.save()
+exit(0)
+
 Organization.objects.all().delete()
 organization = Organization.objects.create(name='devaki')
 organization.save()

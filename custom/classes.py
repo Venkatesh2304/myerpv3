@@ -73,7 +73,11 @@ class BaseIkea(Session):
 
     def is_logged_in(self) -> bool:
         try : 
-            self.get("/rsunify/app/billing/getUserId",timeout=15)
+            res_html = self.get("/rsunify/app/billing/getUserId",timeout=15).text
+            check = "Something went wrong, please try again later" in res_html
+            if check : 
+                self.logger.error("Login Check : Failed")
+                return False
             self.logger.info("Login Check : Passed")
             return True 
         except StatusCodeError as e :
@@ -119,6 +123,7 @@ class IkeaReports(BaseIkea):
         if "jsonObjWhereClause" in r.data:
             r.data['jsonObjWhereClause'] = curl_replace(pat, replaces, r.data['jsonObjWhereClause'])
             if "jsonObjforheaders" in r.data: del r.data['jsonObjforheaders']
+        print(r.data)
         durl = r.send(self).text    
         if not durl:
             raise ReportFetchError(f"Failed to generate report for key: {key}")

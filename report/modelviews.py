@@ -14,6 +14,6 @@ class OutstandingReportViewSet(viewsets.ReadOnlyModelViewSet):
         
         class Meta:
             model = OutstandingReport
-            fields = ['company', 'beat', 'party']
+            fields = ['company', 'beat', 'party','inum']
 
     filterset_class = OutstandingFilter

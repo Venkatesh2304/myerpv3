@@ -1,3 +1,4 @@
+from report.models import OutstandingReport
 from dateutil.relativedelta import relativedelta
 from report.models import BillAgeingReport
 from custom.classes import Ikea
@@ -13,7 +14,10 @@ today = datetime.now().date()
 for company in Company.objects.all() :
     print("Running sync for " + company.name)
     i = Ikea(company.pk)
+    CollectionReport.update_db(i,company,DateRangeArgs(fromd=today-relativedelta(months=2),tod=today))
     SalesRegisterReport.update_db(i,company,DateRangeArgs(fromd=today-relativedelta(months=7),tod=today))
+    # SalesRegisterReport.update_db(i,company,DateRangeArgs(fromd=today-relativedelta(months=7),tod=today))
+    # OutstandingReport.update_db(i,company,EmptyArgs())
     # BeatReport.update_db(i,company,EmptyArgs())
     # BillAgeingReport.update_db(i,company,EmptyArgs())
     # PartyReport.update_db(i,company,EmptyArgs())
