@@ -60,7 +60,6 @@ for _,row in bc.iterrows() :
         cheque_entry_id = cheque_id_remap[row["cheque_entry_id"]] if row["cheque_entry_id"] else None,
         bank_entry_id = bs_id_remap[row["bank_entry_id"]] if row["bank_entry_id"] else None,
         amt = row["amt"],
-        pushed = row["pushed"],
     )   
     
 
