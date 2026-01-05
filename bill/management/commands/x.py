@@ -14,12 +14,19 @@ import datetime
 from report.models import SalesRegisterReport
 from dateutil.relativedelta import relativedelta
 import json
+from bank.models import ChequeDeposit
+
 
 # b = Billing.objects.get(company_id="devaki_hul",date=datetime.date(2025,12,19))
 # b = [ i for i in b.market_order_data["mol"] if i["on"] == "20SMN00014P1581920251218"]
 # with open("x.json","w+") as f:
 #     f.write(json.dumps(b))
-i = Billing("devaki_hul")
+i = Billing("lakme_urban")
+tod = datetime.date.today()
+fromd = tod - datetime.timedelta(days=15)
+i.product_wise_purchase(fromd,tod).to_excel("a.xlsx")
+
+dsf
 x = i.get_market_order(datetime.date(2025,12,21))
 with open("x.json","w+") as f:
     f.write(json.dumps(x))

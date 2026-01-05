@@ -58,7 +58,7 @@ def find_party_match(model,vectorizer,desc):
     return company,party_id,best_prob
 
 def find_neft_match(bankstatement_obj,company_id,party_id):
-    allowed_diff = 2
+    allowed_diff = 0.05
     amt = bankstatement_obj.amt
     outstandings = list(OutstandingReport.objects.filter(
         party_id = party_id,

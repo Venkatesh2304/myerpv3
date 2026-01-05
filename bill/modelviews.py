@@ -57,7 +57,6 @@ class BillViewSet(viewsets.ModelViewSet):
             Bill.sync_with_salesregister(company,fromd = date_args.fromd,tod = date_args.tod)
         return super().list(request, *args, **kwargs)
 
-
     queryset = Bill.objects.all()
     serializer_class = BillSerializer
     filterset_class = BillFilter
