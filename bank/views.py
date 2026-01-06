@@ -356,6 +356,7 @@ def push_collection(request) :
     manual_coll.to_excel(f,index=False)
     f.seek(0)
     files_dir = os.path.join(settings.MEDIA_ROOT, "bank", company_id)
+    files_dir_url = f"{settings.MEDIA_URL}bank/{company_id}/"
     os.makedirs(files_dir, exist_ok=True)
     manual_coll.to_excel(f"{files_dir}/manual_collection.xlsx")
     res = ikea.upload_manual_collection(f)
@@ -367,7 +368,7 @@ def push_collection(request) :
     SETTLE_CHEQUE_FILE = os.path.join(files_dir,"settle_cheque.xlsx")
     settle_coll.to_excel(SETTLE_CHEQUE_FILE)
     if "CHEQUE NO" not in settle_coll.columns : 
-        return JsonResponse({"error" : "No Cheques to Settle", "filepath" :SETTLE_CHEQUE_FILE},status=500)
+        return JsonResponse({"error" : "No Cheques to Settle", "filepath" : f"{files_dir_url}settle_cheque.xlsx"},status=500)
     settle_coll = settle_coll[ settle_coll.apply(lambda row : (str(row["CHEQUE NO"]),row["BILL NO"]) in bill_chq_pairs ,axis=1) ]
     settle_coll["STATUS"] = "SETTLED"
     f = BytesIO()
@@ -394,7 +395,7 @@ def push_collection(request) :
     with pd.ExcelWriter(open(PUSH_CHEQUE_FILE,"wb+"), engine='xlsxwriter') as writer:
         cheque_upload_status.to_excel(writer,sheet_name="Manual Collection")
         cheque_settlement.to_excel(writer,sheet_name="Cheque Settlement")
-    return JsonResponse({ "filepath" : PUSH_CHEQUE_FILE })
+    return JsonResponse({ "filepath" : f"{files_dir_url}push_cheque_ikea.xlsx" })
 
 
 @api_view(["POST"])
