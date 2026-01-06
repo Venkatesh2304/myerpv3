@@ -220,7 +220,7 @@ def get_order(request):
                 "order_category": order_category
             })
 
-        processed_orders.sort(key=lambda x: (x["allow_order"],x["party"]))
+        processed_orders.sort(key=lambda x: (x["allow_order"],x["salesman"],x["party"]))
         # Populate order_values from processed_orders
         order_values = {order["order_no"]: order["bill_value"] for order in processed_orders} 
         

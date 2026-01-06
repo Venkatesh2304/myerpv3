@@ -6,7 +6,7 @@ from report.serializers import OutstandingReportSerializer
 class OutstandingReportViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = OutstandingReport.objects.all()
     serializer_class = OutstandingReportSerializer
-    filter_backends = (filters.DjangoFilterBackend,)
+    ordering = ['bill_date']
     
     class OutstandingFilter(filters.FilterSet):
         company = filters.CharFilter(field_name='company_id', lookup_expr='exact')
