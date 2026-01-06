@@ -70,7 +70,7 @@ def find_neft_match(bankstatement_obj,company_id,party_id):
     pending_outstandings = []
     for inum,balance in outstandings :
         pending_collection = 0 
-        for coll in BankCollection.objects.filter(bill = inum) :
+        for coll in BankCollection.objects.filter(bill = inum).exclude(bank_entry = bankstatement_obj) :
             if coll.company != company_id : continue 
 
             pushed = None
@@ -87,14 +87,14 @@ def find_neft_match(bankstatement_obj,company_id,party_id):
         new_balance = round(balance - pending_collection)
         if new_balance > 0 :
             pending_outstandings.append((inum,new_balance))
-    pending_outstandings = outstandings
+    
     #Try all combination of outstandings whre each row has keys inum and balance.
     #allow if the difference is lesss than allowed_difference with amt
 
     # if len(outstandings) > 20 :
     #     return JsonResponse({ "error" : "Too many outstandings to match." },status=500)
 
-    pending_outstandings = pending_outstandings[:20]
+    pending_outstandings = pending_outstandings[:15]
     matched_invoices = []
     for r in range(1, len(pending_outstandings) + 1):
         for combo in combinations(pending_outstandings, r):
@@ -299,6 +299,7 @@ def auto_match_neft(request) :
                                 "amt" : round(inv["balance"]) } for inv in matched_invoices]})
     else : 
         return JsonResponse({"error" : "Multiple matches found."},status=500)
+
 @api_view(["POST"])
 def cheque_match(request) : 
     bank_id = request.data.get("bank_id")
