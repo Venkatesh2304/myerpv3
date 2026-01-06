@@ -58,7 +58,7 @@ def find_party_match(model,vectorizer,desc):
     return company,party_id,best_prob
 
 def find_neft_match(bankstatement_obj,company_id,party_id):
-    allowed_diff = 0.05
+    allowed_diff = 0.5
     amt = bankstatement_obj.amt
     outstandings = list(OutstandingReport.objects.filter(
         party_id = party_id,
@@ -67,7 +67,6 @@ def find_neft_match(bankstatement_obj,company_id,party_id):
         balance__lte = amt + allowed_diff,
         bill_date__gte = datetime.date.today() - datetime.timedelta(days=60)
     ).values_list("inum","balance").order_by("bill_date"))
-    
     pending_outstandings = []
     for inum,balance in outstandings :
         pending_collection = 0 
@@ -88,19 +87,20 @@ def find_neft_match(bankstatement_obj,company_id,party_id):
         new_balance = round(balance - pending_collection)
         if new_balance > 0 :
             pending_outstandings.append((inum,new_balance))
-
+    pending_outstandings = outstandings
     #Try all combination of outstandings whre each row has keys inum and balance.
     #allow if the difference is lesss than allowed_difference with amt
 
     # if len(outstandings) > 20 :
     #     return JsonResponse({ "error" : "Too many outstandings to match." },status=500)
 
-    pending_outstandings = pending_outstandings[:15]
+    pending_outstandings = pending_outstandings[:20]
     matched_invoices = []
     for r in range(1, len(pending_outstandings) + 1):
         for combo in combinations(pending_outstandings, r):
             total_balance = sum(item[1] for item in combo)
             if abs(total_balance - amt) <= allowed_diff:
+                print("Found match",combo,total_balance,amt)
                 matched_invoices.append([{"inum": item[0], "balance": item[1]} for item in combo])
     return matched_invoices
     

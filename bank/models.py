@@ -82,7 +82,7 @@ class BankStatement(models.Model) :
 
     @property
     def pushed(self) :
-        return CollectionReport.objects.filter(bank_entry_id = self.statement_id,company_id = self.company.pk).exists()
+        return (self.statement_id) is None or (CollectionReport.objects.filter(bank_entry_id = self.statement_id,company_id = self.company.pk).exists())
 
     @property
     def all_collection(self) :
