@@ -52,6 +52,7 @@ class BankStatementViewSet(viewsets.ModelViewSet):
             if status == "not_pushed" : 
                 queryset = queryset.filter(date__gte = cutoff_date
                                        ).filter(type__in = ["neft","cheque"]).exclude(cheque_status = "bounced")
+                print("a",queryset.count())
                 queryset = queryset.annotate(
                     has_ikea_collection=Exists(
                             CollectionReport.objects.filter(
@@ -60,8 +61,9 @@ class BankStatementViewSet(viewsets.ModelViewSet):
                             )
                         )
                     ).filter(Q(has_ikea_collection = False) | Q(statement_id__isnull = True))
+                print("b",queryset.count())
                 return queryset
-            elif status == "not_saved" : 
+            elif status == "not_saved" :
                 return queryset.filter(type__isnull = True,date__gte = cutoff_date)
             return queryset
         
