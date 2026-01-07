@@ -1,3 +1,7 @@
+from django.db.models.aggregates import Sum
+from django.db.models.expressions import Subquery
+from django.db.models.expressions import F
+from bank.models import BankCollection
 from django.db.models.fields import BooleanField
 from django.db.models.expressions import When
 from django.db.models.expressions import Case
@@ -48,29 +52,32 @@ class BankStatementViewSet(viewsets.ModelViewSet):
             fields = []
 
         def filter_status(self, queryset, name, status):
+            company_id = self.data.get("company")
             cutoff_date = datetime.date.today() - datetime.timedelta(days=30)
             if status == "not_pushed" : 
-                queryset = queryset.filter(date__gte = cutoff_date
-                                       ).filter(type__in = ["neft","cheque"]).exclude(cheque_status = "bounced")
-                print("a",queryset.count())
-                queryset = queryset.annotate(
-                    has_ikea_collection=Exists(
-                            CollectionReport.objects.filter(
-                                bank_entry_id=OuterRef("statement_id"),
-                                company_id=OuterRef("company_id")
-                            )
-                        )
-                    ).filter(Q(has_ikea_collection = False) | Q(statement_id__isnull = True))
-                print("b",queryset.count())
+                queryset = queryset.filter(date__gte = cutoff_date).filter(type__in = ["neft","cheque"]).exclude(cheque_status = "bounced")
+
+                #Find statement ids which dont match the ikea collection amount
+                ALLOWED_DIFF = 100
+                statement_ids = queryset.filter(statement_id__isnull = False).values_list("statement_id",flat=True)
+                ikea_collection = list(CollectionReport.objects.filter(bank_entry_id__in = statement_ids, company_id = company_id).values('bank_entry_id').annotate(
+                    total_amt=Sum('amt')
+                ).values("bank_entry_id","total_amt"))
+                ikea_collection = { i["bank_entry_id"] : i["total_amt"] for i in ikea_collection }
+                not_pushed_statement_ids = [] #Contains partial also (ideally this should be empty only failures)
+                for obj in queryset : 
+                    if abs(obj.amt - ikea_collection.get(obj.statement_id,0)) > ALLOWED_DIFF :
+                        not_pushed_statement_ids.append(obj.statement_id)
+
+                queryset = queryset.filter(Q(statement_id__in = not_pushed_statement_ids) | Q(statement_id__isnull = True))
                 return queryset
             elif status == "not_saved" :
                 return queryset.filter(type__isnull = True,date__gte = cutoff_date)
             return queryset
-        
 
     filterset_class = BankFilter
 
-class BankViewSet(viewsets.ModelViewSet):
+class BankViewSet(viewsets.ModelViewSet):#
     queryset = Bank.objects.all()
     serializer_class = BankNameSerializer
     pagination_class = None
