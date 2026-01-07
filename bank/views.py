@@ -318,7 +318,7 @@ def push_collection(request) :
 
     bank_entries = [ obj for obj in BankStatement.objects.filter(
                               id__in = ids, type__in = ["cheque","neft"], company_id = company_id
-                            ).exclude(cheque_status = "bounced") if not obj.pushed_status != "pushed"]
+                            ).exclude(cheque_status = "bounced") if not obj.pushed_status == "not_pushed"] #Dont allow partial
     unassigned_bank_entries = [ obj for obj in bank_entries if not obj.statement_id ]
 
     already_assigned_ids = BankStatement.objects.filter(company_id = company_id).values_list("statement_id",flat=True).distinct()
@@ -396,6 +396,31 @@ def push_collection(request) :
         cheque_upload_status.to_excel(writer,sheet_name="Manual Collection")
         cheque_settlement.to_excel(writer,sheet_name="Cheque Settlement")
     return JsonResponse({ "filepath" : f"{files_dir_url}push_cheque_ikea.xlsx" })
+
+@api_view(["POST"])
+def unpush_collection(request) : 
+    bankstatement_id = request.data.get("bankstatement_id")
+    obj = BankStatement.objects.get(id = bankstatement_id)
+    if obj.statement_id is None : return JsonResponse({"error" : "Bank Statement is not pushed & has null statement_id field"}, status = 500)
+    if obj.company is None : return JsonResponse({"error" : "Bank Statement is not associated with any company"}, status = 500)
+    billing = Ikea(obj.company.pk)
+    qs = obj.all_collection
+    if qs.count() : 
+        bill_chq_pairs = [ (obj.statement_id,bank_coll.bill) for bank_coll in qs.all() ]
+        dates = obj.ikea_collection.aggregate(fromd = Min("date"), tod = Max("date"))
+        fromd,tod = dates["fromd"],dates["tod"]
+        if fromd is None or tod is None : return JsonResponse({"error" : "No Ikea Collection Found for the statement id"}, status = 500)
+
+        settle_coll:pd.DataFrame = billing.download_settle_cheque("ALL",fromd,tod) # type: ignore
+        settle_coll = settle_coll[ settle_coll.apply(lambda row : (str(row["CHEQUE NO"]),row["BILL NO"]) in bill_chq_pairs ,axis=1) ]
+        settle_coll["STATUS"] = "BOUNCED"
+        with BytesIO() as f : 
+            settle_coll.to_excel(f,index=False)
+            f.seek(0)
+            res = billing.upload_settle_cheque(f)
+
+        CollectionReport.update_db(billing,obj.company,DateRangeArgs(fromd = fromd ,tod = tod))
+    return JsonResponse({"status" : "success"})
 
 
 @api_view(["POST"])

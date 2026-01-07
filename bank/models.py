@@ -84,7 +84,7 @@ class BankStatement(models.Model) :
     @property
     def pushed_status(self)-> Literal["not_pushed","partially_pushed","pushed"] :
         if self.statement_id is None :  return "not_pushed"
-        amts = CollectionReport.objects.filter(bank_entry_id = self.statement_id,company_id = self.company_id).values_list("amt",flat=True)
+        amts = self.ikea_collection.values_list("amt",flat=True)
         if len(amts) == 0 : return "not_pushed"
         elif abs(sum(amts) - self.amt) > 100 : return "partially_pushed"
         else : 
@@ -93,3 +93,7 @@ class BankStatement(models.Model) :
     @property
     def all_collection(self) :
         return BankCollection.objects.filter(Q(bank_entry_id = self.id) | Q(cheque_entry__bank_entry = self.id))
+
+    @property
+    def ikea_collection(self) :
+        return CollectionReport.objects.filter(bank_entry_id = self.statement_id,company_id = self.company_id)
