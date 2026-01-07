@@ -86,7 +86,7 @@ class BankStatement(models.Model) :
         if self.statement_id is None :  return "not_pushed"
         amts = CollectionReport.objects.filter(bank_entry_id = self.statement_id,company_id = self.company_id).values_list("amt",flat=True)
         if len(amts) == 0 : return "not_pushed"
-        elif abs(sum(amts) - self.amt) < 100 : return "partially_pushed"
+        elif abs(sum(amts) - self.amt) > 100 : return "partially_pushed"
         else : 
             return "pushed"
 
