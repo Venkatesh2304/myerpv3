@@ -318,7 +318,7 @@ def push_collection(request) :
 
     bank_entries = [ obj for obj in BankStatement.objects.filter(
                               id__in = ids, type__in = ["cheque","neft"], company_id = company_id
-                            ).exclude(cheque_status = "bounced") if not obj.pushed ]
+                            ).exclude(cheque_status = "bounced") if not obj.pushed_status != "pushed"]
     unassigned_bank_entries = [ obj for obj in bank_entries if not obj.statement_id ]
 
     already_assigned_ids = BankStatement.objects.filter(company_id = company_id).values_list("statement_id",flat=True).distinct()

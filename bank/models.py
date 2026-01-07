@@ -1,3 +1,4 @@
+from typing import Literal
 from report.models import CollectionReport
 from functools import cached_property
 from report.models import OutstandingReport
@@ -76,13 +77,18 @@ class BankStatement(models.Model) :
         if self.type in ["cheque","neft"] :
             if self.cheque_status and (self.cheque_status == "bounced") : 
                 return "pushed"
-            return "pushed" if self.pushed else "saved"
+            return self.pushed_status
         else : 
              return "pushed"
 
     @property
-    def pushed(self) :
-        return (self.statement_id is not None) and (CollectionReport.objects.filter(bank_entry_id = self.statement_id,company_id = self.company.pk).exists())
+    def pushed_status(self)-> Literal["not_pushed","partially_pushed","pushed"] :
+        if self.statement_id is None :  return "not_pushed"
+        amts = CollectionReport.objects.filter(bank_entry_id = self.statement_id,company_id = self.company_id).values_list("amt",flat=True)
+        if len(amts) == 0 : return "not_pushed"
+        elif abs(sum(amts) - self.amt) < 100 : return "partially_pushed"
+        else : 
+            return "pushed"
 
     @property
     def all_collection(self) :
