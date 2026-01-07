@@ -1,3 +1,6 @@
+from django.db.models.fields import BooleanField
+from django.db.models.expressions import When
+from django.db.models.expressions import Case
 from django.db.models.expressions import OuterRef,Exists
 from report.models import CollectionReport
 from django.db.models.aggregates import Count
@@ -50,11 +53,16 @@ class BankStatementViewSet(viewsets.ModelViewSet):
                 queryset = queryset.filter(date__gte = cutoff_date
                                        ).filter(type__in = ["neft","cheque"]).exclude(cheque_status = "bounced").filter()
                 queryset = queryset.annotate(
-                    has_ikea_collection=Exists(
-                        CollectionReport.objects.filter(
-                            bank_entry_id=OuterRef("statement_id"),
-                            company_id=OuterRef("company_id")
-                    ))
+                    has_ikea_collection=Case(
+                        When(statement_id__isnull=True, then=False),
+                        default=Exists(
+                            CollectionReport.objects.filter(
+                                bank_entry_id=OuterRef("statement_id"),
+                                company_id=OuterRef("company_id")
+                            )
+                        ),
+                        output_field=BooleanField(),
+                    )
                 ).filter(has_ikea_collection = False)
                 return queryset
             elif status == "not_saved" : 
