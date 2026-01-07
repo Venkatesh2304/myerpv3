@@ -25,7 +25,7 @@ class BankSerializer(WritableNestedModelSerializer):
     bank = serializers.SlugField(source="bank.name", read_only=True)
     class Meta:
         model = BankStatement
-        fields = ["date","company","ref","desc","amt","bank","status","pushed","type","id",
+        fields = ["date","company","ref","desc","amt","bank","status","type","id",
                        "cheque_entry","cheque_status","collection"]
 
 class BankNameSerializer(serializers.ModelSerializer):
