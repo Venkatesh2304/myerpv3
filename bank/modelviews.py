@@ -51,19 +51,15 @@ class BankStatementViewSet(viewsets.ModelViewSet):
             cutoff_date = datetime.date.today() - datetime.timedelta(days=30)
             if status == "not_pushed" : 
                 queryset = queryset.filter(date__gte = cutoff_date
-                                       ).filter(type__in = ["neft","cheque"]).exclude(cheque_status = "bounced").filter()
+                                       ).filter(type__in = ["neft","cheque"]).exclude(cheque_status = "bounced")
                 queryset = queryset.annotate(
-                    has_ikea_collection=Case(
-                        When(statement_id__isnull=True, then=False),
-                        default=Exists(
+                    has_ikea_collection=Exists(
                             CollectionReport.objects.filter(
                                 bank_entry_id=OuterRef("statement_id"),
                                 company_id=OuterRef("company_id")
                             )
-                        ),
-                        output_field=BooleanField(),
-                    )
-                ).filter(has_ikea_collection = False)
+                        )
+                    ).filter(Q(has_ikea_collection = False) | Q(statement_id__isnull = True))
                 return queryset
             elif status == "not_saved" : 
                 return queryset.filter(type__isnull = True,date__gte = cutoff_date)
