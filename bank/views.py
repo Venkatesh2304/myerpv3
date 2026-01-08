@@ -544,6 +544,8 @@ def bank_summary(request):
     bank_totals = {}
     bank_dfs = {}
     bank_qs = BankStatement.objects.filter(bank__in = banks,date__gte = fromd,date__lte = tod)
+    coll_qs = CollectionReport.objects.filter(date__gte = fromd,date__lte = tod,company__in = companies)
+
     company_wise_bank_chq_numbers = defaultdict(list)
     for bank in banks : 
         bank_total = defaultdict(int)
@@ -586,7 +588,6 @@ def bank_summary(request):
 
     ikea_totals = {}
     ikea_cheque_coll_dfs = {}
-    coll_qs = CollectionReport.objects.filter(date__gte = fromd,date__lte = tod,company__in = companies)
     for company in companies : 
         ikea = Ikea(company.pk)
         #TODO: Remove this comment
