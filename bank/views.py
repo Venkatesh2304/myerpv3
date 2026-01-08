@@ -1,4 +1,5 @@
 
+from urllib.parse import urljoin
 from django.db.models.aggregates import Sum
 from report.models import EmptyArgs
 from report.models import SalesRegisterReport
@@ -527,6 +528,12 @@ def refresh_bank(request):
     OutstandingReport.update_db(ikea,company,EmptyArgs())
     return JsonResponse({"status" : "success"})
 
+
+def get_media_url(path):
+    relative_path = os.path.relpath(path, settings.MEDIA_ROOT)
+    media_url = urljoin(settings.MEDIA_URL, relative_path.replace(os.sep, '/'))
+    return media_url
+
 @api_view(["POST"])
 def bank_summary(request):
     fromd = datetime.datetime.strptime(request.data.get("fromd"),"%Y-%m-%d").date()
@@ -591,9 +598,13 @@ def bank_summary(request):
     bank_totals = df_group_entity(totals_to_df(bank_totals))
     #TODO: total_comparison = {}
 
-    with pd.ExcelWriter(f"a.xlsx", engine='xlsxwriter') as writer : 
+    files_dir = os.path.join(settings.MEDIA_ROOT, "bank", request.user.pk)
+    os.makedirs(files_dir, exist_ok=True)
+    fpath = os.path.join(files_dir,"summary.xlsx")
+
+    with pd.ExcelWriter(fpath, engine='xlsxwriter') as writer : 
         addtable(writer = writer , sheet = "Summary" , name = ["IKEA","BANK"]  ,  data = [ikea_totals,bank_totals])  
         for bank_name,df in bank_dfs.items() : 
             df.to_excel(writer, sheet_name=bank_name,index=False)
 
-    return JsonResponse({"status" : "success"})
+    return JsonResponse({"status" : "success", "filepath" : get_media_url(fpath)})
