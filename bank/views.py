@@ -331,8 +331,8 @@ def create_cheques(ikea,bankstatement_objs: list[BankStatement],files_dir) -> tu
                 errors[cheque_number][bill_no] = "Bill not found in manual collection"
                 continue
 
-            row = row.iloc[0]
-            if row["Collection Code"].lower() == "unassigned" : 
+            # row = row.iloc[0]
+            if row.iloc[0]["Collection Code"].lower() == "unassigned" : 
                 errors[cheque_number][bill_no] = "Unassigned collection code"
                 continue
 
