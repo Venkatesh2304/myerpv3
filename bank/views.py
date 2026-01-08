@@ -565,23 +565,23 @@ def bank_summary(request):
                    company_wise_bank_chq_numbers[obj.company.pk].append(obj.statement_id)
                    ikea_coll_amt =  sum([ikea_coll.amt for ikea_coll in ikea_collections])
                 if ikea_coll_amt == 0 : 
-                   bank_total["not_pushed"] += obj.amt
+                   bank_total["not_pushed"] += int(obj.amt)
                    create_row(obj,f"not_pushed",party_name,bills)
                 else :
                     pending_amt = obj.amt - ikea_coll_amt
-                    bank_total["cheque"] += ikea_coll_amt
+                    bank_total["cheque"] += int(ikea_coll_amt)
                     notes = ""
                     if pending_amt > 0 : 
-                        bank_total["cheque_diff"] += pending_amt
+                        bank_total["cheque_diff"] += int(pending_amt)
                         notes = f"pushed : {ikea_coll_amt} , diff : {pending_amt}"
                     coll_date = ikea_collections[0].date
                     create_row(obj,notes,party_name,bills,coll_date)
 
             elif obj.type is not None : 
-                bank_total[obj.type] += obj.amt
+                bank_total[obj.type] += int(obj.amt)
                 create_row(obj)
             else : 
-                bank_total["not_saved"] += obj.amt
+                bank_total["not_saved"] += int(obj.amt)
                 create_row(obj,"not_saved")
         bank_totals[bank.name] = bank_total
         bank_dfs[bank.name] = pd.DataFrame(df,columns = ["Date","Description","Amount","Type","Notes","Party","Coll Date","Bills",])
@@ -596,7 +596,7 @@ def bank_summary(request):
         qs = coll_qs.filter(company = company)
         #Type Totals
         totals = list(qs.values("mode").annotate(amt = Sum("amt")).values("mode","amt"))
-        ikea_totals[company.pk] = {total["mode"] : total["amt"] for total in totals if total["mode"] not in ["cheque","neft"]}
+        ikea_totals[company.pk] = {total["mode"] : int(total["amt"]) for total in totals if total["mode"] not in ["cheque","neft"]}
         
         #Cheque subtype totals
         cheque_qs = qs.filter(mode__in = ["cheque","neft"])
