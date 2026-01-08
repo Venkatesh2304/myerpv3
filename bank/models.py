@@ -1,4 +1,4 @@
-from datetime import datetime
+import datetime
 from typing import Literal
 from report.models import CollectionReport
 from functools import cached_property
@@ -74,7 +74,8 @@ class BankStatement(models.Model) :
         verbose_name_plural = 'Bank'
 
     def add_event(self,type,message = "",by = None):
-        self.events.append({"type" : type,"message" : message,"by" : by,"time" : datetime.datetime.now()})
+        event = {"type" : type,"message" : message,"by" : by,"time" : datetime.datetime.now().strftime("%d/%m/%y %H:%M")}
+        self.events.insert(0,event)
 
     @property
     def status(self) : 

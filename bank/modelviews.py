@@ -41,6 +41,11 @@ class BankStatementViewSet(viewsets.ModelViewSet):
     pagination_class = Pagination
     ordering = ["-date","-id"]
     
+    def perform_update(self, serializer):
+        obj = serializer.save()
+        obj.add_event("saved",by = self.request.user.pk,message = f"Mapped to {obj.type}")
+        obj.save()
+
     class BankFilter(filters.FilterSet):
         date = filters.DateFilter(field_name='date', lookup_expr='exact')
         type = filters.CharFilter(field_name='type', lookup_expr='exact')

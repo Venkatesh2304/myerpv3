@@ -315,27 +315,29 @@ def cheque_match(request) :
     chqs = [ { "label" : str(chq) , "value" : chq.id } for chq in matches.all() ]
     return JsonResponse(chqs,safe=False)
 
-def create_cheques(ikea,bankstatement_objs,files_dir) -> tuple[pd.DataFrame, dict[str,dict[str,str]]]:
+def create_cheques(ikea,bankstatement_objs: list[BankStatement],files_dir) -> tuple[pd.DataFrame, dict[str,dict[str,str]]]:
     coll:pd.DataFrame = ikea.download_manual_collection() # type: ignore
     errors = defaultdict(dict)
     manual_rows = []
     for bank_obj in bankstatement_objs:
         temp_rows = []
-        for coll_obj in bankstatement_objs.all_collection:
-
+        cheque_number = bank_obj.statement_id
+        if cheque_number is None : 
+            raise Exception("There is no cheque number (statement_id) assigned for BankStatement {}".format(bank_obj.pk))
+        for coll_obj in bank_obj.all_collection:
             bill_no  = coll_obj.bill
             row = coll[coll["Bill No"] == bill_no].copy()
             if len(row) == 0 : 
-                errors[bank_obj.id][bill_no] = "Bill not found in manual collection"
+                errors[cheque_number][bill_no] = "Bill not found in manual collection"
                 continue
 
             row = row.iloc[0]
             if row["Collection Code"].lower() == "unassigned" : 
-                errors[bank_obj.id][bill_no] = "Unassigned collection code"
+                errors[cheque_number][bill_no] = "Unassigned collection code"
                 continue
 
-            if row["O/S Amount"] + 0.5 > coll_obj.amt : 
-                errors[bank_obj.id][bill_no] = f"O/S Amount {row['O/S Amount']} > Collection Amount {coll_obj.amt}"
+            if row["O/S Amount"] + 0.5 < coll_obj.amt : 
+                errors[cheque_number][bill_no] = f"O/S Amount Rs.{row['O/S Amount']} < Collection Amount Rs.{coll_obj.amt}"
                 continue
 
             row["Mode"] = "Cheque/DD"
@@ -346,7 +348,7 @@ def create_cheques(ikea,bankstatement_objs,files_dir) -> tuple[pd.DataFrame, dic
             row["Amount"] = coll_obj.amt
             temp_rows.append(row)
 
-        if len(errors[bank_obj.id]) == 0 : 
+        if len(errors[cheque_number]) == 0 : 
             manual_rows += temp_rows
 
     if len(manual_rows) == 0 : 
@@ -400,7 +402,8 @@ def push_collection(request) :
 
     bank_entries = [ obj for obj in BankStatement.objects.filter(
                               id__in = ids, type__in = ["cheque","neft"], company_id = company_id
-                            ).exclude(cheque_status = "bounced") if not obj.pushed_status == "not_pushed"] #Dont allow partial
+                            ).exclude(cheque_status = "bounced") if obj.pushed_status == "not_pushed"] #Dont allow partial
+
     unassigned_bank_entries = [ obj for obj in bank_entries if not obj.statement_id ]
     already_assigned_ids = BankStatement.objects.filter(company_id = company_id).values_list("statement_id",flat=True).distinct()
     free_ids = list(set(range(100000,999999)) - set([int(i) for i in already_assigned_ids if i]))
@@ -413,6 +416,7 @@ def push_collection(request) :
     files_dir_url = f"{settings.MEDIA_URL}bank/{company_id}/"
     os.makedirs(files_dir, exist_ok=True)
 
+    
     #Create cheques using manual collection upload
     cheque_upload_status, cheque_creation_errors = create_cheques(ikea,bank_entries,files_dir)
 
@@ -479,7 +483,8 @@ def unpush_collection(request) :
             settle_coll.to_excel(f,index=False)
             f.seek(0)
             res = billing.upload_settle_cheque(f)
-
+            obj.add_event("unpushed",by = request.user.pk)
+            obj.save()
         CollectionReport.update_db(billing,obj.company,DateRangeArgs(fromd = fromd ,tod = tod))
     return JsonResponse({"status" : "success"})
 
