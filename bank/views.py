@@ -325,6 +325,8 @@ def bounce_cheques(ikea,cheque_numbers):
         return 
     settle_coll = settle_coll[ settle_coll.apply(lambda row : str(row["CHEQUE NO"]) in cheque_numbers ,axis=1) ]
     settle_coll["STATUS"] = "BOUNCED"
+    if len(settle_coll) == 0 : 
+        return 
     with BytesIO() as f : 
         settle_coll.to_excel(f,index=False)
         f.seek(0)
