@@ -60,7 +60,7 @@ class BankStatementViewSet(viewsets.ModelViewSet):
             company_id = self.data.get("company")
             cutoff_date = datetime.date.today() - datetime.timedelta(days=30)
             if status == "not_pushed" : 
-                queryset = queryset.filter(date__gte = cutoff_date).filter(type__in = ["neft","cheque"]).exclude(cheque_status = "bounced")
+                queryset = queryset.filter(date__gte = cutoff_date,company_id = company_id).filter(type__in = ["neft","cheque"]).exclude(cheque_status = "bounced")
 
                 #Find statement ids which dont match the ikea collection amount
                 ALLOWED_DIFF = 100

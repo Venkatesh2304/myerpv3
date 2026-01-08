@@ -11,6 +11,7 @@ from core.models import Company
 from report.models import CollectionReport
 from datetime import datetime
 today = datetime.now().date()
+#TODO: make it parameterized
 for company in Company.objects.filter(name__contains="lakme").all() :
     print("Running sync for " + company.name)
     i = Ikea(company.pk)
