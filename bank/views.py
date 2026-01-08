@@ -377,6 +377,9 @@ def settle_cheques(ikea,cheque_numbers,files_dir) -> tuple[pd.DataFrame, list[st
         return pd.DataFrame() , [] , {}
     settle_coll = settle_coll[ settle_coll.apply(lambda row : row["CHEQUE NO"] in cheque_numbers ,axis=1) ]
     settle_coll["STATUS"] = "SETTLED"
+    if len(settle_coll) == 0 :
+        return pd.DataFrame() , [] , {}
+         
     f = BytesIO()
     settle_coll.to_excel(f,index=False)
     f.seek(0)
