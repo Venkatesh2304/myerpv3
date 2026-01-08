@@ -541,20 +541,10 @@ def bank_summary(request):
     companies = request.user.companies.all()
     banks = Bank.objects.filter(companies__in=companies).distinct()
 
-    ikea_totals = {}
-    coll_qs = CollectionReport.objects.filter(date__gte = fromd,date__lte = tod,company__in = companies)
-    for company in companies : 
-        ikea = Ikea(company.pk)
-        # CollectionReport.update_db(ikea,company,DateRangeArgs(fromd = fromd,tod = tod))
-        totals = list(coll_qs.filter(company = company).values("mode").annotate(amt = Sum("amt")).values("mode","amt"))
-        ikea_totals[company.pk] = defaultdict(int)
-        for total in totals : 
-            mode = "cheque" if total["mode"] == "neft" else total["mode"]
-            ikea_totals[company.pk][mode] += total["amt"]
-
     bank_totals = {}
     bank_dfs = {}
     bank_qs = BankStatement.objects.filter(bank__in = banks,date__gte = fromd,date__lte = tod)
+    company_wise_bank_chq_numbers = defaultdict(list)
     for bank in banks : 
         bank_total = defaultdict(int)
         df = []
@@ -569,6 +559,7 @@ def bank_summary(request):
                 bills = ",".join([bill.bill for bill in bill_collections])
 
                 if obj.statement_id and obj.company : 
+                   company_wise_bank_chq_numbers[obj.company.pk].append(obj.statement_id)
                    ikea_coll_amt =  sum([ikea_coll.amt for ikea_coll in ikea_collections])
                 if ikea_coll_amt == 0 : 
                    bank_total["not_pushed"] += obj.amt
@@ -592,6 +583,31 @@ def bank_summary(request):
         bank_totals[bank.name] = bank_total
         bank_dfs[bank.name] = pd.DataFrame(df,columns = ["Date","Description","Amount","Type","Notes","Party","Coll Date","Bills",])
 
+
+    ikea_totals = {}
+    ikea_cheque_coll_dfs = {}
+    coll_qs = CollectionReport.objects.filter(date__gte = fromd,date__lte = tod,company__in = companies)
+    for company in companies : 
+        ikea = Ikea(company.pk)
+        #TODO: Remove this comment
+        # CollectionReport.update_db(ikea,company,DateRangeArgs(fromd = fromd,tod = tod))
+        qs = coll_qs.filter(company = company)
+        #Type Totals
+        totals = list(qs.values("mode").annotate(amt = Sum("amt")).values("mode","amt"))
+        ikea_totals[company.pk] = {total["mode"] : total["amt"] for total in totals if total["mode"] not in ["cheque","neft"]}
+        
+        #Cheque subtype totals
+        cheque_qs = qs.filter(mode__in = ["cheque","neft"])
+        df = pd.DataFrame(cheque_qs.values("date","inum","party_name","amt","bank_entry_id"))
+        auto_chq_nos = company_wise_bank_chq_numbers[company.pk]
+        df["type"] = df["bank_entry_id"].apply(lambda x : "auto" if x and (x in auto_chq_nos) else "manual")
+        ikea_cheque_coll_dfs[company.pk] = df
+        auto_chq_total = df[df["type"] == "auto"]["amt"].sum()
+        manual_chq_total = df[df["type"] == "manual"]["amt"].sum()
+        ikea_totals[company.pk]["auto_chq"] = auto_chq_total
+        ikea_totals[company.pk]["manual_chq"] = manual_chq_total
+
+
     totals_to_df = lambda totals : pd.DataFrame([ [entity,type,amt] for entity,subtotals in totals.items() for type,amt in subtotals.items()] , columns = ["Entity","Type","Amount"])
     df_group_entity = lambda df : df.pivot_table(index = "Entity",columns = "Type",values = "Amount",aggfunc = "sum",margins=True,margins_name='Total').reset_index()
     ikea_totals = df_group_entity(totals_to_df(ikea_totals))
@@ -606,5 +622,7 @@ def bank_summary(request):
         addtable(writer = writer , sheet = "Summary" , name = ["IKEA","BANK"]  ,  data = [ikea_totals,bank_totals])  
         for bank_name,df in bank_dfs.items() : 
             df.to_excel(writer, sheet_name=bank_name,index=False)
+        for company,df in ikea_cheque_coll_dfs.items() : 
+            df.to_excel(writer, sheet_name=company,index=False)
 
     return JsonResponse({"status" : "success", "filepath" : get_media_url(fpath)})
