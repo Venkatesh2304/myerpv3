@@ -397,7 +397,8 @@ def settle_cheques(ikea,cheque_numbers,files_dir) -> tuple[pd.DataFrame, list[st
     errors:dict[str,str] = {}
     for _,row in not_settled.iterrows() : 
         errors[str(row["Cheque No"]).split('.')[0]] = row["Error Description"]
-    return cheque_settlement,list(settled["Cheque No"].drop_duplicates().values) ,errors 
+    settled_cheque_numbers = [ str(i).split('.')[0] for i in set(settled["Cheque No"].values) ]
+    return cheque_settlement, settled_cheque_numbers ,errors 
 
 @api_view(["POST"])
 def push_collection(request) :
@@ -443,8 +444,7 @@ def push_collection(request) :
             some_failure = True
             if cheque_number in cheque_settlement_errors : 
                 obj.add_event("cheque_settlement_failed",message = f"Cheque not settled : {cheque_settlement_errors[cheque_number]}",by = user)
-            elif cheque_number in cheque_creation_errors : 
-                print(cheque_number,cheque_creation_errors,cheque_creation_errors[cheque_number],cheque_creation_errors[cheque_number].items())
+            elif len(cheque_creation_errors[cheque_number]) > 0  : 
                 message = "\n".join([ f"{bill_no} : {error}" for bill_no, error in cheque_creation_errors[cheque_number].items() ])
                 obj.add_event("cheque_creation_failed",message = f"Cheque not created :\n {message}",by = user)
             else : 
