@@ -440,7 +440,7 @@ def push_collection(request) :
             if cheque_number in cheque_settlement_errors : 
                 obj.add_event("cheque_settlement_failed",message = f"Cheque not settled : {cheque_settlement_errors[cheque_number]}",by = user)
             elif cheque_number in cheque_creation_errors : 
-                print(cheque_creation_errors[cheque_number].items())
+                print(cheque_number,cheque_creation_errors,cheque_creation_errors[cheque_number],cheque_creation_errors[cheque_number].items())
                 message = "\n".join([ f"{bill_no} : {error}" for bill_no, error in cheque_creation_errors[cheque_number].items() ])
                 obj.add_event("cheque_creation_failed",message = f"Cheque not created :\n {message}",by = user)
             else : 
