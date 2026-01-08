@@ -315,7 +315,7 @@ def cheque_match(request) :
     chqs = [ { "label" : str(chq) , "value" : chq.id } for chq in matches.all() ]
     return JsonResponse(chqs,safe=False)
 
-def create_cheques(ikea,bankstatement_objs: list[BankStatement],files_dir) -> tuple[pd.DataFrame, dict[str,dict[str,str]]]:
+def create_cheques(ikea,bankstatement_objs: list[BankStatement],files_dir) -> tuple[pd.DataFrame, dict[int,dict[str,str]]]:
     coll:pd.DataFrame = ikea.download_manual_collection() # type: ignore
     errors = defaultdict(dict)
     manual_rows = []
@@ -367,10 +367,10 @@ def create_cheques(ikea,bankstatement_objs: list[BankStatement],files_dir) -> tu
     cheque_upload_status.to_excel(f"{files_dir}/cheque_upload_status.xlsx")
     error_coll = cheque_upload_status[cheque_upload_status["Status"] != "Success"]
     for _,row in error_coll.iterrows() : 
-        errors[row["Chq/DD No"]][row["BillNumber"]] = row["Error Description"]
+        errors[ int(row["Chq/DD No"].lstrip('0')) ][row["BillNumber"]] = row["Error Description"]
     return cheque_upload_status,errors
 
-def settle_cheques(ikea,cheque_numbers,files_dir) -> tuple[pd.DataFrame, list[str] ,dict[str,str]] : 
+def settle_cheques(ikea,cheque_numbers,files_dir) -> tuple[pd.DataFrame, list[str] ,dict[int,str]] : 
     """Settle Cheques and returns list of cheque numbers that were successfully settled and errors"""
     settle_coll:pd.DataFrame = ikea.download_settle_cheque() # type: ignore
     if "CHEQUE NO" not in settle_coll.columns : 
@@ -390,9 +390,9 @@ def settle_cheques(ikea,cheque_numbers,files_dir) -> tuple[pd.DataFrame, list[st
 
     settled = cheque_settlement[cheque_settlement["STATUS"] == "SETTLED"]
     not_settled = cheque_settlement[cheque_settlement["STATUS"] != "SETTLED"]
-    errors:dict[str,str] = {}
+    errors:dict[int,str] = {}
     for _,row in not_settled.iterrows() : 
-        errors[row["Cheque No"]] = row["Error Description"]
+        errors[ int(row["Cheque No"].lstrip('0')) ] = row["Error Description"]
     return cheque_settlement,list(settled["Cheque No"].drop_duplicates().values) ,errors 
 
 @api_view(["POST"])
