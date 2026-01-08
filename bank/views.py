@@ -377,7 +377,9 @@ def settle_cheques(ikea,cheque_numbers,files_dir) -> tuple[pd.DataFrame, list[st
     settle_coll:pd.DataFrame = ikea.download_settle_cheque() # type: ignore
     if "CHEQUE NO" not in settle_coll.columns : 
         return pd.DataFrame() , [] , {}
+    print(settle_coll)
     settle_coll = settle_coll[ settle_coll.apply(lambda row : str(row["CHEQUE NO"]) in cheque_numbers ,axis=1) ]
+    print(settle_coll)
     settle_coll["STATUS"] = "SETTLED"
     if len(settle_coll) == 0 :
         return pd.DataFrame() , [] , {}
