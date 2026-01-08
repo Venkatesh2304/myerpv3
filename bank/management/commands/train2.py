@@ -122,6 +122,7 @@ def train_tfidf_logistic(data, print_samples=20):
 if __name__ == "__main__":
     all_data = json.load(open("data.json"))
     for bank_id,data in all_data.items() :
+        print(bank_id,len(data))
         if len(data) < 10 : 
             continue
         data = [ (desc,f"{company}/{party_id}") for (desc,company,party_id) in data ]
