@@ -301,6 +301,7 @@ def auto_match_neft(request) :
     if len(matched_invoices) == 0 :
         return JsonResponse({"error" : "No matching invoices found."},status=500)
     if len(matched_invoices) == 1 :
+        matched_invoices = matched_invoices[0]
         return JsonResponse({"status": "success", "matched_outstanding": 
                                 [{"bill" : inv["inum"],  "party" : party_name, "balance" : inv["balance"], 
                                 "amt" : round(inv["balance"]) } for inv in matched_invoices]})
