@@ -1,4 +1,5 @@
 
+from report.models import EmptyArgs
 from report.models import SalesRegisterReport
 from collections import defaultdict
 from report.models import DateRangeArgs
@@ -500,4 +501,5 @@ def refresh_bank(request) :
     CollectionReport.update_db(ikea,company,DateRangeArgs(
         fromd = datetime.date.today() - datetime.timedelta(days=1),
         tod = datetime.date.today()))
+    OutstandingReport.update_db(ikea,company,EmptyArgs())
     return JsonResponse({"status" : "success"})
