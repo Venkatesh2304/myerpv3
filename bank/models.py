@@ -99,6 +99,9 @@ class BankStatement(models.Model) :
 
     @property
     def all_collection(self) :
+        x = BankCollection.objects.filter(Q(bank_entry_id = self.id) | Q(cheque_entry__bank_entry = self.id))
+        for i in x : 
+            print(i.id,i.amt,i.cheque_entry,i.bank_entry)
         return BankCollection.objects.filter(Q(bank_entry_id = self.id) | Q(cheque_entry__bank_entry = self.id))
 
     @property
