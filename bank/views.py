@@ -349,6 +349,9 @@ def create_cheques(ikea,bankstatement_objs,files_dir) -> tuple[pd.DataFrame, dic
         if len(errors[bank_obj.id]) == 0 : 
             manual_rows += temp_rows
 
+    if len(manual_rows) == 0 : 
+        return pd.DataFrame(), errors 
+        
     #Remove all manual collection entry if a single collection or bill has an error for that bank statement obj
     manual_coll = pd.concat(manual_rows) #type: ignore
     manual_coll["Collection Date"] = datetime.date.today()
@@ -450,7 +453,7 @@ def push_collection(request) :
     with pd.ExcelWriter(open(PUSH_CHEQUE_FILE,"wb+"), engine='xlsxwriter') as writer:
         cheque_upload_status.to_excel(writer,sheet_name="Manual Collection")
         cheque_settlement.to_excel(writer,sheet_name="Cheque Settlement")
-        
+
     return JsonResponse({ "status": "success" if not some_failure else "partial_success" , 
                           "filepath" : f"{files_dir_url}push_cheque_ikea.xlsx" })
 
