@@ -539,6 +539,8 @@ def get_media_url(path):
 def bank_summary(request):
     fromd = datetime.datetime.strptime(request.data.get("fromd"),"%Y-%m-%d").date()
     tod = datetime.datetime.strptime(request.data.get("tod"),"%Y-%m-%d").date()
+    should_download_collection = request.data.get("download_collection")
+
     companies = request.user.companies.all()
     banks = Bank.objects.filter(companies__in=companies).distinct()
 
@@ -586,13 +588,12 @@ def bank_summary(request):
         bank_totals[bank.name] = bank_total
         bank_dfs[bank.name] = pd.DataFrame(df,columns = ["Date","Description","Amount","Type","Notes","Party","Coll Date","Bills",])
 
-
     ikea_totals = {}
     ikea_cheque_coll_dfs = {}
     for company in companies : 
         ikea = Ikea(company.pk)
-        #TODO: Remove this comment
-        # CollectionReport.update_db(ikea,company,DateRangeArgs(fromd = fromd,tod = tod))
+        if should_download_collection :
+            CollectionReport.update_db(ikea,company,DateRangeArgs(fromd = fromd,tod = tod))
         qs = coll_qs.filter(company = company)
         #Type Totals
         totals = list(qs.values("mode").annotate(amt = Sum("amt")).values("mode","amt"))
