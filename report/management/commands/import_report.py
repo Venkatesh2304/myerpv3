@@ -11,7 +11,7 @@ from core.models import Company
 from report.models import CollectionReport
 from datetime import datetime
 today = datetime.now().date()
-for company in Company.objects.all() :
+for company in Company.objects.filter(name__contains="lakme").all() :
     print("Running sync for " + company.name)
     i = Ikea(company.pk)
     CollectionReport.update_db(i,company,DateRangeArgs(fromd=today-relativedelta(months=6),tod=today))
