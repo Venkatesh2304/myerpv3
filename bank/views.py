@@ -74,14 +74,13 @@ def find_neft_match(bankstatement_obj,company_id,party_id):
         for coll in BankCollection.objects.filter(bill = inum).exclude(bank_entry = bankstatement_obj) :
             if coll.company != company_id : continue 
 
-            pushed = None
+            pushed = True
             if coll.bank_entry : 
-                pushed = coll.bank_entry.pushed
-            elif coll.cheque_entry : 
-                bank_entry = getattr(coll.cheque_entry, "bank_entry", None)
-                pushed = bank_entry.pushed if bank_entry else False
-            else : 
-                pass
+               pushed = (coll.bank_entry.pushed_status == "pushed")
+            
+            if coll.cheque_entry : 
+                bank_entry = getattr(coll.cheque_entry,"bank_entry",None)
+                pushed = (bank_entry and bank_entry.pushed_status == "pushed")
 
             if pushed == False : 
                 pending_collection += balance

@@ -49,7 +49,7 @@ class BankCollection(models.Model) :
     def party(self):
         party = SalesRegisterReport.objects.filter(company_id = self.company,inum = self.bill).first()
         return party.party_name if party else None
-
+    
 class Bank(models.Model):
     name = models.CharField(max_length=100)
     type = models.CharField(max_length=10, choices=[('sbi', 'SBI'), ('kvb', 'KVB')], default='sbi')
