@@ -1,4 +1,5 @@
 
+from django.db.models.aggregates import Sum
 from report.models import EmptyArgs
 from report.models import SalesRegisterReport
 from collections import defaultdict
@@ -29,6 +30,7 @@ from django.http import JsonResponse
 from bank.models import Bank, BankStatement
 import re
 import joblib
+from gst.gst import addtable
 
 def clean_text(text):
     text = text.upper()
@@ -111,7 +113,6 @@ def smart_match(request):
     bank_objs_map:dict[int,list[BankStatement]] = defaultdict(list)
     for obj in queryset :
         bank_objs_map[obj.bank_id].append(obj)
-        
     for bank_id, objs in bank_objs_map.items() :
         company_ids = Bank.objects.get(id = bank_id).companies.all().values_list("name",flat=True)
         vectorizer = joblib.load(f"tfidf_vectorizer_{bank_id}.joblib")
@@ -516,7 +517,7 @@ def unpush_collection(request) :
     return JsonResponse({"status" : "success"})
 
 @api_view(["POST"])
-def refresh_bank(request) : 
+def refresh_bank(request): 
     company_id = request.data.get("company")
     company = Company.objects.get(name = company_id)
     ikea = Ikea(company_id)
@@ -524,4 +525,75 @@ def refresh_bank(request) :
         fromd = datetime.date.today() - datetime.timedelta(days=7),
         tod = datetime.date.today()))
     OutstandingReport.update_db(ikea,company,EmptyArgs())
+    return JsonResponse({"status" : "success"})
+
+@api_view(["POST"])
+def bank_summary(request):
+    fromd = datetime.datetime.strptime(request.data.get("fromd"),"%Y-%m-%d").date()
+    tod = datetime.datetime.strptime(request.data.get("tod"),"%Y-%m-%d").date()
+    companies = request.user.companies.all()
+    banks = Bank.objects.filter(companies__in=companies).distinct()
+
+    ikea_totals = {}
+    coll_qs = CollectionReport.objects.filter(date__gte = fromd,date__lte = tod,company__in = companies)
+    for company in companies : 
+        ikea = Ikea(company.pk)
+        # CollectionReport.update_db(ikea,company,DateRangeArgs(fromd = fromd,tod = tod))
+        totals = list(coll_qs.filter(company = company).values("mode").annotate(amt = Sum("amt")).values("mode","amt"))
+        ikea_totals[company.pk] = defaultdict(int)
+        for total in totals : 
+            mode = "cheque" if total["mode"] == "neft" else total["mode"]
+            ikea_totals[company.pk][mode] += total["amt"]
+
+    bank_totals = {}
+    bank_dfs = {}
+    bank_qs = BankStatement.objects.filter(bank__in = banks,date__gte = fromd,date__lte = tod)
+    for bank in banks : 
+        bank_total = defaultdict(int)
+        df = []
+        def create_row(obj,notes = "",party_name="",bills = "",coll_date = "") : 
+            df.append([obj.date,obj.desc,obj.amt,obj.type,notes,party_name,coll_date,bills])
+        for obj in bank_qs.filter(bank = bank) : 
+            if obj.type in ["cheque","neft"] : 
+                ikea_coll_amt = 0
+                ikea_collections = list(coll_qs.filter(bank_entry_id = obj.statement_id,company_id = obj.company.pk))
+                bill_collections = list(obj.all_collection)
+                party_name = bill_collections[0].party
+                bills = ",".join([bill.bill for bill in bill_collections])
+
+                if obj.statement_id and obj.company : 
+                   ikea_coll_amt =  sum([ikea_coll.amt for ikea_coll in ikea_collections])
+                if ikea_coll_amt == 0 : 
+                   bank_total["not_pushed"] += obj.amt
+                   create_row(obj,f"not_pushed",party_name,bills)
+                else :
+                    pending_amt = obj.amt - ikea_coll_amt
+                    bank_total["cheque"] += ikea_coll_amt
+                    notes = ""
+                    if pending_amt > 0 : 
+                        bank_total["cheque_diff"] += pending_amt
+                        notes = f"pushed : {ikea_coll_amt} , diff : {pending_amt}"
+                    coll_date = ikea_collections[0].date
+                    create_row(obj,notes,party_name,bills,coll_date)
+
+            elif obj.type is not None : 
+                bank_total[obj.type] += obj.amt
+                create_row(obj)
+            else : 
+                bank_total["not_saved"] += obj.amt
+                create_row(obj,"not_saved")
+        bank_totals[bank.name] = bank_total
+        bank_dfs[bank.name] = pd.DataFrame(df,columns = ["Date","Description","Amount","Type","Notes","Party","Coll Date","Bills",])
+
+    totals_to_df = lambda totals : pd.DataFrame([ [entity,type,amt] for entity,subtotals in totals.items() for type,amt in subtotals.items()] , columns = ["Entity","Type","Amount"])
+    df_group_entity = lambda df : df.pivot_table(index = "Entity",columns = "Type",values = "Amount",aggfunc = "sum",margins=True,margins_name='Total').reset_index()
+    ikea_totals = df_group_entity(totals_to_df(ikea_totals))
+    bank_totals = df_group_entity(totals_to_df(bank_totals))
+    #TODO: total_comparison = {}
+
+    with pd.ExcelWriter(f"a.xlsx", engine='xlsxwriter') as writer : 
+        addtable(writer = writer , sheet = "Summary" , name = ["IKEA","BANK"]  ,  data = [ikea_totals,bank_totals])  
+        for bank_name,df in bank_dfs.items() : 
+            df.to_excel(writer, sheet_name=bank_name,index=False)
+
     return JsonResponse({"status" : "success"})

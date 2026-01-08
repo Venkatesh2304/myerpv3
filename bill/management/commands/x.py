@@ -22,6 +22,7 @@ from bank.models import ChequeDeposit
 # with open("x.json","w+") as f:
 #     f.write(json.dumps(b))
 i = Billing("lakme_urban")
+i.upi_statement(datetime.date(2026,1,1),datetime.date(2026,8,1)).to_excel("a.xlsx")
 # i.get_user()
 sadf
 
