@@ -50,7 +50,7 @@ class BankStatementViewSet(viewsets.ModelViewSet):
         date = filters.DateFilter(field_name='date', lookup_expr='exact')
         type = filters.CharFilter(field_name='type', lookup_expr='exact')
         bank = filters.CharFilter(field_name='bank', lookup_expr='exact')
-        company = filters.CharFilter(field_name='bank__companies', lookup_expr='exact')
+        company = filters.CharFilter(method='filter_company')
         status = filters.CharFilter(method='filter_status')
         class Meta:
             model = BankStatement
@@ -80,6 +80,9 @@ class BankStatementViewSet(viewsets.ModelViewSet):
                 return queryset.filter(type__isnull = True,date__gte = cutoff_date)
             return queryset
 
+        def filter_company(self, queryset, name, company_id):
+            return queryset.filter(bank__companies=company_id) #.filter(Q(company_id = company_id) | Q(company_id__isnull = True))
+            
     filterset_class = BankFilter
 
 class BankViewSet(viewsets.ModelViewSet):#

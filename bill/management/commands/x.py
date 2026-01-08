@@ -22,6 +22,10 @@ from bank.models import ChequeDeposit
 # with open("x.json","w+") as f:
 #     f.write(json.dumps(b))
 i = Billing("lakme_urban")
+# i.get_user()
+sadf
+
+
 tod = datetime.date.today()
 fromd = tod - datetime.timedelta(days=15)
 i.product_wise_purchase(fromd,tod).to_excel("a.xlsx")

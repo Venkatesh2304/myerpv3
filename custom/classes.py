@@ -66,6 +66,7 @@ class BaseIkea(Session):
         self.headers.update({'accept': 'application/json, text/javascript, */*; q=0.01'})
         self.base_url = self.config["home"]
         retry_count = 1
+        self.user_id = None
         self.login()
         while not self.is_logged_in() : 
             self.login()
@@ -73,11 +74,12 @@ class BaseIkea(Session):
 
     def is_logged_in(self) -> bool:
         try : 
-            res_html = self.get("/rsunify/app/billing/getUserId",timeout=15).text
-            check = "Something went wrong, please try again later" in res_html
+            res = self.get("/rsunify/app/billing/getUserId",timeout=15)
+            check = "Something went wrong, please try again later" in res.text
             if check : 
                 self.logger.error("Login Check : Failed")
                 return False
+            self.user_id = res.json()["userId"]
             self.logger.info("Login Check : Passed")
             return True 
         except StatusCodeError as e :
@@ -171,8 +173,8 @@ class IkeaReports(BaseIkea):
         return pd.read_csv(self.fetch_durl_content(durl))
 
     def collection(self, fromd: datetime.date, tod: datetime.date) -> pd.DataFrame:
-        df = self.fetch_report_dataframe("ikea/collection", r'(":val10":").{10}(",":val11":").{10}(",":val12":".{10}",":val13":").{10}', 
-                        (fromd.strftime("%Y/%m/%d"), tod.strftime("%Y/%m/%d"), tod.strftime("%Y/%m/%d")))
+        df = self.fetch_report_dataframe("ikea/collection", r'(":val10":").{10}(",":val11":").{10}(",":val12":".{10}",":val13":").{10}(.*?":val20":).{2}', 
+                        (fromd.strftime("%Y/%m/%d"), tod.strftime("%Y/%m/%d"), tod.strftime("%Y/%m/%d"),str(self.user_id)))
         return df 
     
     def crnote(self, fromd: datetime.date, tod: datetime.date) -> pd.DataFrame:
