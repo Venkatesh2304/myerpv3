@@ -336,7 +336,7 @@ def create_cheques(ikea,bankstatement_objs: list[BankStatement],files_dir) -> tu
                 errors[cheque_number][bill_no] = "Unassigned collection code"
                 continue
 
-            if row["O/S Amount"] + 0.5 < coll_obj.amt : 
+            if row.iloc[0]["O/S Amount"] + 0.5 < coll_obj.amt : 
                 errors[cheque_number][bill_no] = f"O/S Amount Rs.{row['O/S Amount']} < Collection Amount Rs.{coll_obj.amt}"
                 continue
 
