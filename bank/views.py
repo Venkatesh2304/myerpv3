@@ -499,7 +499,7 @@ def refresh_bank(request) :
     company = Company.objects.get(name = company_id)
     ikea = Ikea(company_id)
     CollectionReport.update_db(ikea,company,DateRangeArgs(
-        fromd = datetime.date.today() - datetime.timedelta(days=1),
+        fromd = datetime.date.today() - datetime.timedelta(days=7),
         tod = datetime.date.today()))
     OutstandingReport.update_db(ikea,company,EmptyArgs())
     return JsonResponse({"status" : "success"})
