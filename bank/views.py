@@ -317,6 +317,19 @@ def cheque_match(request) :
     chqs = [ { "label" : str(chq) , "value" : chq.id } for chq in matches.all() ]
     return JsonResponse(chqs,safe=False)
 
+def bounce_cheques(ikea,cheque_numbers):
+    fromd = datetime.date.today() - datetime.timedelta(days = 7)
+    tod = datetime.date.today()
+    settle_coll:pd.DataFrame = billing.download_settle_cheque(fromd = fromd, tod = tod) # type: ignore
+    if "CHEQUE NO" not in settle_coll.columns : 
+        return 
+    settle_coll = settle_coll[ settle_coll.apply(lambda row : str(row["CHEQUE NO"]) in cheque_numbers ,axis=1) ]
+    settle_coll["STATUS"] = "BOUNCED"
+    with BytesIO() as f : 
+        settle_coll.to_excel(f,index=False)
+        f.seek(0)
+        res = ikea.upload_settle_cheque(f)
+
 def create_cheques(ikea,bankstatement_objs: list[BankStatement],files_dir) -> tuple[pd.DataFrame, dict[str,dict[str,str]]]:
     coll:pd.DataFrame = ikea.download_manual_collection() # type: ignore
     errors = defaultdict(dict)
@@ -424,19 +437,22 @@ def push_collection(request) :
     files_dir_url = f"{settings.MEDIA_URL}bank/{company_id}/"
     os.makedirs(files_dir, exist_ok=True)
 
-    
+    cheque_numbers =  [ obj.statement_id for obj in bank_entries if obj.statement_id]
+
+    #Bounce cheque if already in pending state 
+    bounce_cheques(ikea,cheque_numbers)
+
     #Create cheques using manual collection upload
     cheque_upload_status, cheque_creation_errors = create_cheques(ikea,bank_entries,files_dir)
 
     #We also push the pending cheque if the statement id is in the bank queryset which user selected
-    cheque_numbers_to_settle =  [ obj.statement_id for obj in bank_entries if obj.statement_id]
     #Note : cheque_settlement_errors is the errors after uplaoding settlement ,
     #so if the cheque number is not present in the settlement it will not be in the errors
-    cheque_settlement, settled_cheque_numbers ,cheque_settlement_errors = settle_cheques(ikea,cheque_numbers_to_settle,files_dir)
+    cheque_settlement, settled_cheque_numbers ,cheque_settlement_errors = settle_cheques(ikea,cheque_numbers,files_dir)
 
     #Write down the event with success or errors 
     some_failure = False
-    for cheque_number in cheque_numbers_to_settle : 
+    for cheque_number in cheque_numbers : 
         obj = BankStatement.objects.get(statement_id = cheque_number,company_id = company_id)
         if cheque_number in settled_cheque_numbers : 
             obj.add_event("pushed",by = user)
