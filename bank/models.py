@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Literal
 from report.models import CollectionReport
 from functools import cached_property
@@ -67,9 +68,13 @@ class BankStatement(models.Model) :
     type = models.TextField(max_length=15,choices=(("cheque","Cheque"),("neft","NEFT"),("upi","UPI (IKEA)"),("cash_deposit","Cash Deposit"),("self_transfer","Self Transfer"),("others","Others")),null=True)
     cheque_entry = models.OneToOneField("bank.ChequeDeposit", on_delete=models.DO_NOTHING, null=True, blank=True, related_name='bank_entry')
     cheque_status = models.TextField(choices=(("passed","Passed"),("bounced","Bounced")),default="passed",db_default="passed",null=True,blank=True)
+    events = models.JSONField(default=list)
     class Meta : 
         unique_together = ('date','idx','bank')
         verbose_name_plural = 'Bank'
+
+    def add_event(self,type,message = "",by = None):
+        self.events.append({"type" : type,"message" : message,"by" : by,"time" : datetime.datetime.now()})
 
     @property
     def status(self) : 
@@ -79,7 +84,7 @@ class BankStatement(models.Model) :
                 return "pushed"
             return self.pushed_status
         else : 
-             return "pushed"
+            return "pushed"
 
     @property
     def pushed_status(self)-> Literal["not_pushed","partially_pushed","pushed"] :

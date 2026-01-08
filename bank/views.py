@@ -129,6 +129,7 @@ def smart_match(request):
                     obj.type = "neft"
                     obj.company_id = company_id
                     BankCollection.objects.filter(bank_entry_id = obj.pk).delete()
+                    obj.add_event("smart_matched")
                     obj.save()
                     for inv in matched_invoices[0] : 
                         BankCollection.objects.create(bank_entry = obj, bill = inv["inum"],
@@ -138,6 +139,7 @@ def smart_match(request):
                 obj.cheque_entry = chq_matches[0]
                 obj.cheque_status = "passed"
                 obj.company_id = chq_matches[0].company_id
+                obj.add_event("smart_matched")
                 obj.save()
             else : 
                 continue 
@@ -238,16 +240,18 @@ def bank_statement_upload(request):
         
         bank_statements = []
         for _, row in df.iterrows():
-            bank_statements.append(BankStatement(
+            obj = BankStatement(
                 date=row['date'],
                 idx=row['idx'],
                 ref=row['ref'],
                 desc=row['"desc"'],
                 amt=row['amt'],
                 bank_id=row['bank'],
-            ))
+            )
+            obj.add_event("uploaded_from_statement",by = request.user.pk)
+            bank_statements.append(obj)
         
-        BankStatement.objects.bulk_create(bank_statements, ignore_conflicts=True)
+        bank_statements = BankStatement.objects.bulk_create(bank_statements, ignore_conflicts=True)
         return JsonResponse({"status" : "success"})
     except Exception as e:
         return JsonResponse({"error": str(e)}, status=500)
@@ -257,7 +261,8 @@ def auto_match_upi(request):
     company_id = request.data.get("company")
     banks = Bank.objects.filter(companies__name = company_id)
     qs = BankStatement.objects.filter(date__gte = datetime.date.today() - datetime.timedelta(days=15),bank__in = banks) 
-    qs.filter(Q(desc__icontains="cash") & Q(desc__icontains="deposit")).update(type="cash_deposit")
+    # TODO: Is the below safe ?
+    # qs.filter(Q(desc__icontains="cash") & Q(desc__icontains="deposit")).update(type="cash_deposit")
     qs = qs.filter(Q(type__isnull=True)|Q(type="upi"))
     fromd = qs.aggregate(Min("date"))["date__min"]
     tod = qs.aggregate(Max("date"))["date__max"]
@@ -268,6 +273,7 @@ def auto_match_upi(request):
         for _,row in upi_statement.iterrows() : 
             if (row["FOUND"] == "No") and (row["PAYMENT ID"] in bank_obj.desc) : 
                 bank_obj.type = "upi"
+                bank_obj.add_event("upi_auto_matched")
                 bank_obj.save()
                 upi_statement.loc[_,"FOUND"] = "Yes"
                 
@@ -309,67 +315,62 @@ def cheque_match(request) :
     chqs = [ { "label" : str(chq) , "value" : chq.id } for chq in matches.all() ]
     return JsonResponse(chqs,safe=False)
 
-@api_view(["POST"])
-def push_collection(request) :
-    data = request.data
-    company_id = data.get("company")
-    company = Company.objects.get(name = company_id)
-    ids = list(data.get("ids"))
-
-    bank_entries = [ obj for obj in BankStatement.objects.filter(
-                              id__in = ids, type__in = ["cheque","neft"], company_id = company_id
-                            ).exclude(cheque_status = "bounced") if not obj.pushed_status == "not_pushed"] #Dont allow partial
-    unassigned_bank_entries = [ obj for obj in bank_entries if not obj.statement_id ]
-
-    already_assigned_ids = BankStatement.objects.filter(company_id = company_id).values_list("statement_id",flat=True).distinct()
-    free_ids = list(set(range(100000,999999)) - set([int(i) for i in already_assigned_ids if i]))
-    for bank_entry,free_id in zip(unassigned_bank_entries,free_ids) : 
-        bank_entry.statement_id = str(free_id)
-        bank_entry.save()
-
-    bank_entry_ids = [ obj.id for obj in bank_entries ]
-    cheque_entry_ids = BankStatement.objects.filter(id__in = bank_entry_ids).values_list("cheque_entry_id",flat=True)
-    queryset = BankCollection.objects.filter(Q(bank_entry_id__in = bank_entry_ids) | Q(cheque_entry_id__in = cheque_entry_ids))
-
-    ikea = Ikea(company_id)
+def create_cheques(ikea,bankstatement_objs,files_dir) -> tuple[pd.DataFrame, dict[str,dict[str,str]]]:
     coll:pd.DataFrame = ikea.download_manual_collection() # type: ignore
-    manual_coll = []
-    bill_chq_pairs = []
-    for coll_obj in queryset.all():
-        if coll_obj.bank_entry is None and coll_obj.cheque_entry is None : 
-            raise Exception("No bank entry or cheque entry found for collection object.")
-        bank_obj = coll_obj.bank_entry or coll_obj.cheque_entry.bank_entry
-        bill_no  = coll_obj.bill
-        row = coll[coll["Bill No"] == bill_no].copy()
-        row["Mode"] = "Cheque/DD"
-        row["Retailer Bank Name"] =  coll_obj.cheque_entry.bank.upper() if coll_obj.cheque_entry else "KVB 650"
-        row["Chq/DD Date"]  = bank_obj.date.strftime("%d/%m/%Y")
-        chq_no = bank_obj.statement_id
-        row["Chq/DD No"] = chq_no
-        row["Amount"] = coll_obj.amt
-        manual_coll.append(row)
-        bill_chq_pairs.append((chq_no,bill_no))
+    errors = defaultdict(dict)
+    manual_rows = []
+    for bank_obj in bankstatement_objs:
+        temp_rows = []
+        for coll_obj in bankstatement_objs.all_collection:
 
-    manual_coll = pd.concat(manual_coll)
+            bill_no  = coll_obj.bill
+            row = coll[coll["Bill No"] == bill_no].copy()
+            if len(row) == 0 : 
+                errors[bank_obj.id][bill_no] = "Bill not found in manual collection"
+                continue
+
+            row = row.iloc[0]
+            if row["Collection Code"].lower() == "unassigned" : 
+                errors[bank_obj.id][bill_no] = "Unassigned collection code"
+                continue
+
+            if row["O/S Amount"] + 0.5 > coll_obj.amt : 
+                errors[bank_obj.id][bill_no] = f"O/S Amount {row['O/S Amount']} > Collection Amount {coll_obj.amt}"
+                continue
+
+            row["Mode"] = "Cheque/DD"
+            row["Retailer Bank Name"] = "KVB 650"
+            row["Chq/DD Date"]  = bank_obj.date.strftime("%d/%m/%Y")
+            chq_no = bank_obj.statement_id
+            row["Chq/DD No"] = chq_no
+            row["Amount"] = coll_obj.amt
+            temp_rows.append(row)
+
+        if len(errors[bank_obj.id]) == 0 : 
+            manual_rows += temp_rows
+
+    #Remove all manual collection entry if a single collection or bill has an error for that bank statement obj
+    manual_coll = pd.concat(manual_rows) #type: ignore
     manual_coll["Collection Date"] = datetime.date.today()
+    manual_coll.to_excel(f"{files_dir}/manual_collection.xlsx")
+    
     f = BytesIO()
     manual_coll.to_excel(f,index=False)
     f.seek(0)
-    files_dir = os.path.join(settings.MEDIA_ROOT, "bank", company_id)
-    files_dir_url = f"{settings.MEDIA_URL}bank/{company_id}/"
-    os.makedirs(files_dir, exist_ok=True)
-    manual_coll.to_excel(f"{files_dir}/manual_collection.xlsx")
     res = ikea.upload_manual_collection(f)
     cheque_upload_status = pd.read_excel(ikea.fetch_durl_content(res["ul"]))
     cheque_upload_status.to_excel(f"{files_dir}/cheque_upload_status.xlsx")
-    sucessfull_coll = cheque_upload_status[cheque_upload_status["Status"] == "Success"]
+    error_coll = cheque_upload_status[cheque_upload_status["Status"] != "Success"]
+    for _,row in error_coll.iterrows() : 
+        errors[row["Chq/DD No"]][row["BillNumber"]] = row["Error Description"]
+    return cheque_upload_status,errors
 
+def settle_cheques(ikea,cheque_numbers,files_dir) -> tuple[pd.DataFrame, list[str] ,dict[str,str]] : 
+    """Settle Cheques and returns list of cheque numbers that were successfully settled and errors"""
     settle_coll:pd.DataFrame = ikea.download_settle_cheque() # type: ignore
-    SETTLE_CHEQUE_FILE = os.path.join(files_dir,"settle_cheque.xlsx")
-    settle_coll.to_excel(SETTLE_CHEQUE_FILE)
     if "CHEQUE NO" not in settle_coll.columns : 
-        return JsonResponse({"error" : "No Cheques to Settle", "filepath" : f"{files_dir_url}settle_cheque.xlsx"},status=500)
-    settle_coll = settle_coll[ settle_coll.apply(lambda row : (str(row["CHEQUE NO"]),row["BILL NO"]) in bill_chq_pairs ,axis=1) ]
+        return pd.DataFrame() , [] , {}
+    settle_coll = settle_coll[ settle_coll.apply(lambda row : row["CHEQUE NO"] in cheque_numbers ,axis=1) ]
     settle_coll["STATUS"] = "SETTLED"
     f = BytesIO()
     settle_coll.to_excel(f,index=False)
@@ -379,6 +380,62 @@ def push_collection(request) :
     cheque_settlement = pd.read_excel(bytes_io)
     cheque_settlement.to_excel(f"{files_dir}/cheque_settlement.xlsx")
 
+    settled = cheque_settlement[cheque_settlement["STATUS"] == "SETTLED"]
+    not_settled = cheque_settlement[cheque_settlement["STATUS"] != "SETTLED"]
+    errors:dict[str,str] = {}
+    for _,row in not_settled.iterrows() : 
+        errors[row["Cheque No"]] = row["Error Description"]
+    return cheque_settlement,list(settled["Cheque No"].drop_duplicates().values) ,errors 
+
+@api_view(["POST"])
+def push_collection(request) :
+    data = request.data
+    company_id = data.get("company")
+    company = Company.objects.get(name = company_id)
+    user = request.user.pk
+    ids = list(data.get("ids"))
+
+    bank_entries = [ obj for obj in BankStatement.objects.filter(
+                              id__in = ids, type__in = ["cheque","neft"], company_id = company_id
+                            ).exclude(cheque_status = "bounced") if not obj.pushed_status == "not_pushed"] #Dont allow partial
+    unassigned_bank_entries = [ obj for obj in bank_entries if not obj.statement_id ]
+    already_assigned_ids = BankStatement.objects.filter(company_id = company_id).values_list("statement_id",flat=True).distinct()
+    free_ids = list(set(range(100000,999999)) - set([int(i) for i in already_assigned_ids if i]))
+    for bank_entry,free_id in zip(unassigned_bank_entries,free_ids) : 
+        bank_entry.statement_id = str(free_id)
+        bank_entry.save()
+    
+    ikea = Ikea(company_id)
+    files_dir = os.path.join(settings.MEDIA_ROOT, "bank", company_id)
+    files_dir_url = f"{settings.MEDIA_URL}bank/{company_id}/"
+    os.makedirs(files_dir, exist_ok=True)
+
+    #Create cheques using manual collection upload
+    cheque_upload_status, cheque_creation_errors = create_cheques(ikea,bank_entries,files_dir)
+
+    #We also push the pending cheque if the statement id is in the bank queryset which user selected
+    cheque_numbers_to_settle =  [ obj.statement_id for obj in bank_entries if obj.statement_id]
+    #Note : cheque_settlement_errors is the errors after uplaoding settlement ,
+    #so if the cheque number is not present in the settlement it will not be in the errors
+    cheque_settlement, settled_cheque_numbers ,cheque_settlement_errors = settle_cheques(ikea,cheque_numbers_to_settle,files_dir)
+
+    #Write down the event with success or errors 
+    some_failure = False
+    for cheque_number in cheque_numbers_to_settle : 
+        obj = BankStatement.objects.get(statement_id = cheque_number,company_id = company_id)
+        if cheque_number in settled_cheque_numbers : 
+            obj.add_event("pushed",by = user)
+        else :
+            some_failure = True
+            if cheque_number in cheque_settlement_errors : 
+                obj.add_event("cheque_settlement_failed",message = f"Cheque not settled : {cheque_settlement_errors[cheque_number]}",by = user)
+            elif cheque_number in cheque_creation_errors : 
+                message = "\n".join([ f"{bill_no} : {error}" for bill_no, error in cheque_creation_errors[cheque_number].items() ])
+                obj.add_event("cheque_creation_failed",message = f"Cheque not created :\n {message}",by = user)
+            else : 
+                obj.add_event("pushed_failed",message = "UnKnown Reason",by = user)
+        obj.save()
+        
     #TODO: Do we need this ?
     # for _,row in sucessfull_coll.iterrows() : 
     #     chq_no = row["Chq/DD No"]
@@ -387,15 +444,15 @@ def push_collection(request) :
     #     BankCollection.objects.filter(Q(bank_entry = bank_entry) | Q(cheque_entry__bank_entry = bank_entry)).filter(
     #                                             bill = bill_no).update(pushed = True)
 
-    CollectionReport.update_db(ikea,company,DateRangeArgs(
-        fromd = datetime.date.today() - datetime.timedelta(days=1),
-        tod = datetime.date.today()))
+    CollectionReport.update_db(ikea,company,DateRangeArgs(fromd = datetime.date.today() , tod = datetime.date.today()))
 
     PUSH_CHEQUE_FILE = os.path.join(files_dir,"push_cheque_ikea.xlsx")
     with pd.ExcelWriter(open(PUSH_CHEQUE_FILE,"wb+"), engine='xlsxwriter') as writer:
         cheque_upload_status.to_excel(writer,sheet_name="Manual Collection")
         cheque_settlement.to_excel(writer,sheet_name="Cheque Settlement")
-    return JsonResponse({ "filepath" : f"{files_dir_url}push_cheque_ikea.xlsx" })
+        
+    return JsonResponse({ "status": "success" if not some_failure else "partial_success" , 
+                          "filepath" : f"{files_dir_url}push_cheque_ikea.xlsx" })
 
 @api_view(["POST"])
 def unpush_collection(request) : 
@@ -421,7 +478,6 @@ def unpush_collection(request) :
 
         CollectionReport.update_db(billing,obj.company,DateRangeArgs(fromd = fromd ,tod = tod))
     return JsonResponse({"status" : "success"})
-
 
 @api_view(["POST"])
 def refresh_bank(request) : 
