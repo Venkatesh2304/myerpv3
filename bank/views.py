@@ -600,10 +600,11 @@ def bank_summary(request):
         
         #Cheque subtype totals
         cheque_qs = qs.filter(mode__in = ["cheque","neft"])
-        df = pd.DataFrame(cheque_qs.values("date","inum","party_name","amt","bank_entry_id"))
+        df = pd.DataFrame(cheque_qs.values("date","inum","party_name","amt","bank_entry_id").order_by("date","party_name"))
         auto_chq_nos = company_wise_bank_chq_numbers[company.pk]
         df["type"] = df["bank_entry_id"].apply(lambda x : "auto" if x and (x in auto_chq_nos) else "manual")
         ikea_cheque_coll_dfs[company.pk] = df
+        df["amt"] = df["amt"].astype(int)
         auto_chq_total = df[df["type"] == "auto"]["amt"].sum()
         manual_chq_total = df[df["type"] == "manual"]["amt"].sum()
         ikea_totals[company.pk]["auto_chq"] = auto_chq_total
@@ -617,8 +618,8 @@ def bank_summary(request):
                 [col for col in df.columns if col not in order]
     )
 
-    ikea_totals = reorder_columns(df_group_entity(totals_to_df(ikea_totals)),["auto_chq","upi","cash","manual_chq"])
-    bank_totals = reorder_columns(df_group_entity(totals_to_df(bank_totals)),["cheque","upi"])
+    ikea_totals = reorder_columns(df_group_entity(totals_to_df(ikea_totals)),["Entity","auto_chq","upi","cash","manual_chq"])
+    bank_totals = reorder_columns(df_group_entity(totals_to_df(bank_totals)),["Entity","cheque","upi","cash_deposit"])
     #TODO: total_comparison = {}
 
     files_dir = os.path.join(settings.MEDIA_ROOT, "bank", request.user.pk)
