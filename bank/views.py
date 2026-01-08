@@ -478,6 +478,7 @@ def push_collection(request) :
     #                                             bill = bill_no).update(pushed = True)
 
     CollectionReport.update_db(ikea,company,DateRangeArgs(fromd = datetime.date.today() , tod = datetime.date.today()))
+    OutstandingReport.update_db(ikea,company,EmptyArgs())
 
     PUSH_CHEQUE_FILE = os.path.join(files_dir,"push_cheque_ikea.xlsx")
     with pd.ExcelWriter(open(PUSH_CHEQUE_FILE,"wb+"), engine='xlsxwriter') as writer:
@@ -512,6 +513,7 @@ def unpush_collection(request) :
             obj.add_event("unpushed",by = request.user.pk)
             obj.save()
         CollectionReport.update_db(ikea,obj.company,DateRangeArgs(fromd = fromd ,tod = tod))
+        OutstandingReport.update_db(ikea,obj.company,EmptyArgs())
     return JsonResponse({"status" : "success"})
 
 @api_view(["POST"])

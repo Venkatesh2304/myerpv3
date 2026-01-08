@@ -85,7 +85,7 @@ class BankStatement(models.Model) :
                 return "pushed"
             return self.pushed_status
         else : 
-            return "pushed"
+            return "not_applicable"
 
     @property
     def pushed_status(self)-> Literal["not_pushed","partially_pushed","pushed"] :
