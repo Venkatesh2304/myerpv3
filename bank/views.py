@@ -320,7 +320,7 @@ def cheque_match(request) :
 def bounce_cheques(ikea,cheque_numbers):
     fromd = datetime.date.today() - datetime.timedelta(days = 7)
     tod = datetime.date.today()
-    settle_coll:pd.DataFrame = billing.download_settle_cheque(fromd = fromd, tod = tod) # type: ignore
+    settle_coll:pd.DataFrame = ikea.download_settle_cheque(fromd = fromd, tod = tod) # type: ignore
     if "CHEQUE NO" not in settle_coll.columns : 
         return 
     settle_coll = settle_coll[ settle_coll.apply(lambda row : str(row["CHEQUE NO"]) in cheque_numbers ,axis=1) ]
@@ -492,7 +492,7 @@ def unpush_collection(request) :
     obj = BankStatement.objects.get(id = bankstatement_id)
     if obj.statement_id is None : return JsonResponse({"error" : "Bank Statement is not pushed & has null statement_id field"}, status = 500)
     if obj.company is None : return JsonResponse({"error" : "Bank Statement is not associated with any company"}, status = 500)
-    billing = Ikea(obj.company.pk)
+    ikea = Ikea(obj.company.pk)
     qs = obj.all_collection
     if qs.count() : 
         bill_chq_pairs = [ (obj.statement_id,bank_coll.bill) for bank_coll in qs.all() ]
@@ -500,16 +500,16 @@ def unpush_collection(request) :
         fromd,tod = dates["fromd"],dates["tod"]
         if fromd is None or tod is None : return JsonResponse({"error" : "No Ikea Collection Found for the statement id"}, status = 500)
 
-        settle_coll:pd.DataFrame = billing.download_settle_cheque("ALL",fromd,tod) # type: ignore
+        settle_coll:pd.DataFrame = ikea.download_settle_cheque("ALL",fromd,tod) # type: ignore
         settle_coll = settle_coll[ settle_coll.apply(lambda row : (str(row["CHEQUE NO"]),row["BILL NO"]) in bill_chq_pairs ,axis=1) ]
         settle_coll["STATUS"] = "BOUNCED"
         with BytesIO() as f : 
             settle_coll.to_excel(f,index=False)
             f.seek(0)
-            res = billing.upload_settle_cheque(f)
+            res = ikea.upload_settle_cheque(f)
             obj.add_event("unpushed",by = request.user.pk)
             obj.save()
-        CollectionReport.update_db(billing,obj.company,DateRangeArgs(fromd = fromd ,tod = tod))
+        CollectionReport.update_db(ikea,obj.company,DateRangeArgs(fromd = fromd ,tod = tod))
     return JsonResponse({"status" : "success"})
 
 @api_view(["POST"])
