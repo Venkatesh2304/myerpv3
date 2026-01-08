@@ -8,6 +8,7 @@ from report.models import DateRangeArgs
 from report.models import CollectionReport
 from django.conf import settings
 from io import BytesIO
+import pandas as pd
 from bill.models import Billing
 from bank.models import BankCollection
 from core.models import Company
@@ -611,8 +612,13 @@ def bank_summary(request):
 
     totals_to_df = lambda totals : pd.DataFrame([ [entity,type,amt] for entity,subtotals in totals.items() for type,amt in subtotals.items()] , columns = ["Entity","Type","Amount"])
     df_group_entity = lambda df : df.pivot_table(index = "Entity",columns = "Type",values = "Amount",aggfunc = "sum",margins=True,margins_name='Total').reset_index()
-    ikea_totals = df_group_entity(totals_to_df(ikea_totals))
-    bank_totals = df_group_entity(totals_to_df(bank_totals))
+    reorder_columns = lambda df, order: df.reindex(
+        columns=[col for col in order if col in df.columns] + 
+                [col for col in df.columns if col not in order]
+    )
+
+    ikea_totals = reorder_columns(df_group_entity(totals_to_df(ikea_totals)),["auto_chq","upi","cash","manual_chq"])
+    bank_totals = reorder_columns(df_group_entity(totals_to_df(bank_totals)),["cheque","upi"])
     #TODO: total_comparison = {}
 
     files_dir = os.path.join(settings.MEDIA_ROOT, "bank", request.user.pk)
