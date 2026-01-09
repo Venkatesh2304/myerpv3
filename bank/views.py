@@ -263,7 +263,7 @@ def bank_statement_upload(request):
         bank_statements = BankStatement.objects.bulk_create(bank_statements, ignore_conflicts=True)
         bank_qs = BankStatement.objects.filter(id__in = [obj.id for obj in bank_statements])
         for company in bank.companies.all() :
-            auto_match_upi(company.id,bank_qs)
+            auto_match_upi(company.pk,bank_qs)
 
         smart_match(bank_qs.filter(type__isnull=True))
         stats = bank_qs.values("type").annotate(count=Count("amt"), total=Sum("amt")).order_by("-count").values("type","count","amt")
