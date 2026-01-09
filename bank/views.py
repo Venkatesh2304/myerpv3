@@ -261,12 +261,14 @@ def bank_statement_upload(request):
             bank_statements.append(obj)
         
         bank_statements = BankStatement.objects.bulk_create(bank_statements, ignore_conflicts=True)
-        bank_qs = BankStatement.objects.filter(id__in = [obj.id for obj in bank_statements])
+        bank_statement_ids = [ BankStatement.objects.get(bank=obj.bank,idx=obj.idx,date=obj.date).pk 
+                                        for obj in bank_statements ]
+        bank_qs = BankStatement.objects.filter(id__in = bank_statement_ids)
         for company in bank.companies.all() :
             auto_match_upi(company.pk,bank_qs)
 
         smart_match(bank_qs.filter(type__isnull=True))
-        stats = bank_qs.values("type").annotate(count=Count("amt"), total=Sum("amt")).order_by("-count").values("type","count","amt")
+        stats = list(bank_qs.values("type").annotate(count=Count("amt"), total=Sum("amt")).order_by("-count"))
         return JsonResponse({"status" : "success" , "stats" : stats})
 
     except Exception as e:
@@ -276,6 +278,8 @@ def auto_match_upi(company_id,bank_qs):
     # TODO: Is the below safe ?
     # qs.filter(Q(desc__icontains="cash") & Q(desc__icontains="deposit")).update(type="cash_deposit")
     qs = bank_qs.filter(Q(type__isnull=True)|Q(type="upi"))
+    if not qs.exists() :
+        return JsonResponse({"error" : "No UPI transactions to match"},status=500)
     fromd = qs.aggregate(Min("date"))["date__min"]
     tod = qs.aggregate(Max("date"))["date__max"]
     upi_statement:pd.DataFrame = Ikea(company_id).upi_statement(fromd - datetime.timedelta(days = 3),tod)
