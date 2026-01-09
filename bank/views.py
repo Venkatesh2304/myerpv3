@@ -275,9 +275,9 @@ def bank_statement_upload(request):
         return JsonResponse({"error": str(e)}, status=500)
 
 def auto_match_upi(company_id,bank_qs):
-    # TODO: Is the below safe ?
-    # qs.filter(Q(desc__icontains="cash") & Q(desc__icontains="deposit")).update(type="cash_deposit")
     qs = bank_qs.filter(Q(type__isnull=True)|Q(type="upi"))
+    # TODO: Is the below safe ?
+    qs.filter(Q(desc__icontains="cash") & Q(desc__icontains="deposit")).update(type="cash_deposit")
     if not qs.exists() :
         return JsonResponse({"error" : "No UPI transactions to match"},status=500)
     fromd = qs.aggregate(Min("date"))["date__min"]
