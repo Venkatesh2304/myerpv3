@@ -5,14 +5,14 @@ from bank.models import BankStatement
 import pandas as pd
 from bank.models import ChequeDeposit
 
-company = "lakme_urban"
+company = "lakme_rural"
 # BankCollection.objects.all().delete()
 # BankStatement.objects.filter(bank__name = "SBI LAKME",type__isnull = True).all().delete()
 # ChequeDeposit.objects.filter(company_id = company).all().delete()
 
-cd = pd.read_csv("chequedeposit.csv")
-bc = pd.read_csv("bankcollection.csv")
-bs = pd.read_csv("bankstatement.csv")
+cd = pd.read_csv("chequedeposit_rural.csv")
+bc = pd.read_csv("bankcollection_rural.csv")
+bs = pd.read_csv("bankstatement_rural.csv")
 
 bank_name_to_id = {}
 for obj in Bank.objects.all() : 
@@ -39,7 +39,7 @@ with transaction.atomic() :
     bs["cheque_status"] = bs["cheque_status"].fillna("passed")
     bs["type"] = bs["type"].fillna("")
     for _,row in bs.iterrows() : 
-        if not row["type"]  : continue 
+        # if not row["type"]  : continue 
         obj,created = BankStatement.objects.update_or_create(
             bank_id = bank_name_to_id[row["bank"]],
             date = row["date"],
