@@ -3,9 +3,6 @@ import psutil
 import requests
 import pandas
 import numpy
-
-
-
 from core.models import Company
 from report.models import BillAgeingReport
 from report.models import DateRangeArgs

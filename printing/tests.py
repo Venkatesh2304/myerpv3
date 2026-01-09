@@ -9,6 +9,8 @@ import os
 from django.conf import settings
 from report.models import SalesRegisterReport, DateRangeArgs
 import datetime
+from core.utils import get_media_url
+
 
 class PrintingTestMixin:
     def setUp(self):
@@ -103,7 +105,8 @@ class BillPrintingTest(PrintingTestMixin, TransactionTestCase):
         if response.status_code != 200:
             print(f"Test failed with status {response.status_code}: {response.content}")
         
-        filepath = f'/media/bills/{self.company.pk}/bill.pdf'
+        final_pdf_path = os.path.join(settings.MEDIA_ROOT, "bills", str(self.company.pk), "bill.pdf")
+        filepath = get_media_url(final_pdf_path)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json(), {'status': 'success', 'error': '', 'filepath': filepath})
         verify_and_move("first_copy")

@@ -1,4 +1,6 @@
 
+from django.db.models.aggregates import Count
+import datetime
 from urllib.parse import urljoin
 from django.db.models.aggregates import Sum
 from report.models import EmptyArgs
@@ -33,6 +35,8 @@ from bank.models import Bank, BankStatement
 import re
 import joblib
 from gst.gst import addtable
+from core.utils import get_media_url
+
 
 def clean_text(text):
     text = text.upper()
@@ -95,8 +99,8 @@ def find_neft_match(bankstatement_obj,company_id,party_id):
     #Try all combination of outstandings whre each row has keys inum and balance.
     #allow if the difference is lesss than allowed_difference with amt
 
-    # if len(outstandings) > 20 :
-    #     return JsonResponse({ "error" : "Too many outstandings to match." },status=500)
+    if len(outstandings) > 20 :
+        return []
 
     pending_outstandings = pending_outstandings[:15]
     matched_invoices = []
@@ -108,10 +112,7 @@ def find_neft_match(bankstatement_obj,company_id,party_id):
                 matched_invoices.append([{"inum": item[0], "balance": item[1]} for item in combo])
     return matched_invoices
     
-@api_view(["POST"])
-def smart_match(request):
-    ids = request.data.get("ids")
-    queryset = BankStatement.objects.filter(id__in = ids)
+def smart_match(queryset):
     bank_objs_map:dict[int,list[BankStatement]] = defaultdict(list)
     for obj in queryset :
         bank_objs_map[obj.bank_id].append(obj)
@@ -146,6 +147,12 @@ def smart_match(request):
                 obj.save()
             else : 
                 continue 
+    
+@api_view(["POST"])
+def smart_match_view(request):
+    ids = request.data.get("ids")
+    queryset = BankStatement.objects.filter(id__in = ids)
+    smart_match(queryset)
     return JsonResponse({"success":True})
 
 @api_view(["POST"]) 
@@ -225,7 +232,6 @@ def bank_statement_upload(request):
         except Bank.DoesNotExist:
             return JsonResponse({"error": f"Bank account number {acc_no} not found in system. Please add it to a Bank record."}, status=500)
 
-        
         # Common processing
         df["idx"] = df.groupby(df["date"].dt.date).cumcount() + 1 
         df['"desc"'] = df["desc"].copy()
@@ -255,18 +261,21 @@ def bank_statement_upload(request):
             bank_statements.append(obj)
         
         bank_statements = BankStatement.objects.bulk_create(bank_statements, ignore_conflicts=True)
-        return JsonResponse({"status" : "success"})
+        bank_qs = BankStatement.objects.filter(id__in = [obj.id for obj in bank_statements])
+        for company in bank.companies.all() :
+            auto_match_upi(company.id,bank_qs)
+
+        smart_match(bank_qs.filter(type__isnull=True))
+        stats = bank_qs.values("type").annotate(count=Count("amt"), total=Sum("amt")).order_by("-count").values("type","count","amt")
+        return JsonResponse({"status" : "success" , "stats" : stats})
+
     except Exception as e:
         return JsonResponse({"error": str(e)}, status=500)
 
-@api_view(["POST"])
-def auto_match_upi(request):
-    company_id = request.data.get("company")
-    banks = Bank.objects.filter(companies__name = company_id)
-    qs = BankStatement.objects.filter(date__gte = datetime.date.today() - datetime.timedelta(days=15),bank__in = banks) 
+def auto_match_upi(company_id,bank_qs):
     # TODO: Is the below safe ?
     # qs.filter(Q(desc__icontains="cash") & Q(desc__icontains="deposit")).update(type="cash_deposit")
-    qs = qs.filter(Q(type__isnull=True)|Q(type="upi"))
+    qs = bank_qs.filter(Q(type__isnull=True)|Q(type="upi"))
     fromd = qs.aggregate(Min("date"))["date__min"]
     tod = qs.aggregate(Max("date"))["date__max"]
     upi_statement:pd.DataFrame = Ikea(company_id).upi_statement(fromd - datetime.timedelta(days = 3),tod)
@@ -289,6 +298,16 @@ def auto_match_upi(request):
         upi_during_period[upi_during_period["FOUND"] == "Yes"].to_excel(writer,sheet_name="Matched UPI (Current)",index=False)
         upi_before_period[upi_before_period["FOUND"] == "Yes"].to_excel(writer,sheet_name=f"Matched UPI (Before)",index=False)
     
+    return response
+
+@api_view(["POST"])
+def auto_match_upi_view(request):
+    company_id = request.data.get("company")
+    tod = datetime.date.today()
+    fromd = tod - datetime.timedelta(days = 15)
+    banks = Bank.objects.filter(companies__name = company_id)
+    bank_qs = BankStatement.objects.filter(date__gte = fromd,date__lte = tod,bank__in = banks)
+    response = auto_match_upi(company_id,bank_qs)
     return response
 
 @api_view(["POST"])
@@ -394,9 +413,7 @@ def settle_cheques(ikea,cheque_numbers,files_dir) -> tuple[pd.DataFrame, list[st
     settle_coll:pd.DataFrame = ikea.download_settle_cheque() # type: ignore
     if "CHEQUE NO" not in settle_coll.columns : 
         return pd.DataFrame() , [] , {}
-    print(settle_coll)
     settle_coll = settle_coll[ settle_coll.apply(lambda row : str(row["CHEQUE NO"]) in cheque_numbers ,axis=1) ]
-    print(settle_coll)
     settle_coll["STATUS"] = "SETTLED"
     if len(settle_coll) == 0 :
         return pd.DataFrame() , [] , {}
@@ -438,7 +455,6 @@ def push_collection(request) :
     
     ikea = Ikea(company_id)
     files_dir = os.path.join(settings.MEDIA_ROOT, "bank", company_id)
-    files_dir_url = f"{settings.MEDIA_URL}bank/{company_id}/"
     os.makedirs(files_dir, exist_ok=True)
 
     cheque_numbers =  [ obj.statement_id for obj in bank_entries if obj.statement_id]
@@ -489,7 +505,7 @@ def push_collection(request) :
 
     return JsonResponse({ "status": "success" if not some_failure else "partial_success" , 
                             "errors" : [cheque_creation_errors,cheque_settlement_errors],
-                          "filepath" : f"{files_dir_url}push_cheque_ikea.xlsx" })
+                          "filepath" : get_media_url(PUSH_CHEQUE_FILE) })
 
 @api_view(["POST"])
 def unpush_collection(request) : 
@@ -529,11 +545,6 @@ def refresh_bank(request):
     OutstandingReport.update_db(ikea,company,EmptyArgs())
     return JsonResponse({"status" : "success"})
 
-
-def get_media_url(path):
-    relative_path = os.path.relpath(path, settings.MEDIA_ROOT)
-    media_url = urljoin(settings.MEDIA_URL, relative_path.replace(os.sep, '/'))
-    return media_url
 
 @api_view(["POST"])
 def bank_summary(request):

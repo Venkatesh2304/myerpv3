@@ -7,6 +7,8 @@ import os
 from typing import Dict, List, Any
 from PyPDF2 import PdfMerger
 from django.conf import settings
+from core.utils import get_media_url
+
 
 from bill.models import Bill, SalesmanLoadingSheet
 from .printers import FirstCopyPrinter, SecondCopyPrinter, LoadingSheetPrinter, SalesmanLoadingSheetPrinter, PrintContext, PrintType, Printer
@@ -146,7 +148,7 @@ class BillPrintingService:
             merger.write(f)
         merger.close()
 
-        return {"status": "success", "error": error, "filepath" : f"{settings.MEDIA_URL}bills/{self.company.pk}/bill.pdf"}
+        return {"status": "success", "error": error, "filepath" : get_media_url(final_pdf_path)}
 
     def _convert_docx_to_pdf(self, docx_path: str):
         # Using libreoffice as in original code
