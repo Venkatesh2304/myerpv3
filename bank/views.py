@@ -37,7 +37,6 @@ import joblib
 from gst.gst import addtable
 from core.utils import get_media_url
 
-
 def clean_text(text):
     text = text.upper()
     text = re.sub(r'\s+', ' ', text)
@@ -63,7 +62,7 @@ def find_party_match(model,vectorizer,desc):
     best_label, best_prob = ranked[0]
     company = best_label.split("/")[0]
     party_id = best_label.split("/")[1]
-    print(best_label,best_prob)
+    # print(best_label,best_prob)
     return company,party_id,best_prob
 
 def find_neft_match(bankstatement_obj,company_id,party_id):
@@ -108,7 +107,7 @@ def find_neft_match(bankstatement_obj,company_id,party_id):
         for combo in combinations(pending_outstandings, r):
             total_balance = sum(item[1] for item in combo)
             if abs(total_balance - amt) <= allowed_diff:
-                print("Found match",combo,total_balance,amt)
+                # print("Found match",combo,total_balance,amt)
                 matched_invoices.append([{"inum": item[0], "balance": item[1]} for item in combo])
     return matched_invoices
     
@@ -419,6 +418,7 @@ def settle_cheques(ikea,cheque_numbers,files_dir) -> tuple[pd.DataFrame, list[st
         return pd.DataFrame() , [] , {}
     settle_coll = settle_coll[ settle_coll.apply(lambda row : str(row["CHEQUE NO"]) in cheque_numbers ,axis=1) ]
     settle_coll["STATUS"] = "SETTLED"
+    print(settle_coll)
     if len(settle_coll) == 0 :
         return pd.DataFrame() , [] , {}
          
@@ -426,6 +426,7 @@ def settle_cheques(ikea,cheque_numbers,files_dir) -> tuple[pd.DataFrame, list[st
     settle_coll.to_excel(f,index=False)
     f.seek(0)
     res = ikea.upload_settle_cheque(f)
+    print(res)
     bytes_io = ikea.fetch_durl_content(res["ul"])
     cheque_settlement = pd.read_excel(bytes_io)
     cheque_settlement.to_excel(f"{files_dir}/cheque_settlement.xlsx")
@@ -468,6 +469,8 @@ def push_collection(request) :
 
     #Create cheques using manual collection upload
     cheque_upload_status, cheque_creation_errors = create_cheques(ikea,bank_entries,files_dir)
+
+    print(cheque_creation_errors,cheque_upload_status)
 
     #We also push the pending cheque if the statement id is in the bank queryset which user selected
     #Note : cheque_settlement_errors is the errors after uplaoding settlement ,
