@@ -264,7 +264,10 @@ def bank_statement_upload(request):
                                         for obj in bank_statements ]
         bank_qs = BankStatement.objects.filter(id__in = bank_statement_ids)
         for company in bank.companies.all() :
-            auto_match_upi(company.pk,bank_qs)
+            try:
+                auto_match_upi(company.pk,bank_qs)
+            except Exception as e :
+                print(f"Failed to auto match UPI for company {company.pk}: {e}")
 
         smart_match(bank_qs.filter(type__isnull=True))
         stats = list(bank_qs.values("type").annotate(count=Count("amt"), total=Sum("amt")).order_by("-count"))
@@ -281,7 +284,10 @@ def auto_match_upi(company_id,bank_qs):
         return JsonResponse({"error" : "No UPI transactions to match"},status=500)
     fromd = qs.aggregate(Min("date"))["date__min"]
     tod = qs.aggregate(Max("date"))["date__max"]
-    upi_statement:pd.DataFrame = Ikea(company_id).upi_statement(fromd - datetime.timedelta(days = 3),tod)
+    try :
+        upi_statement:pd.DataFrame = Ikea(company_id).upi_statement(fromd - datetime.timedelta(days = 3),tod)
+    except Exception as e :
+        raise Exception("Failed to fetch UPI statement")
     upi_statement["FOUND"] = "No"
     upi_statement["PAYMENT ID"] = upi_statement["PAYMENT ID"].astype(str).str.split(".").str[0]
     for bank_obj in qs.all() : 
@@ -470,7 +476,7 @@ def push_collection(request) :
     print(cheque_numbers)
 
     #Bounce cheque if already in pending state 
-    bounce_cheques(ikea,cheque_numbers)
+    # bounce_cheques(ikea,cheque_numbers)
 
     #Create cheques using manual collection upload
     cheque_upload_status, cheque_creation_errors = create_cheques(ikea,bank_entries,files_dir)
