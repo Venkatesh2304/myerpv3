@@ -73,7 +73,7 @@ def find_neft_match(bankstatement_obj,company_id,party_id):
         company_id = company_id,
         balance__gte =  1,
         balance__lte = amt + allowed_diff,
-        bill_date__gte = datetime.date.today() - datetime.timedelta(days=60)
+        bill_date__gte = datetime.date.today() - datetime.timedelta(days=90)
     ).values_list("inum","balance").order_by("bill_date"))
     pending_outstandings = []
     for inum,balance in outstandings :
