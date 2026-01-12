@@ -451,18 +451,23 @@ def push_collection(request) :
                               id__in = ids, type__in = ["cheque","neft"], company_id = company_id
                             ).exclude(cheque_status = "bounced") if obj.pushed_status == "not_pushed"] #Dont allow partial
 
-    unassigned_bank_entries = [ obj for obj in bank_entries if not obj.statement_id ]
+    #Get free ids and assigning map
     already_assigned_ids = BankStatement.objects.filter(company_id = company_id).values_list("statement_id",flat=True).distinct()
     free_ids = list(set(range(100000,999999)) - set([int(i) for i in already_assigned_ids if i]))
-    for bank_entry,free_id in zip(unassigned_bank_entries,free_ids) : 
-        bank_entry.statement_id = str(free_id)
-        bank_entry.save()
-    
+    unassigned_bank_entries = [ obj for obj in bank_entries if not obj.statement_id ]
+    assign_ids = { obj.pk : str(free_id) for obj,free_id in zip(unassigned_bank_entries,free_ids) }
+
+    for obj in bank_entries : 
+        if obj.pk in assign_ids : 
+            obj.statement_id = assign_ids[obj.pk]
+            obj.save()
+
     ikea = Ikea(company_id)
     files_dir = os.path.join(settings.MEDIA_ROOT, "bank", company_id)
     os.makedirs(files_dir, exist_ok=True)
 
     cheque_numbers =  [ obj.statement_id for obj in bank_entries if obj.statement_id]
+    print(cheque_numbers)
 
     #Bounce cheque if already in pending state 
     bounce_cheques(ikea,cheque_numbers)
