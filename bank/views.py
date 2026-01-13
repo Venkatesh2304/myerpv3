@@ -553,14 +553,14 @@ def unpush_collection(request) :
     return JsonResponse({"status" : "success"})
 
 @api_view(["POST"])
-def refresh_bank(request): 
-    company_id = request.data.get("company")
-    company = Company.objects.get(name = company_id)
-    ikea = Ikea(company_id)
-    CollectionReport.update_db(ikea,company,DateRangeArgs(
-        fromd = datetime.date.today() - datetime.timedelta(days=7),
-        tod = datetime.date.today()))
-    OutstandingReport.update_db(ikea,company,EmptyArgs())
+def refresh_bank(request):
+    companies = request.user.companies.all()
+    for company in companies : 
+        ikea = Ikea(company.pk)
+        CollectionReport.update_db(ikea,company,DateRangeArgs(
+            fromd = datetime.date.today() - datetime.timedelta(days=7),
+            tod = datetime.date.today()))
+        OutstandingReport.update_db(ikea,company,EmptyArgs())
     return JsonResponse({"status" : "success"})
 
 
