@@ -1,10 +1,11 @@
+from report.models import CollectionReport
 import os
 import psutil
 import requests
 import pandas
 import numpy
 from core.models import Company
-from report.models import BillAgeingReport
+from report.models import BillAgeingReport,CollectionReport
 from report.models import DateRangeArgs
 from custom.classes import Ikea,Billing
 import datetime
@@ -19,7 +20,12 @@ from bank.models import ChequeDeposit
 # with open("x.json","w+") as f:
 #     f.write(json.dumps(b))
 i = Billing("lakme_urban")
-i.upi_statement(datetime.date(2026,1,1),datetime.date(2026,8,1)).to_excel("a.xlsx")
+i.collection(datetime.date(2025,6,1),datetime.date.today()).to_excel("a.xlsx")
+# CollectionReport.update_db(i,Company.objects.get(name="devaki_hul"),DateRangeArgs(datetime.date.today(),datetime.date.today()))
+exit(0)
+
+
+# i.upi_statement(datetime.date(2026,1,1),datetime.date(2026,8,1)).to_excel("a.xlsx")
 # i.get_user()
 sadf
 
