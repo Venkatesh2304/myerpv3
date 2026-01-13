@@ -592,7 +592,7 @@ def bank_summary(request):
                 party_name = bill_collections[0].party
                 bills = ",".join([bill.bill for bill in bill_collections])
                 if "queen" in party_name.lower() : 
-                    print(party_name,obj.statement_id,obj.company.pk)
+                    print(party_name,obj.statement_id,obj.company.pk,[ikea_coll.amt for ikea_coll in ikea_collections])
 
                 if obj.statement_id and obj.company : 
                    company_wise_bank_chq_numbers[obj.company.pk].append(obj.statement_id)
