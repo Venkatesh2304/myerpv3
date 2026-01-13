@@ -587,12 +587,14 @@ def bank_summary(request):
         for obj in bank_qs.filter(bank = bank) : 
             if obj.type in ["cheque","neft"] : 
                 ikea_coll_amt = 0
-                ikea_collections = list(coll_qs.filter(bank_entry_id = obj.statement_id,company_id = obj.company.pk))
+                q = coll_qs.filter(bank_entry_id = obj.statement_id,company_id = obj.company.pk)
+                ikea_collections = list(q)
                 bill_collections = list(obj.all_collection)
                 party_name = bill_collections[0].party
                 bills = ",".join([bill.bill for bill in bill_collections])
                 if "queen" in party_name.lower() : 
                     print(party_name,obj.statement_id,obj.company.pk,[ikea_coll.amt for ikea_coll in ikea_collections])
+                    print(q.query.__str__())
 
                 if obj.statement_id and obj.company : 
                    company_wise_bank_chq_numbers[obj.company.pk].append(obj.statement_id)
