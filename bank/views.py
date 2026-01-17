@@ -380,6 +380,7 @@ def bounce_cheques(ikea,cheque_numbers):
         return
     settle_coll = settle_coll[ settle_coll.apply(lambda row : (str(row["CHEQUE NO"]) in cheque_numbers) and (row["STATUS"] == "PENDING") ,axis=1) ]
     settle_coll["STATUS"] = "CANCELLED"
+    settle_coll.to_csv("cancel_pending_cheques.csv",index=False)
     if len(settle_coll) == 0 : 
         return 
     with BytesIO() as f : 
