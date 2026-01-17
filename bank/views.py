@@ -1,5 +1,4 @@
 
-import PIL.PngImagePlugin
 from django.db.models.aggregates import Count
 import datetime
 from urllib.parse import urljoin
