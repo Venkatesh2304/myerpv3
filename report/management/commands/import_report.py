@@ -18,7 +18,7 @@ for company in Company.objects.all() :
     i = Ikea(company.pk)
     today = datetime.date.today() 
     # SalesRegisterReport.update_db(i,company,DateRangeArgs(fromd=today-relativedelta(months=7),tod=today))
-    CollectionReport.update_db(i,company,DateRangeArgs(fromd=today-relativedelta(months=3),tod=today))
+    CollectionReport.update_db(i,company,DateRangeArgs(fromd=today-relativedelta(days=5),tod=today))
     # # SalesRegisterReport.update_db(i,company,DateRangeArgs(fromd=today-relativedelta(months=7),tod=today))
     # OutstandingReport.update_db(i,company,EmptyArgs())
     # BeatReport.update_db(i,company,EmptyArgs())
