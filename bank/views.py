@@ -71,8 +71,8 @@ def get_match(outstandings,amt,prob) :
     def calculate_coherence_score(bill_list,outstandings):
         ages  = []
         for i in outstandings :
-            if i[0] in bill_list :
-                ages.append(i[2])
+            if i["inum"] in bill_list :
+                ages.append(i["age"])
         std_dev = np.std(ages)    
         score = np.min(ages) / (std_dev + 1)
         return score
@@ -90,14 +90,14 @@ def get_match(outstandings,amt,prob) :
                     inums = tuple(sorted([item[0] for item in combo]))
                     if inums not in seen_combinations:
                         seen_combinations.add(inums)
-                        matched_invoices.append( [{"inum": item[0], "balance": item[1]} for item in combo]  )
+                        matched_invoices.append( [{"inum": item[0], "balance": item[1], "age" : item[2]} for item in combo]  )
 
     matched_invoices = sorted(matched_invoices,key=lambda x : len(x))
 
     if len(outstandings) > 10 and len(matched_invoices) > 0 : 
        scores = []
        for i in matched_invoices :
-           scores.append(calculate_coherence_score([ j["inum"] for j in i ],outstandings))
+           scores.append(calculate_coherence_score(i,outstandings))
        #sort by scores
        matched_invoices = sorted(matched_invoices,key=lambda x : scores[matched_invoices.index(x)],reverse=True)
        matched_invoices = [matched_invoices[0]]
@@ -114,9 +114,10 @@ def find_neft_match(bankstatement_obj,company_id,party_id,prob):
         balance__gte =  1,
         balance__lte = amt + allowed_diff,
         bill_date__gte = datetime.date.today() - datetime.timedelta(days=90)
-    ).values_list("inum","balance").order_by("bill_date"))
+    ).values_list("inum","balance","bill_date").order_by("bill_date"))
+    today = datetime.date.today()
     pending_outstandings = []
-    for inum,balance in outstandings :
+    for inum,balance,bill_date in outstandings :
         pending_collection = 0 
         for coll in BankCollection.objects.filter(bill = inum).exclude(bank_entry = bankstatement_obj) :
             if coll.company != company_id : continue 
@@ -133,7 +134,7 @@ def find_neft_match(bankstatement_obj,company_id,party_id,prob):
                 pending_collection += balance
         new_balance = round(balance - pending_collection)
         if new_balance > 0 :
-            pending_outstandings.append((inum,new_balance))
+            pending_outstandings.append((inum,new_balance,(today - bill_date).days))
     
     #Try all combination of outstandings whre each row has keys inum and balance.
     #allow if the difference is lesss than allowed_difference with amt
