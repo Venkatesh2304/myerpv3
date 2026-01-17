@@ -71,8 +71,8 @@ def get_match(outstandings,amt,prob) :
     def calculate_coherence_score(bill_list,outstandings):
         ages  = []
         for i in outstandings :
-            if i["inum"] in bill_list :
-                ages.append(i["age"])
+            if i[0] in bill_list :
+                ages.append(i[2])
         std_dev = np.std(ages)    
         score = np.min(ages) / (std_dev + 1)
         return score
