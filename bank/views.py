@@ -1,4 +1,5 @@
 
+import PIL.PngImagePlugin
 from django.db.models.aggregates import Count
 import datetime
 from urllib.parse import urljoin
@@ -33,6 +34,7 @@ from rest_framework.response import Response
 from django.http import JsonResponse
 from bank.models import Bank, BankStatement
 import re
+import numpy as np
 import joblib
 from gst.gst import addtable
 from core.utils import get_media_url
@@ -65,7 +67,45 @@ def find_party_match(model,vectorizer,desc):
     # print(best_label,best_prob)
     return company,party_id,best_prob
 
-def find_neft_match(bankstatement_obj,company_id,party_id):
+def get_match(outstandings,amt,prob) :
+    def calculate_coherence_score(bill_list,outstandings):
+        ages  = []
+        for i in outstandings :
+            if i[0] in bill_list :
+                ages.append(i[2])
+        std_dev = np.std(ages)    
+        score = np.min(ages) / (std_dev + 1)
+        return score
+
+    outstandings = outstandings[:20]
+    matched_invoices = []
+    window_size = 10
+    seen_combinations = set()
+    for i in range(len(outstandings)):
+        sub_pool = outstandings[i : i + window_size]
+        for r in range(1, len(sub_pool) + 1):
+            for combo in combinations(sub_pool, r):
+                total = sum(item[1] for item in combo)
+                if abs(total - amt) <= 0.5:
+                    inums = tuple(sorted([item[0] for item in combo]))
+                    if inums not in seen_combinations:
+                        seen_combinations.add(inums)
+                        matched_invoices.append( [{"inum": item[0], "balance": item[1]} for item in combo]  )
+
+    matched_invoices = sorted(matched_invoices,key=lambda x : len(x))
+
+    if len(outstandings) > 10 and len(matched_invoices) > 0 : 
+       scores = []
+       for i in matched_invoices :
+           scores.append(calculate_coherence_score([ j["inum"] for j in i ],outstandings))
+       #sort by scores
+       matched_invoices = sorted(matched_invoices,key=lambda x : scores[matched_invoices.index(x)],reverse=True)
+       matched_invoices = [matched_invoices[0]]
+
+    return matched_invoices if prob > 0.05 else []
+
+
+def find_neft_match(bankstatement_obj,company_id,party_id,prob):
     allowed_diff = 0.5
     amt = bankstatement_obj.amt
     outstandings = list(OutstandingReport.objects.filter(
@@ -102,14 +142,11 @@ def find_neft_match(bankstatement_obj,company_id,party_id):
         return []
 
     pending_outstandings = pending_outstandings[:15]
-    matched_invoices = []
-    for r in range(1, len(pending_outstandings) + 1):
-        for combo in combinations(pending_outstandings, r):
-            total_balance = sum(item[1] for item in combo)
-            if abs(total_balance - amt) <= allowed_diff:
-                # print("Found match",combo,total_balance,amt)
-                matched_invoices.append([{"inum": item[0], "balance": item[1]} for item in combo])
+    matched_invoices = get_match(pending_outstandings,amt,prob)
     return matched_invoices
+
+
+
     
 def smart_match(queryset):
     bank_objs_map:dict[int,list[BankStatement]] = defaultdict(list)
@@ -127,7 +164,7 @@ def smart_match(queryset):
             if len(chq_matches) == 0 : 
                 #Try neft
                 company_id,party_id,prob = find_party_match(model,vectorizer,obj.desc)
-                matched_invoices = find_neft_match(obj,company_id,party_id)
+                matched_invoices = find_neft_match(obj,company_id,party_id,prob)
                 if len(matched_invoices) == 1 : 
                     obj.type = "neft"
                     obj.company_id = company_id
