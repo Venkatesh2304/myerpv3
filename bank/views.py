@@ -137,11 +137,6 @@ def find_neft_match(bankstatement_obj,company_id,party_id,prob):
     
     #Try all combination of outstandings whre each row has keys inum and balance.
     #allow if the difference is lesss than allowed_difference with amt
-
-    if len(outstandings) > 20 :
-        return []
-
-    pending_outstandings = pending_outstandings[:15]
     matched_invoices = get_match(pending_outstandings,amt,prob)
     return matched_invoices
 
