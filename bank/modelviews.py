@@ -58,7 +58,10 @@ class BankStatementViewSet(viewsets.ModelViewSet):
 
         def filter_status(self, queryset, name, status):
             company_id = self.data.get("company")
-            cutoff_date = datetime.date.today() - datetime.timedelta(days=30)
+            # cutoff_date = datetime.date.today() - datetime.timedelta(days=30)
+            #This month first day
+            today = datetime.date.today()
+            cutoff_date = datetime.date(today.year, today.month, 1)
             if status == "not_pushed" : 
                 queryset = queryset.filter(date__gte = cutoff_date,company_id = company_id).filter(type__in = ["neft","cheque"]).exclude(cheque_status = "bounced")
 
