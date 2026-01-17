@@ -10,18 +10,19 @@ from report.models import DateRangeArgs
 from core.models import Company
 from report.models import CollectionReport
 from datetime import datetime
-today = datetime.now().date()
+import datetime
+# today = datetime.now().date()
 #TODO: make it parameterized
 for company in Company.objects.filter(name__contains="lakme").all() :
     print("Running sync for " + company.name)
     i = Ikea(company.pk)
-    CollectionReport.update_db(i,company,DateRangeArgs(fromd=today-relativedelta(months=6),tod=today))
-    SalesRegisterReport.update_db(i,company,DateRangeArgs(fromd=today-relativedelta(months=7),tod=today))
+    CollectionReport.update_db(i,company,DateRangeArgs(fromd=datetime.date(2026,1,1),tod=datetime.date(2026,1,11)))
     # SalesRegisterReport.update_db(i,company,DateRangeArgs(fromd=today-relativedelta(months=7),tod=today))
-    OutstandingReport.update_db(i,company,EmptyArgs())
-    BeatReport.update_db(i,company,EmptyArgs())
-    BillAgeingReport.update_db(i,company,EmptyArgs())
-    PartyReport.update_db(i,company,EmptyArgs())
+    # # SalesRegisterReport.update_db(i,company,DateRangeArgs(fromd=today-relativedelta(months=7),tod=today))
+    # OutstandingReport.update_db(i,company,EmptyArgs())
+    # BeatReport.update_db(i,company,EmptyArgs())
+    # BillAgeingReport.update_db(i,company,EmptyArgs())
+    # PartyReport.update_db(i,company,EmptyArgs())
 
 # CollectionReport.update_db(i,company,DateRangeArgs(fromd=today,tod=today))
 # SalesRegisterReport.update_db(i,company,DateRangeArgs(fromd=today,tod=today))
