@@ -68,11 +68,8 @@ def find_party_match(model,vectorizer,desc):
     return company,party_id,best_prob
 
 def get_match(outstandings,amt,prob) :
-    def calculate_coherence_score(bill_list,outstandings):
-        ages  = []
-        for i in outstandings :
-            if i[0] in bill_list :
-                ages.append(i[2])
+    def calculate_coherence_score(invoices):
+        ages  = [ i[2] for i in invoices ]
         std_dev = np.std(ages)    
         score = np.min(ages) / (std_dev + 1)
         return score
@@ -97,13 +94,12 @@ def get_match(outstandings,amt,prob) :
     if len(outstandings) > 10 and len(matched_invoices) > 0 : 
        scores = []
        for i in matched_invoices :
-           scores.append(calculate_coherence_score(i,outstandings))
+           scores.append(calculate_coherence_score(i))
        #sort by scores
        matched_invoices = sorted(matched_invoices,key=lambda x : scores[matched_invoices.index(x)],reverse=True)
        matched_invoices = [matched_invoices[0]]
 
     return matched_invoices if prob > 0.05 else []
-
 
 def find_neft_match(bankstatement_obj,company_id,party_id,prob):
     allowed_diff = 0.5
@@ -140,7 +136,6 @@ def find_neft_match(bankstatement_obj,company_id,party_id,prob):
     #allow if the difference is lesss than allowed_difference with amt
     matched_invoices = get_match(pending_outstandings,amt,prob)
     return matched_invoices
-
 
 def smart_match(queryset):
     bank_objs_map:dict[int,list[BankStatement]] = defaultdict(list)
