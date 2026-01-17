@@ -500,10 +500,10 @@ def push_collection(request) :
     os.makedirs(files_dir, exist_ok=True)
 
     cheque_numbers =  [ obj.statement_id for obj in bank_entries if obj.statement_id]
-    print(cheque_numbers)
+    print("Cheque numbers: ",cheque_numbers)
 
     #Bounce cheque if already in pending state 
-    # bounce_cheques(ikea,cheque_numbers)
+    bounce_cheques(ikea,cheque_numbers)
 
     #Create cheques using manual collection upload
     cheque_upload_status, cheque_creation_errors = create_cheques(ikea,bank_entries,files_dir)
