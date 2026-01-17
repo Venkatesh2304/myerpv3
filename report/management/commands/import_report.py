@@ -13,11 +13,12 @@ from datetime import datetime
 import datetime
 # today = datetime.now().date()
 #TODO: make it parameterized
-for company in Company.objects.filter(name__contains="lakme").all() :
+for company in Company.objects.all() :
     print("Running sync for " + company.name)
     i = Ikea(company.pk)
-    CollectionReport.update_db(i,company,DateRangeArgs(fromd=datetime.date(2026,1,1),tod=datetime.date(2026,1,11)))
+    today = datetime.date.today() 
     # SalesRegisterReport.update_db(i,company,DateRangeArgs(fromd=today-relativedelta(months=7),tod=today))
+    CollectionReport.update_db(i,company,DateRangeArgs(fromd=today-relativedelta(months=3),tod=today))
     # # SalesRegisterReport.update_db(i,company,DateRangeArgs(fromd=today-relativedelta(months=7),tod=today))
     # OutstandingReport.update_db(i,company,EmptyArgs())
     # BeatReport.update_db(i,company,EmptyArgs())
