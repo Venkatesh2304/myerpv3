@@ -119,15 +119,15 @@ class BaseReport(Generic[ArgsT]):
     def get_dataframe(
         cls, fetcher_cls_instance: object, args: ArgsT
     ) -> pd.DataFrame:
-        
-        for retry in range(0,cls.max_retry-1) : 
+        df = None
+        for retry in range(0,cls.max_retry) : 
             try : 
                 df = cls.fetch_raw_dataframe(fetcher_cls_instance, args)
                 break
             except Exception as e :
                 print("Retrying fetching data due to error :",e)
-
-        df = cls.fetch_raw_dataframe(fetcher_cls_instance, args)
+        if df is None :
+            raise Exception("Failed to fetch data after retries")
         df = cls.basic_preprocessing(df)
         df = cls.custom_preprocessing(df)
         return df
@@ -435,7 +435,7 @@ class CollectionReport(DateReportModel):
                         "Bill No":"inum","Party Name":"party_name","Bank Entry ID":"bank_entry_id"}
         dropna_columns = ["inum"]
         max_retry = 2
-
+        
         @classmethod
         def custom_preprocessing(cls, df: pd.DataFrame) -> pd.DataFrame:
             df = df[df.Status != "CAN"][df.Status != "PND"]
