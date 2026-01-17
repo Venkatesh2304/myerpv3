@@ -20,7 +20,7 @@ urlpatterns = [
     path('cheque_match/', views.cheque_match),
     path('push_collection/', views.push_collection),
     path('unpush_collection/',views.unpush_collection),
-    path('smart_match/',views.smart_match),
+    path('smart_match/',views.smart_match_view),
     path('bank_summary/',views.bank_summary),
     path('', include(router.urls)),
 ]
