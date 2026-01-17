@@ -146,8 +146,6 @@ def find_neft_match(bankstatement_obj,company_id,party_id,prob):
     return matched_invoices
 
 
-
-    
 def smart_match(queryset):
     bank_objs_map:dict[int,list[BankStatement]] = defaultdict(list)
     for obj in queryset :
@@ -363,7 +361,7 @@ def auto_match_neft(request) :
     company_id = request.data.get("company")
     bankstatement_obj = BankStatement.objects.get(id = bankstatement_id)
     party_name = PartyReport.objects.get(code = party_id,company_id = company_id).name
-    matched_invoices = find_neft_match(bankstatement_obj,company_id,party_id)
+    matched_invoices = find_neft_match(bankstatement_obj,company_id,party_id,1)
 
     if len(matched_invoices) == 0 :
         return JsonResponse({"error" : "No matching invoices found."},status=500)
