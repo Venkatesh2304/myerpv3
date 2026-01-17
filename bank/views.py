@@ -69,7 +69,7 @@ def find_party_match(model,vectorizer,desc):
 
 def get_match(outstandings,amt,prob) :
     def calculate_coherence_score(invoices):
-        ages  = [ i[2] for i in invoices ]
+        ages  = [ i["age"] for i in invoices ]
         std_dev = np.std(ages)    
         score = np.min(ages) / (std_dev + 1)
         return score
