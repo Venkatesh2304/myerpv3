@@ -376,6 +376,7 @@ def bounce_cheques(ikea,cheque_numbers):
     fromd = datetime.date.today() - datetime.timedelta(days = 7)
     tod = datetime.date.today()
     settle_coll:pd.DataFrame = ikea.download_settle_cheque(fromd = fromd, tod = tod) # type: ignore
+    print("to bounce",settle_coll)
     if "CHEQUE NO" not in settle_coll.columns : 
         return
     settle_coll = settle_coll[ settle_coll.apply(lambda row : (str(row["CHEQUE NO"]) in cheque_numbers) and (row["STATUS"] == "PENDING") ,axis=1) ]
