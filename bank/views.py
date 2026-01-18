@@ -49,7 +49,7 @@ def find_cheque_match(bank_entry,company_ids,allowed_diff=10):
                 ).filter( Q(bank_entry__isnull=True) | Q(bank_entry = bank_entry) )
     return qs
 
-def find_party_match(model,vectorizer,desc):
+def find_party_match(model,vectorizer,desc,prob_threshold = 0.05):
     description = clean_text(desc)
     vec = vectorizer.transform([description])
     probs = model.predict_proba(vec)[0]
@@ -59,12 +59,14 @@ def find_party_match(model,vectorizer,desc):
         key=lambda x: x[1],
         reverse=True
     )
-    print(ranked[:5])
-    best_label, best_prob = ranked[0]
-    company = best_label.split("/")[0]
-    party_id = best_label.split("/")[1]
-    # print(best_label,best_prob)
-    return company,party_id,best_prob
+    matches = []
+    for label,prob in  ranked[:10] : 
+        if prob < 0.05 : break
+        company = label.split("/")[0]
+        party_id = label.split("/")[1]
+        matches.append((company,party_id,prob))
+
+    return matches
 
 def get_match(outstandings,amt,prob) :
     def calculate_coherence_score(invoices):
@@ -151,17 +153,19 @@ def smart_match(queryset):
 
             if len(chq_matches) == 0 : 
                 #Try neft
-                company_id,party_id,prob = find_party_match(model,vectorizer,obj.desc)
-                matched_invoices = find_neft_match(obj,company_id,party_id,prob)
-                if len(matched_invoices) == 1 : 
-                    obj.type = "neft"
-                    obj.company_id = company_id
-                    BankCollection.objects.filter(bank_entry_id = obj.pk).delete()
-                    obj.add_event("smart_matched")
-                    obj.save()
-                    for inv in matched_invoices[0] : 
-                        BankCollection.objects.create(bank_entry = obj, bill = inv["inum"],
+                for company_id,party_id,prob in find_party_match(model,vectorizer,obj.desc) : 
+                    matched_invoices = find_neft_match(obj,company_id,party_id,prob)
+                    if len(matched_invoices) == 1 : 
+                        obj.type = "neft"
+                        obj.company_id = company_id
+                        BankCollection.objects.filter(bank_entry_id = obj.pk).delete()
+                        obj.add_event("smart_matched")
+                        obj.save()
+                        for inv in matched_invoices[0] : 
+                            BankCollection.objects.create(bank_entry = obj, bill = inv["inum"],
                                                                             amt = inv["balance"]).save()
+                        break
+                    
             elif len(chq_matches) == 1 : 
                 obj.type = "cheque"
                 obj.cheque_entry = chq_matches[0]
