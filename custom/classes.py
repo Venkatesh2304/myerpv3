@@ -178,16 +178,14 @@ class IkeaReports(BaseIkea):
                         (fromd.strftime("%Y/%m/%d"), tod.strftime("%Y/%m/%d"), tod.strftime("%Y/%m/%d"),str(self.user_id)),
                         dtype = {date_col: "str"})
         uid = datetime.date.today().strftime("%d%m%Y")
-        # try: 
-        df[date_col] = pd.to_datetime(df[date_col],format = "%d/%m/%Y", errors='coerce')
-        print("xx",df[date_col].max(skipna=True))
-        raise Exception("test")
-            # if df[date_col].max(skipna=True).date() > tod : 
-            #     raise Exception(f"Collection Date is greater than to date : {uid}")            
-        # except Exception as e: 
-        #     self.logger.error(f"Failed to fetch collection report for {fromd} to {tod}: {e}", exc_info=True)
-        #     df.to_excel(f"collection_date_exception_{uid}.xlsx",index = False)
-        #     raise 
+        try: 
+            df[date_col] = pd.to_datetime(df[date_col],format = "%d/%m/%Y", errors='coerce')
+            if df[date_col].max(skipna=True).date() > tod : 
+                raise Exception(f"Collection Date is greater than to date : {uid}")            
+        except Exception as e: 
+            self.logger.error(f"Failed to fetch collection report for {fromd} to {tod}: {e}", exc_info=True)
+            df.to_excel(f"collection_date_exception_{uid}.xlsx",index = False)
+            raise 
         return df 
     
     def crnote(self, fromd: datetime.date, tod: datetime.date) -> pd.DataFrame:
