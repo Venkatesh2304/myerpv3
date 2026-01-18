@@ -173,11 +173,14 @@ class IkeaReports(BaseIkea):
         return pd.read_csv(self.fetch_durl_content(durl))
 
     def collection(self, fromd: datetime.date, tod: datetime.date) -> pd.DataFrame:
+        date_col = "Collection Date"
         df = self.fetch_report_dataframe("ikea/collection", r'(":val10":").{10}(",":val11":").{10}(",":val12":".{10}",":val13":").{10}(.*?":val20":).{2}', 
-                        (fromd.strftime("%Y/%m/%d"), tod.strftime("%Y/%m/%d"), tod.strftime("%Y/%m/%d"),str(self.user_id)))
+                        (fromd.strftime("%Y/%m/%d"), tod.strftime("%Y/%m/%d"), tod.strftime("%Y/%m/%d"),str(self.user_id)),
+                        dtype = {date_col: "str"})
         uid = datetime.date.today().strftime("%d%m%Y")
         try: 
-            if df["Collection Date"].max().date() > tod : 
+            df[date_col] = pd.to_datetime(df[date_col],format = "%d/%m/%Y").dt.date
+            if df[date_col].max().date() > tod : 
                 raise Exception(f"Collection Date is greater than to date : {uid}")            
         except Exception as e: 
             self.logger.error(f"Failed to fetch collection report for {fromd} to {tod}: {e}", exc_info=True)
