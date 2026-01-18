@@ -46,6 +46,8 @@ class BankStatementViewSet(viewsets.ModelViewSet):
     
     def perform_update(self, serializer):
         obj = serializer.save()
+        if obj.company_id is None :
+            obj.statement_id = None
         obj.add_event("saved",by = self.request.user.pk,message = f"Mapped to {obj.type}")
         obj.save()
 
