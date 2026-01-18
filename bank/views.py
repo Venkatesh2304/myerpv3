@@ -61,11 +61,11 @@ def find_party_match(model,vectorizer,desc,prob_threshold = 0.05):
     )
     matches = []
     for label,prob in  ranked[:10] : 
-        if prob < 0.05 : break
+        if prob < prob_threshold : break
         company = label.split("/")[0]
         party_id = label.split("/")[1]
         matches.append((company,party_id,prob))
-
+    print(matches)
     return matches
 
 def get_match(outstandings,amt,prob) :
@@ -165,7 +165,7 @@ def smart_match(queryset):
                             BankCollection.objects.create(bank_entry = obj, bill = inv["inum"],
                                                                             amt = inv["balance"]).save()
                         break
-                    
+
             elif len(chq_matches) == 1 : 
                 obj.type = "cheque"
                 obj.cheque_entry = chq_matches[0]
