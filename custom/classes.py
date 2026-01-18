@@ -690,6 +690,8 @@ class Billing(Ikea) :
             print(e)
             return False
 
+class IkeaBank(Ikea):
+    key = "ikea_bank"
 
 ## Needs to checked 
 class GstWrongCredentails(WrongCredentials) :

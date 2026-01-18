@@ -11,13 +11,12 @@ from report.models import CollectionReport
 from django.conf import settings
 from io import BytesIO
 import pandas as pd
-from bill.models import Billing
 from bank.models import BankCollection
 from core.models import Company
 from itertools import combinations
 from report.models import OutstandingReport
 from report.models import PartyReport
-from custom.classes import Ikea
+from custom.classes import IkeaBank
 from django.db.models.aggregates import Max
 from django.db.models.aggregates import Min
 from django.db.models.query_utils import Q
@@ -310,7 +309,7 @@ def auto_match_upi(company_id,bank_qs):
     fromd = qs.aggregate(Min("date"))["date__min"]
     tod = qs.aggregate(Max("date"))["date__max"]
     try :
-        upi_statement:pd.DataFrame = Ikea(company_id).upi_statement(fromd - datetime.timedelta(days = 3),tod)
+        upi_statement:pd.DataFrame = IkeaBank(company_id).upi_statement(fromd - datetime.timedelta(days = 3),tod)
     except Exception as e :
         raise Exception("Failed to fetch UPI statement")
     upi_statement["FOUND"] = "No"
@@ -401,11 +400,11 @@ def create_cheques(ikea,bankstatement_objs: list[BankStatement],files_dir) -> tu
         for coll_obj in bank_obj.all_collection:
             bill_no  = coll_obj.bill
             row = coll[coll["Bill No"] == bill_no].copy()
-            outstanding_amt = row.iloc[0]["O/S Amount"]
             if len(row) == 0 : 
                 errors[cheque_number][bill_no] = "Bill not found in manual collection"
                 continue
 
+            outstanding_amt = row.iloc[0]["O/S Amount"]
             # row = row.iloc[0]
             if row.iloc[0]["Collection Code"].lower() == "unassigned" : 
                 errors[cheque_number][bill_no] = "Unassigned collection code"
@@ -497,7 +496,7 @@ def push_collection(request) :
             obj.statement_id = assign_ids[obj.pk]
             obj.save()
 
-    ikea = Ikea(company_id)
+    ikea = IkeaBank(company_id)
     files_dir = os.path.join(settings.MEDIA_ROOT, "bank", company_id)
     os.makedirs(files_dir, exist_ok=True)
 
@@ -560,7 +559,7 @@ def unpush_collection(request) :
     obj = BankStatement.objects.get(id = bankstatement_id)
     if obj.statement_id is None : return JsonResponse({"error" : "Bank Statement is not pushed & has null statement_id field"}, status = 500)
     if obj.company is None : return JsonResponse({"error" : "Bank Statement is not associated with any company"}, status = 500)
-    ikea = Ikea(obj.company.pk)
+    ikea = IkeaBank(obj.company.pk)
     qs = obj.all_collection
     if qs.count() : 
         bill_chq_pairs = [ (obj.statement_id,bank_coll.bill) for bank_coll in qs.all() ]
@@ -585,7 +584,7 @@ def unpush_collection(request) :
 def refresh_bank(request):
     companies = request.user.companies.all()
     for company in companies : 
-        ikea = Ikea(company.pk)
+        ikea = IkeaBank(company.pk)
         CollectionReport.update_db(ikea,company,DateRangeArgs(
             fromd = datetime.date.today() - datetime.timedelta(days=7),
             tod = datetime.date.today()))
@@ -621,10 +620,6 @@ def bank_summary(request):
                 bill_collections = list(obj.all_collection)
                 party_name = bill_collections[0].party
                 bills = ",".join([bill.bill for bill in bill_collections])
-                if "queen" in party_name.lower() : 
-                    print(party_name,obj.statement_id,obj.company.pk,[ikea_coll.amt for ikea_coll in ikea_collections])
-                    print(q.query.__str__())
-
                 if obj.statement_id and obj.company : 
                    company_wise_bank_chq_numbers[obj.company.pk].append(obj.statement_id)
                    ikea_coll_amt =  sum([ikea_coll.amt for ikea_coll in ikea_collections])
@@ -653,7 +648,7 @@ def bank_summary(request):
     ikea_totals = {}
     ikea_cheque_coll_dfs = {}
     for company in companies : 
-        ikea = Ikea(company.pk)
+        ikea = IkeaBank(company.pk)
         if should_download_collection :
             CollectionReport.update_db(ikea,company,DateRangeArgs(fromd = fromd,tod = tod))
         qs = coll_qs.filter(company = company)
