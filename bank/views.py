@@ -61,6 +61,7 @@ def find_party_match(model,vectorizer,desc,prob_threshold = 0.05):
     )
     matches = []
     for label,prob in  ranked[:10] : 
+        print(label,prob)
         if prob < prob_threshold : break
         company = label.split("/")[0]
         party_id = label.split("/")[1]
