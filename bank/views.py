@@ -59,6 +59,7 @@ def find_party_match(model,vectorizer,desc):
         key=lambda x: x[1],
         reverse=True
     )
+    print(ranked[:5])
     best_label, best_prob = ranked[0]
     company = best_label.split("/")[0]
     party_id = best_label.split("/")[1]
