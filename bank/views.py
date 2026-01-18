@@ -401,6 +401,7 @@ def create_cheques(ikea,bankstatement_objs: list[BankStatement],files_dir) -> tu
         for coll_obj in bank_obj.all_collection:
             bill_no  = coll_obj.bill
             row = coll[coll["Bill No"] == bill_no].copy()
+            outstanding_amt = row.iloc[0]["O/S Amount"]
             if len(row) == 0 : 
                 errors[cheque_number][bill_no] = "Bill not found in manual collection"
                 continue
@@ -410,7 +411,7 @@ def create_cheques(ikea,bankstatement_objs: list[BankStatement],files_dir) -> tu
                 errors[cheque_number][bill_no] = "Unassigned collection code"
                 continue
 
-            if row.iloc[0]["O/S Amount"] + 0.5 < coll_obj.amt : 
+            if outstanding_amt + 1 < coll_obj.amt : 
                 errors[cheque_number][bill_no] = f"O/S Amount Rs.{row['O/S Amount']} < Collection Amount Rs.{coll_obj.amt}"
                 continue
 
@@ -419,7 +420,7 @@ def create_cheques(ikea,bankstatement_objs: list[BankStatement],files_dir) -> tu
             row["Chq/DD Date"]  = bank_obj.date.strftime("%d/%m/%Y")
             chq_no = bank_obj.statement_id
             row["Chq/DD No"] = chq_no
-            row["Amount"] = coll_obj.amt
+            row["Amount"] = min(outstanding_amt,coll_obj.amt)
             temp_rows.append(row)
 
         if len(errors[cheque_number]) == 0 : 

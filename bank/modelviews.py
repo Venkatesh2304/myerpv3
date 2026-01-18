@@ -28,6 +28,9 @@ class ChequeViewSet(viewsets.ModelViewSet):
     class ChequeFilter(filters.FilterSet):
         is_depositable = filters.BooleanFilter(method ='filter_is_depositable')
         company = filters.CharFilter(field_name='company_id', lookup_expr='exact')
+        deposit_date = filters.DateFilter(field_name='deposit_date', lookup_expr='exact')
+        party = filters.CharFilter(field_name='party_id', lookup_expr='exact')
+
         def filter_is_depositable(self, queryset, name, value):
             if value : 
                 return queryset.filter(deposit_date__isnull = True,cheque_date__lte = datetime.date.today())
@@ -47,7 +50,8 @@ class BankStatementViewSet(viewsets.ModelViewSet):
         obj.save()
 
     class BankFilter(filters.FilterSet):
-        date = filters.DateFilter(field_name='date', lookup_expr='exact')
+        fromd = filters.DateFilter(field_name='date', lookup_expr='gte')
+        tod = filters.DateFilter(field_name='date', lookup_expr='lte')
         type = filters.CharFilter(field_name='type', lookup_expr='exact')
         bank = filters.CharFilter(field_name='bank', lookup_expr='exact')
         company = filters.CharFilter(method='filter_company')
@@ -58,7 +62,6 @@ class BankStatementViewSet(viewsets.ModelViewSet):
 
         def filter_status(self, queryset, name, status):
             company_id = self.data.get("company")
-            # cutoff_date = datetime.date.today() - datetime.timedelta(days=30)
             #This month first day
             today = datetime.date.today()
             cutoff_date = datetime.date(today.year, today.month, 1)
