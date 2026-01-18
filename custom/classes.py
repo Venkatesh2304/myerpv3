@@ -180,7 +180,7 @@ class IkeaReports(BaseIkea):
         uid = datetime.date.today().strftime("%d%m%Y")
         try: 
             df[date_col] = pd.to_datetime(df[date_col],format = "%d/%m/%Y").dt.date
-            if df[date_col].max().date() > tod : 
+            if df[date_col].notna().max().date() > tod : 
                 raise Exception(f"Collection Date is greater than to date : {uid}")            
         except Exception as e: 
             self.logger.error(f"Failed to fetch collection report for {fromd} to {tod}: {e}", exc_info=True)
