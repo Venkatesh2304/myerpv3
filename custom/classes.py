@@ -175,10 +175,14 @@ class IkeaReports(BaseIkea):
     def collection(self, fromd: datetime.date, tod: datetime.date) -> pd.DataFrame:
         df = self.fetch_report_dataframe("ikea/collection", r'(":val10":").{10}(",":val11":").{10}(",":val12":".{10}",":val13":").{10}(.*?":val20":).{2}', 
                         (fromd.strftime("%Y/%m/%d"), tod.strftime("%Y/%m/%d"), tod.strftime("%Y/%m/%d"),str(self.user_id)))
-        if df["Collection Date"].max().date() > tod : 
-            uid = datetime.date.today().strftime("%d%m%Y")
+        uid = datetime.date.today().strftime("%d%m%Y")
+        try: 
+            if df["Collection Date"].max().date() > tod : 
+                raise Exception(f"Collection Date is greater than to date : {uid}")            
+        except Exception as e: 
+            self.logger.error(f"Failed to fetch collection report for {fromd} to {tod}: {e}", exc_info=True)
             df.to_excel(f"collection_date_exception_{uid}.xlsx",index = False)
-            raise Exception(f"Collection Date is greater than to date : {uid}")
+            raise 
         return df 
     
     def crnote(self, fromd: datetime.date, tod: datetime.date) -> pd.DataFrame:
