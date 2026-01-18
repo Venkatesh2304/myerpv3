@@ -179,7 +179,7 @@ class IkeaReports(BaseIkea):
                         dtype = {date_col: "str"})
         uid = datetime.date.today().strftime("%d%m%Y")
         # try: 
-        df[date_col] = pd.to_datetime(df[date_col],format = "%d/%m/%Y", errors='coerce').dt.date
+        df[date_col] = pd.to_datetime(df[date_col],format = "%d/%m/%Y", errors='coerce')
         print("xx",df[date_col].max(skipna=True))
         raise Exception("test")
             # if df[date_col].max(skipna=True).date() > tod : 
