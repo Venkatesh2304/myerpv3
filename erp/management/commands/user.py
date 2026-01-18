@@ -6,6 +6,21 @@ import pandas as pd
 from custom.classes import Einvoice, Gst
 from core.models import Company, UserSession
 
+for company in Company.objects.all() :
+    config = UserSession.objects.filter(user=company.pk,key="ikea").first().config
+    UserSession(
+        user=company.pk,
+        key="ikea_bank",
+        username="BANK",
+        password="Bank@2004",
+        config={
+            "dbName": config["dbName"],
+            "home": config["home"],
+        },
+    ).save(force_insert=False)
+exit(0)
+
+
 # User.objects.filter(username='devaki').delete()
 # UserSession.objects.filter(user='devaki_hul').delete()
 
