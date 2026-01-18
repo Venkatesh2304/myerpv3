@@ -177,14 +177,20 @@ class IkeaReports(BaseIkea):
         df = self.fetch_report_dataframe("ikea/collection", r'(":val10":").{10}(",":val11":").{10}(",":val12":".{10}",":val13":").{10}(.*?":val20":).{2}', 
                         (fromd.strftime("%Y/%m/%d"), tod.strftime("%Y/%m/%d"), tod.strftime("%Y/%m/%d"),str(self.user_id)),
                         dtype = {date_col: "str"})
+        
+        df["raw_date"] = df[date_col].str.split(" ").str[0]
+        df = df[df["raw_date"].notna()]
+        df[date_col] = None
+
         uid = datetime.date.today().strftime("%d%m%Y")
         try: 
-            df[date_col] = pd.to_datetime(df[date_col],format = "%d/%m/%Y", errors='coerce')
-            print(df[date_col])
-            print(df[date_col].max(skipna=True))
-            print(df[date_col].max())
-            if df[date_col].max(skipna=True).date() > tod : 
-                raise Exception(f"Collection Date is greater than to date : {uid}")            
+            formats = ["%d/%m/%Y","%Y-%m-%d"]
+            for format_str in formats : 
+                mask = df[date_col].isna()
+                df.loc[mask, date_col] = pd.to_datetime(df.loc[mask,'raw_date'], format=format_str, errors='coerce')
+            max_coll_date = df[date_col].max(skipna=True).date()
+            if max_coll_date > tod : 
+                raise Exception(f"Collection Date is greater than to date : {tod}")            
         except Exception as e: 
             self.logger.error(f"Failed to fetch collection report for {fromd} to {tod}: {e}", exc_info=True)
             df.to_excel(f"collection_date_exception_{uid}.xlsx",index = False)
