@@ -209,7 +209,9 @@ class IkeaReports(BaseIkea):
     def download_manual_collection(self) -> pd.DataFrame:
         return self.fetch_report_dataframe("ikea/download_manual_collection", r'(":val10":").{10}', (datetime.date.today().strftime("%d/%m/%Y"),))
     
-    def download_settle_cheque(self, type: str = "PENDING", fromd: datetime.date = datetime.date.today(), tod: datetime.date = datetime.date.today()) -> pd.DataFrame:
+    def download_settle_cheque(self, type: str = "PENDING", fromd: datetime.date|None = None, tod: datetime.date|None = None) -> pd.DataFrame:
+        fromd = fromd or datetime.date.today()
+        tod = tod or datetime.date.today()
         return self.fetch_report_dataframe("ikea/download_settle_cheque", r'(":val1":").*(",":val2":").{10}(",":val3":").{10}(.{32}).{10}', 
                             (type, fromd.strftime("%d/%m/%Y"), tod.strftime("%d/%m/%Y"), datetime.date.today().strftime("%d/%m/%Y")))
     
