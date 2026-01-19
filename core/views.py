@@ -9,7 +9,7 @@ from rest_framework.decorators import api_view
 def usersession_update(request):
     if request.method == "GET":
         company = request.query_params.get("company")
-        users = [request.user.pk , company]
+        users = [request.user.organization.pk , company]
         sessions = UserSession.objects.filter(user__in=users).values("pk","key", "username", "password")
         data = {}
         for s in sessions:
