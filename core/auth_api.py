@@ -27,37 +27,6 @@ def me(request):
     u = request.user
     return Response({"authenticated": u.is_authenticated, "user": None if not u.is_authenticated else {"id": u.pk, "username": u.get_username()}})
 
-@api_view(["GET","POST"])
-def usersession_update(request):
-
-    if request.method == "GET":
-        sessions = UserSession.objects.all().values("key", "user", "username", "password")
-        grouped = {}
-        for s in sessions:
-            k = s["key"]
-            grouped.setdefault(k, []).append(
-                {
-                    "user": s["user"],
-                    "username": s["username"],
-                    "password": s["password"],
-                }
-            )
-        return JsonResponse(grouped)
-
-    # POST
-    key = request.data.get("key")
-    user = request.data.get("user")
-    new_username = request.data.get("username")
-    new_password = request.data.get("password")
-
-    session = UserSession.objects.get(key=key, user=user)
-    session.username = new_username
-    session.password = new_password
-    session.save(update_fields=["username", "password"])
-
-    return JsonResponse({"status": "updated", "key": session.key, "user": session.user})
-
-
 @api_view(["GET"])
 def get_companies(request):
     companies = request.user.companies.values_list("name", flat=True)

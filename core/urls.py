@@ -1,6 +1,7 @@
 from core.auth_api import get_companies
 from django.urls import path
-from .auth_api import login as auth_login, logout as auth_logout, me as auth_me, usersession_update
+from .auth_api import login as auth_login, logout as auth_logout, me as auth_me
+from .views import usersession_update
 
 urlpatterns = [
     path("login", auth_login, name="auth-login"),

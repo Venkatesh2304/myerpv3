@@ -11,6 +11,7 @@ class OutstandingReportViewSet(viewsets.ReadOnlyModelViewSet):
     class OutstandingFilter(filters.FilterSet):
         company = filters.CharFilter(field_name='company_id', lookup_expr='exact')
         party = filters.CharFilter(field_name='party_id', lookup_expr='exact')
+        inum = filters.CharFilter(field_name='inum', lookup_expr='iexact')
         
         class Meta:
             model = OutstandingReport
