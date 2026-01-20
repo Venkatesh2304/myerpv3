@@ -73,11 +73,14 @@ class BankStatement(models.Model) :
         unique_together = ('date','idx','bank')
         verbose_name_plural = 'Bank'
 
+    def __init__(self, *args, **kwargs) :
+        super().__init__(*args, **kwargs)
+
     def save(self, *args, **kwargs) :
-        if self.company_id is None :
-            self.statement_id = None
         if self.type != "cheque" : 
             self.cheque_entry_id = None
+        if self.company_id is None :
+            self.statement_id = None
         super().save(*args, **kwargs)
 
     def add_event(self,type,message = "",by = None):
@@ -105,7 +108,12 @@ class BankStatement(models.Model) :
 
     @property
     def all_collection(self) :
-        return BankCollection.objects.filter(Q(bank_entry_id = self.id) | Q(cheque_entry__bank_entry = self.id))
+        if self.type == "cheque" : 
+            return BankCollection.objects.filter(cheque_entry__bank_entry = self.id)
+        elif self.type == "neft" : 
+            return BankCollection.objects.filter(bank_entry_id = self.id)
+        else :
+            return BankCollection.objects.none()
 
     @property
     def ikea_collection(self) :

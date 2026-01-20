@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 
 from pathlib import Path
 import sys
+from datetime import timedelta
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -52,10 +53,24 @@ INSTALLED_APPS = [
     "bank",
 ]
 
+
+# 2. Configure SimpleJWT
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(days=1),  # Set access token to 24 hours
+    'ROTATE_REFRESH_TOKENS': False,
+    'BLACKLIST_AFTER_ROTATION': False,    
+    'AUTH_HEADER_TYPES': ('Bearer',),
+    'USER_ID_FIELD': 'username',     
+    'USER_ID_CLAIM': 'username',
+    'SIGNING_KEY': 'your-very-secret-signing-key-v1',
+}
+
+
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
         # "core.auth_backends.DevAuthentication",
-        "core.auth_backends.CsrfExemptSessionAuthentication",
+        # "core.auth_backends.CsrfExemptSessionAuthentication",
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
     ],
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.IsAuthenticated",
@@ -187,6 +202,8 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
 ]
 CORS_ALLOW_CREDENTIALS = True
+CORS_PREFLIGHT_MAX_AGE = 86400
+
 if "runserver" in sys.argv :
     SESSION_COOKIE_SAMESITE = "None"
     SESSION_COOKIE_SECURE = True

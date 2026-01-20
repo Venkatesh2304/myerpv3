@@ -14,6 +14,7 @@ captcha.png
 .venv/
 cron.log
 files/
+simulator/
 profile.json
 profile.html
 *.json

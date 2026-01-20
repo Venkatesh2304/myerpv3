@@ -46,8 +46,6 @@ class BankStatementViewSet(viewsets.ModelViewSet):
     
     def perform_update(self, serializer):
         obj = serializer.save()
-        if obj.company_id is None :
-            obj.statement_id = None
         obj.add_event("saved",by = self.request.user.pk,message = f"Mapped to {obj.type}")
         obj.save()
 
@@ -80,7 +78,10 @@ class BankStatementViewSet(viewsets.ModelViewSet):
                 not_pushed_statement_ids = [] #Contains partial also (ideally this should be empty only failures)
                 for obj in queryset : 
                     if abs(obj.amt - ikea_collection.get(obj.statement_id,0)) > ALLOWED_DIFF :
-                        not_pushed_statement_ids.append(obj.statement_id)
+                        #If it matches the total of bank collection entries then it is considered pushed
+                        total_amt = obj.all_collection.aggregate(total = Sum("amt"))["total"]
+                        if abs(total_amt - obj.amt) > ALLOWED_DIFF :
+                            not_pushed_statement_ids.append(obj.statement_id)
 
                 queryset = queryset.filter(Q(statement_id__in = not_pushed_statement_ids) | Q(statement_id__isnull = True))
                 return queryset

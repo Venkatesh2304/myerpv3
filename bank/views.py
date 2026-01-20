@@ -42,7 +42,7 @@ def clean_text(text):
     text = re.sub(r'\s+', ' ', text)
     return text.strip()
 
-def find_cheque_match(bank_entry,company_ids,allowed_diff=10):
+def find_cheque_match(bank_entry,company_ids,allowed_diff):
     qs = ChequeDeposit.objects.filter(deposit_date__isnull=False,company_id__in = company_ids).filter(
                     amt__gte=bank_entry.amt - allowed_diff,
                     amt__lte=bank_entry.amt + allowed_diff
@@ -61,7 +61,6 @@ def find_party_match(model,vectorizer,desc,prob_threshold = 0.05):
     )
     matches = []
     for label,prob in  ranked[:10] : 
-        print(label,prob)
         if prob < prob_threshold : break
         company = label.split("/")[0]
         party_id = label.split("/")[1]
@@ -149,8 +148,8 @@ def smart_match(queryset):
         model = joblib.load(f"party_classifier_{bank_id}.joblib")
         for obj in objs :
             chq_matches = list(find_cheque_match(obj,company_ids, allowed_diff=0))
-            if len(chq_matches) > 1 : 
-                chq_matches = [ chq_obj for chq_obj in chq_matches if str(chq_obj.cheque_no) in obj.desc ]
+            #Strict match to have cheque number in desc
+            chq_matches = [ chq.cheque_no for chq in chq_matches if (chq.cheque_no in obj.desc) or (chq.cheque_no in obj.ref) ]
 
             if len(chq_matches) == 0 : 
                 #Try neft
@@ -373,7 +372,7 @@ def cheque_match(request) :
     bank_id = request.data.get("bank_id")
     company_id = request.data.get("company")
     bank_entry = BankStatement.objects.get(id = bank_id)
-    matches = find_cheque_match(bank_entry,[company_id])
+    matches = find_cheque_match(bank_entry,[company_id],allowed_diff=5)
     chqs = [ { "label" : str(chq) , "value" : chq.id } for chq in matches.all() ]
     return JsonResponse(chqs,safe=False)
 
@@ -596,7 +595,6 @@ def refresh_bank(request):
             tod = datetime.date.today()))
         OutstandingReport.update_db(ikea,company,EmptyArgs())
     return JsonResponse({"status" : "success"})
-
 
 @api_view(["POST"])
 def bank_summary(request):
