@@ -1,3 +1,5 @@
+from django.db.models import Value
+from django.db.models.functions import Concat
 from django.db.models.expressions import F
 import datetime
 from report.models import SalesRegisterReport
@@ -27,7 +29,7 @@ def party_names(request) :
     beat = request.query_params.get('beat')
     if beat : qs = qs.filter(beat = beat)
     parties = qs.annotate(
-        label = F("party_name"),
+        label = Concat(F("party_name"),Value(" ("),F("party_id"),Value(")")),
         value = F("party_id")
     ).values("label","value").distinct() #warning
     return JsonResponse(list(parties),safe=False)

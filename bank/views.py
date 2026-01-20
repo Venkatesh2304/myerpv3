@@ -184,7 +184,7 @@ def smart_match(queryset):
         for obj in objs :
             chq_matches = list(find_cheque_match(obj,company_ids, allowed_diff=0))
             #Strict match to have cheque number in desc
-            chq_matches = [ chq.cheque_no for chq in chq_matches if (chq.cheque_no in obj.desc) or (chq.cheque_no in obj.ref) ]
+            chq_matches = [ chq for chq in chq_matches if (chq.cheque_no in obj.desc) or (chq.cheque_no in obj.ref) ]
 
             if len(chq_matches) == 0 : 
                 #Try neft
@@ -311,6 +311,12 @@ def bank_statement_upload(request):
         df["amt"] = df["amt"].round()
         df = df[df.amt != 0]
         
+        #Check if the start date is less than or equal to last date in bank to ensure continuity
+        bank_last_date = BankStatement.objects.filter(bank_id=bank.id).aggregate(max_date=Max("date"))["max_date"]
+        current_statement_start_date = df.date.min()
+        if bank_last_date and  current_statement_start_date > bank_last_date :
+            return JsonResponse({"error": f"Please Upload Statement from {bank_last_date.strftime('%d/%m/%Y')}"}, status=500)
+
         bank_statements = []
         for _, row in df.iterrows():
             obj = BankStatement(
