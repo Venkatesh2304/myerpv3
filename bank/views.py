@@ -102,9 +102,8 @@ def get_match(outstandings,amt,prob) :
 
     return matched_invoices if prob > 0.05 else []
 
-def find_neft_match(bankstatement_obj,company_id,party_id,prob):
+def find_outstanding_match(company_id,party_id,amt,prob,bankstatement_obj = None,cheque_obj = None):
     allowed_diff = 0.5
-    amt = bankstatement_obj.amt
     outstandings = list(OutstandingReport.objects.filter(
         party_id = party_id,
         company_id = company_id,
@@ -116,7 +115,10 @@ def find_neft_match(bankstatement_obj,company_id,party_id,prob):
     pending_outstandings = []
     for inum,balance,bill_date in outstandings :
         pending_collection = 0 
-        for coll in BankCollection.objects.filter(bill = inum).exclude(bank_entry = bankstatement_obj) :
+        qs = BankCollection.objects.filter(bill = inum)
+        if bankstatement_obj : qs = qs.exclude(bank_entry = bankstatement_obj)
+        if cheque_obj : qs = qs.exclude(cheque_entry = cheque_obj)
+        for coll in qs :
             if coll.company != company_id : continue 
 
             pushed = True
@@ -138,6 +140,39 @@ def find_neft_match(bankstatement_obj,company_id,party_id,prob):
     matched_invoices = get_match(pending_outstandings,amt,prob)
     return matched_invoices
 
+def auto_match_upi(company_id,bank_qs):
+    qs = bank_qs.filter(Q(type__isnull=True)|Q(type="upi"))
+    # TODO: Is the below safe ?
+    qs.filter(Q(desc__icontains="cash") & Q(desc__icontains="deposit")).update(type="cash_deposit")
+    if not qs.exists() :
+        return JsonResponse({"error" : "No UPI transactions to match"},status=500)
+    fromd = qs.aggregate(Min("date"))["date__min"]
+    tod = qs.aggregate(Max("date"))["date__max"]
+    try :
+        upi_statement:pd.DataFrame = IkeaBank(company_id).upi_statement(fromd - datetime.timedelta(days = 3),tod)
+    except Exception as e :
+        raise Exception("Failed to fetch UPI statement")
+    upi_statement["FOUND"] = "No"
+    upi_statement["PAYMENT ID"] = upi_statement["PAYMENT ID"].astype(str).str.split(".").str[0]
+    for bank_obj in qs.all() : 
+        for _,row in upi_statement.iterrows() : 
+            if (row["FOUND"] == "No") and (row["PAYMENT ID"] in bank_obj.desc) : 
+                bank_obj.type = "upi"
+                bank_obj.add_event("upi_auto_matched")
+                bank_obj.save()
+                upi_statement.loc[_,"FOUND"] = "Yes"
+                
+    upi_during_period = upi_statement[(upi_statement["COLLECTED DATE"].dt.date >= fromd)] 
+    upi_before_period = upi_statement[(upi_statement["COLLECTED DATE"].dt.date < fromd)]         
+    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = 'attachment; filename=UPI Matching.xlsx'
+    with pd.ExcelWriter(response, engine='xlsxwriter') as writer:
+        upi_during_period[upi_during_period["FOUND"] == "No"].to_excel(writer,sheet_name="Un-Matched UPI (Current)",index=False)
+        upi_during_period[upi_during_period["FOUND"] == "Yes"].to_excel(writer,sheet_name="Matched UPI (Current)",index=False)
+        upi_before_period[upi_before_period["FOUND"] == "Yes"].to_excel(writer,sheet_name=f"Matched UPI (Before)",index=False)
+    
+    return response
+
 def smart_match(queryset):
     bank_objs_map:dict[int,list[BankStatement]] = defaultdict(list)
     for obj in queryset :
@@ -154,7 +189,7 @@ def smart_match(queryset):
             if len(chq_matches) == 0 : 
                 #Try neft
                 for company_id,party_id,prob in find_party_match(model,vectorizer,obj.desc) : 
-                    matched_invoices = find_neft_match(obj,company_id,party_id,prob)
+                    matched_invoices = find_outstanding_match(company_id,party_id,obj.amt,prob,bankstatement_obj=obj)
                     if len(matched_invoices) == 1 : 
                         obj.type = "neft"
                         obj.company_id = company_id
@@ -175,7 +210,8 @@ def smart_match(queryset):
                 obj.save()
             else : 
                 continue 
-    
+
+#Views    
 @api_view(["POST"])
 def smart_match_view(request):
     ids = request.data.get("ids")
@@ -305,57 +341,25 @@ def bank_statement_upload(request):
     except Exception as e:
         return JsonResponse({"error": str(e)}, status=500)
 
-def auto_match_upi(company_id,bank_qs):
-    qs = bank_qs.filter(Q(type__isnull=True)|Q(type="upi"))
-    # TODO: Is the below safe ?
-    qs.filter(Q(desc__icontains="cash") & Q(desc__icontains="deposit")).update(type="cash_deposit")
-    if not qs.exists() :
-        return JsonResponse({"error" : "No UPI transactions to match"},status=500)
-    fromd = qs.aggregate(Min("date"))["date__min"]
-    tod = qs.aggregate(Max("date"))["date__max"]
-    try :
-        upi_statement:pd.DataFrame = IkeaBank(company_id).upi_statement(fromd - datetime.timedelta(days = 3),tod)
-    except Exception as e :
-        raise Exception("Failed to fetch UPI statement")
-    upi_statement["FOUND"] = "No"
-    upi_statement["PAYMENT ID"] = upi_statement["PAYMENT ID"].astype(str).str.split(".").str[0]
-    for bank_obj in qs.all() : 
-        for _,row in upi_statement.iterrows() : 
-            if (row["FOUND"] == "No") and (row["PAYMENT ID"] in bank_obj.desc) : 
-                bank_obj.type = "upi"
-                bank_obj.add_event("upi_auto_matched")
-                bank_obj.save()
-                upi_statement.loc[_,"FOUND"] = "Yes"
-                
-    upi_during_period = upi_statement[(upi_statement["COLLECTED DATE"].dt.date >= fromd)] 
-    upi_before_period = upi_statement[(upi_statement["COLLECTED DATE"].dt.date < fromd)]         
-    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-    response['Content-Disposition'] = 'attachment; filename=UPI Matching.xlsx'
-    with pd.ExcelWriter(response, engine='xlsxwriter') as writer:
-        upi_during_period[upi_during_period["FOUND"] == "No"].to_excel(writer,sheet_name="Un-Matched UPI (Current)",index=False)
-        upi_during_period[upi_during_period["FOUND"] == "Yes"].to_excel(writer,sheet_name="Matched UPI (Current)",index=False)
-        upi_before_period[upi_before_period["FOUND"] == "Yes"].to_excel(writer,sheet_name=f"Matched UPI (Before)",index=False)
-    
-    return response
-
 @api_view(["POST"])
-def auto_match_upi_view(request):
-    company_id = request.data.get("company")
-    tod = datetime.date.today()
-    fromd = tod - datetime.timedelta(days = 15)
-    banks = Bank.objects.filter(companies__name = company_id)
-    bank_qs = BankStatement.objects.filter(date__gte = fromd,date__lte = tod,bank__in = banks)
-    response = auto_match_upi(company_id,bank_qs)
-    return response
-
-@api_view(["POST"])
-def auto_match_neft(request) : 
-    bankstatement_id = request.data.get("bankstatement_id")
+def auto_match_outstanding(request) : 
+    bankstatement_id = request.data.get("bankstatement_id",None)
+    cheque_id = request.data.get("cheque_id",None)
+    amt = request.data.get("amt",None)
     party_id = request.data.get("party_id")
     company_id = request.data.get("company")
-    bankstatement_obj = BankStatement.objects.get(id = bankstatement_id)
     party_name = PartyReport.objects.get(code = party_id,company_id = company_id).name
-    matched_invoices = find_neft_match(bankstatement_obj,company_id,party_id,1)
+
+    if bankstatement_id : 
+        bankstatement_obj = BankStatement.objects.get(id = bankstatement_id)
+        matched_invoices = find_outstanding_match(company_id,party_id,bankstatement_obj.amt,1,bankstatement_obj = bankstatement_obj)
+    elif cheque_id : 
+        cheque_obj = ChequeDeposit.objects.get(id = cheque_id)
+        matched_invoices = find_outstanding_match(company_id,party_id,amt,1,cheque_obj = cheque_obj)
+    elif amt : 
+        matched_invoices = find_outstanding_match(company_id,party_id,amt,1)
+    else : 
+        return JsonResponse({"error" : "No bank statement or cheque id or amt not provided."},status=500)
 
     if len(matched_invoices) == 0 :
         return JsonResponse({"error" : "No matching invoices found."},status=500)
@@ -367,8 +371,9 @@ def auto_match_neft(request) :
     else : 
         return JsonResponse({"error" : "Multiple matches found."},status=500)
 
+
 @api_view(["POST"])
-def cheque_match(request) : 
+def cheque_matches(request) : 
     bank_id = request.data.get("bank_id")
     company_id = request.data.get("company")
     bank_entry = BankStatement.objects.get(id = bank_id)
