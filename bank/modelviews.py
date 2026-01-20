@@ -1,3 +1,4 @@
+from report.models import SalesRegisterReport
 from django.db.models.aggregates import Sum
 from django.db.models.expressions import Subquery
 from django.db.models.expressions import F
@@ -54,8 +55,10 @@ class BankStatementViewSet(viewsets.ModelViewSet):
         tod = filters.DateFilter(field_name='date', lookup_expr='lte')
         type = filters.CharFilter(field_name='type', lookup_expr='exact')
         bank = filters.CharFilter(field_name='bank', lookup_expr='exact')
+        amt = filters.NumberFilter(field_name='amt', lookup_expr='exact')
         company = filters.CharFilter(method='filter_company')
         status = filters.CharFilter(method='filter_status')
+        party = filters.CharFilter(method='filter_party')
         class Meta:
             model = BankStatement
             fields = []
@@ -93,10 +96,19 @@ class BankStatementViewSet(viewsets.ModelViewSet):
 
         def filter_company(self, queryset, name, company_id):
             return queryset.filter(bank__companies=company_id) #.filter(Q(company_id = company_id) | Q(company_id__isnull = True))
-            
+        
+        def filter_party(self, queryset, name, party_id):
+            company_id = self.request.query_params.get('company')
+            bill_cutoff_date = datetime.date.today() - datetime.timedelta(days=120)
+            bank_cutoff_date = datetime.date.today() - datetime.timedelta(days=60)
+            bills = SalesRegisterReport.objects.filter(party_id = party_id,company_id = company_id,date__gte = bill_cutoff_date).distinct("inum").values_list("inum",flat=True)
+            queryset = queryset.filter(date__gte = bank_cutoff_date,company_id = company_id)
+            queryset = queryset.filter(Q(collection__bill__in = bills) | Q(cheque_entry__party_id = party_id)).distinct()
+            return queryset
+
     filterset_class = BankFilter
 
-class BankViewSet(viewsets.ModelViewSet):#
+class BankViewSet(viewsets.ModelViewSet):
     queryset = Bank.objects.all()
     serializer_class = BankNameSerializer
     pagination_class = None
