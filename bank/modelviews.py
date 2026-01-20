@@ -77,10 +77,12 @@ class BankStatementViewSet(viewsets.ModelViewSet):
                 ikea_collection = { i["bank_entry_id"] : i["total_amt"] for i in ikea_collection }
                 not_pushed_statement_ids = [] #Contains partial also (ideally this should be empty only failures)
                 for obj in queryset : 
-                    if abs(obj.amt - ikea_collection.get(obj.statement_id,0)) > ALLOWED_DIFF :
+                    bank_amt = obj.amt
+                    ikea_coll_amt = ikea_collection.get(obj.statement_id,0)
+                    if abs(bank_amt - ikea_coll_amt) > ALLOWED_DIFF :
                         #If it matches the total of bank collection entries then it is considered pushed
-                        total_amt = obj.all_collection.aggregate(total = Sum("amt"))["total"]
-                        if abs(total_amt - obj.amt) > ALLOWED_DIFF :
+                        bank_coll_amt = obj.all_collection.aggregate(total = Sum("amt"))["total"]
+                        if abs(bank_coll_amt - ikea_coll_amt) > ALLOWED_DIFF :
                             not_pushed_statement_ids.append(obj.statement_id)
 
                 queryset = queryset.filter(Q(statement_id__in = not_pushed_statement_ids) | Q(statement_id__isnull = True))
