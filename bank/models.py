@@ -73,6 +73,13 @@ class BankStatement(models.Model) :
         unique_together = ('date','idx','bank')
         verbose_name_plural = 'Bank'
 
+    def save(self, *args, **kwargs) :
+        if self.company_id is None :
+            self.statement_id = None
+        if self.type != "cheque" : 
+            self.cheque_entry_id = None
+        super().save(*args, **kwargs)
+
     def add_event(self,type,message = "",by = None):
         event = {"type" : type,"message" : message,"by" : by,"time" : datetime.datetime.now().strftime("%d/%m/%y %H:%M")}
         self.events.insert(0,event)
