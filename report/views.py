@@ -1,3 +1,9 @@
+from PyPDF2 import PdfReader
+from PyPDF2 import PdfWriter
+from report.helper import pending_sheet_pdf
+from report.models import StockReport
+from report.models import OutstandingReport
+from core.utils import get_media_url
 from django.db.models import Value
 from django.db.models.functions import Concat
 from django.db.models.expressions import F
@@ -125,3 +131,130 @@ def sync_reports(request):
             results[report_name] = f"Error: {str(e)}"
             
     return JsonResponse(results)
+
+@api_view(["POST"])
+def outstanding_report(request):
+    today = datetime.date.today()
+    company_id = request.data.get("company")
+    date = request.data.get("date",today.strftime("%Y-%m-%d"))
+    beat_type = request.data.get("beat_type")
+    date = datetime.datetime.strptime(date,"%Y-%m-%d").date()
+    day = date.strftime("%A").lower()
+
+    ikea = Ikea(company_id)
+    company = Company.objects.get(name = company_id)
+    OutstandingReport.update_db(ikea, company, EmptyArgs())
+    base_qs = OutstandingReport.objects.filter(company_id = company_id)
+    if beat_type == "wholesale" : base_qs = base_qs.filter(beat__contains="WHOLESALE") 
+    if beat_type == "retail" : base_qs = base_qs.exclude(beat__contains="WHOLESALE") 
+
+    def get_dataframe(qs):
+        df = pd.DataFrame(list(qs.values()))
+        df = df.rename(columns={"party_name":"party","inum":"bill"})
+        df = df.astype({"bill_amt":int,"balance":int})
+        df["days"] = df["bill_date"].apply(lambda x : (today - x).days)
+        df = df[df["days"] < 100] #Filter out bills older than 100 days
+        #Populate Phone numbers
+        phone_map = PartyReport.objects.filter(company_id=company_id).values('code','phone')
+        phone_map = {d["code"]:d["phone"] for d in phone_map}
+        df["phone"] = df["party_id"].apply(lambda x : phone_map.get(x,"-"))
+        df["coll_amt"] = (df["bill_amt"] - df["balance"]).round()
+        df["salesman"] = df["salesman"].str.split("-").str[0].str.strip() #Clean salesman , remove salesman code
+        df = df.sort_values("days",ascending=False)
+        df = df[["salesman","beat","party","bill","bill_amt","coll_amt","balance","phone","days"]]
+        return df
+
+    pivot_fn = lambda df : pd.pivot_table(df,index=["salesman","beat","party","bill"],values=["bill_amt","coll_amt","balance","days","phone"],aggfunc = "first")[['bill_amt','coll_amt','balance',"days","phone"]] # type: ignore
+    
+    today_beats = BeatReport.objects.filter(company_id = company_id,days__contains = day).values_list("name",flat=True)
+    today_outstanding = get_dataframe(base_qs.filter(beat__in = today_beats))
+    outstanding_greater_than_21 = today_outstanding[today_outstanding.days >= 21]
+    today_beat_outstanding = pivot_fn(outstanding_greater_than_21)
+
+    all_outstanding = get_dataframe(base_qs)
+    outstanding_greater_than_28 = pivot_fn(all_outstanding[all_outstanding.days >= 28])
+
+    company_dir = os.path.join(settings.MEDIA_ROOT, "report", company_id)
+    os.makedirs(company_dir, exist_ok=True)
+    OUTSTANDING_REPORT_FILE = os.path.join(company_dir,"outstanding.xlsx")
+    with pd.ExcelWriter(open(OUTSTANDING_REPORT_FILE,"wb+"), engine='xlsxwriter') as writer:
+        today_beat_outstanding.to_excel(writer,sheet_name="21 Days")
+        outstanding_greater_than_28.to_excel(writer,sheet_name="28 Days")
+        all_outstanding.to_excel(writer,sheet_name="ALL BILLS",index=False)
+
+    return JsonResponse({"status":"success", "filepath": get_media_url(OUTSTANDING_REPORT_FILE)})
+
+@api_view(["POST"])
+def stock_report(request) : 
+    companies = request.user.companies.all()
+    dfs = {}
+    for company in companies :
+        i =  Ikea(company.pk)
+        StockReport.update_db(i,company,EmptyArgs())
+        qs = StockReport.objects.filter(company_id = company.pk, godown = "MAIN GODOWN").values("stock_id","name","mrp","qty")
+        df = pd.DataFrame(qs)
+        df = df.groupby(["stock_id","name","mrp"]).agg({"qty":"sum"}).reset_index()
+        df = df.sort_values("mrp",ascending=False)
+        dfs[company.pk] = df
+
+    #All Companies
+    qs  = StockReport.objects.filter(company__in = list(companies), godown = "MAIN GODOWN").values("company_id","stock_id","name","mrp","qty")
+    df = pd.DataFrame(qs)
+    df = df.pivot_table(index=["stock_id","name","mrp"],columns="company_id",values=["qty"],aggfunc={"qty":"sum"},margins=True,margins_name="Total")
+    df = df.iloc[:-1, :]
+    df = df.sort_values("mrp",ascending=False)
+    # df["total"] = df.sum(axis=1)    
+
+    user_dir = os.path.join(settings.MEDIA_ROOT, "report", request.user.pk)
+    os.makedirs(user_dir, exist_ok=True)
+    STOCK_REPORT_FILE = os.path.join(user_dir,"stock_report.xlsx")
+    with pd.ExcelWriter(open(STOCK_REPORT_FILE,"wb+"), engine='xlsxwriter') as writer:
+        df.to_excel(writer,sheet_name="All")
+        for company_id, df in dfs.items() :
+            df.to_excel(writer,sheet_name=company_id,index=False)
+            
+    return JsonResponse({"status":"success", "filepath": get_media_url(STOCK_REPORT_FILE)})
+
+@api_view(["POST"])
+def pending_sheet(request) :
+    date = request.data.get("date")
+    date = datetime.datetime.strptime(date, "%Y-%m-%d").date()
+    company_id = request.data.get("company") 
+    beat_ids = request.data.get("beat_ids")
+    beat_names = BeatReport.objects.filter(beat_id__in = beat_ids,company_id = company_id).values("beat_id","name")
+    beat_name_to_id = {d["name"]:d["beat_id"] for d in beat_names}
+
+    ikea = Ikea(company_id)
+    company = Company.objects.get(name = company_id)
+    OutstandingReport.update_db(ikea, company, EmptyArgs())
+
+    qs = OutstandingReport.objects.filter(company_id = company_id,beat__in = list(beat_name_to_id.keys()))
+    df = pd.DataFrame(qs.values("party_name","bill_date","salesman","inum","bill_amt","balance","beat"))
+    df["days"] = df["bill_date"].apply(lambda x : (date - x).days)
+    df["bill_date"] = pd.to_datetime(df.bill_date)
+    df["coll_amt"] = (df["bill_amt"] - df["balance"]).round()
+    df = df[df["days"] > 0] #Filter Today Bills
+    pdfs = [] 
+    for beat_name , rows in df.groupby("beat") : 
+        max_days_per_party = rows.groupby("party_name")["days"].max().to_dict()
+        rows["max_days_per_party"] = rows["party_name"].map(max_days_per_party)
+        rows = rows.sort_values(by = ["max_days_per_party","party_name"] , ascending=False)
+        salesman = rows.iloc[0]["salesman"]
+        beat_id = beat_name_to_id[beat_name]
+        sheet_no = "PS" + date.strftime("%d%m%y") + str(beat_id)
+        bytesio = pending_sheet_pdf(rows , sheet_no ,  salesman , beat_name , date)
+        pdfs.append(bytesio)
+    
+    writer = PdfWriter()
+    for pdf in pdfs :
+        reader = PdfReader(pdf)
+        for page in reader.pages:
+            writer.add_page(page)
+        if len(reader.pages) % 2 != 0:
+            writer.add_blank_page()
+    
+    company_dir = os.path.join(settings.MEDIA_ROOT, "report", company_id)
+    os.makedirs(company_dir, exist_ok=True)
+    PENDING_SHEET_FILE = os.path.join(company_dir,"pending_sheet.pdf")
+    writer.write(PENDING_SHEET_FILE)
+    return JsonResponse({"status":"success", "filepath": get_media_url(PENDING_SHEET_FILE)})

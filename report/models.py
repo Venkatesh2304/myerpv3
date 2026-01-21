@@ -1,3 +1,5 @@
+from django.db.models import FloatField
+from django.db.models import DecimalField
 from dateutil.relativedelta import relativedelta
 from datetime import timedelta
 from sqlalchemy.sql._elements_constructors import null
@@ -174,7 +176,6 @@ class BaseReportModel(models.Model,Generic[ArgsT]):
         cls.on_commit()
         return inserted_row_count
 
-
 class CompanyReportModel(BaseReportModel[ArgsT]):
     company = models.ForeignKey(Company, on_delete=models.CASCADE, db_index=True)
 
@@ -330,7 +331,6 @@ class SalesRegisterReport(DateReportModel):
             df["other_discount"] = df["DisFin Adj"] + df["Reversed Payouts"]
             df["type"] = df["amt"].apply(lambda x: "salesreturn" if x < 0 else "sales")
             return df
-
 
 class IkeaGSTR1Report(DateReportModel):
     inum = models.CharField(max_length=30, verbose_name="Invoice No")
@@ -557,6 +557,58 @@ class PartyReport(EmptyReportModel):
 
     class Meta: # type: ignore
         db_table = "party_report"
+
+class StockReport(EmptyReportModel):
+    division = models.CharField(max_length=10, verbose_name="Division")
+    basepack = models.IntegerField(verbose_name="Basepack")
+    stock_id = models.CharField(max_length=15, verbose_name="Stock ID")
+    name = models.CharField(max_length=100, verbose_name="Name")
+    hsn = models.CharField(max_length=10, verbose_name="HSN")
+    godown = models.CharField(max_length=20, verbose_name="Godown")
+    pkm = models.CharField(max_length=10, verbose_name="PKM")
+    batch_code = models.CharField(max_length=20, verbose_name="Batch Code")
+    expiry_date = models.DateField(verbose_name="Expiry Date")
+    upc = models.IntegerField(verbose_name="UPC")
+    qty = models.IntegerField(verbose_name="Qty")
+    stock_in_days = models.CharField(verbose_name="Stock In Days",null=True,max_length = 30)
+    pur_rate = FloatField(verbose_name="Pur Rate")
+    rt = FloatField(verbose_name="GST Rate")
+    mrp = models.IntegerField()
+    value = FloatField(verbose_name="Value")
+
+    class Report(EmptyReportModel.Report):
+        fetcher = lambda i : Ikea.current_stock(i,datetime.date.today()) #type: ignore
+        column_map = {
+            "Division":"division",
+            "Basepack Code":"basepack",
+            "SKU7":"stock_id",
+            "Product Name":"name",
+            "HSN Number":"hsn",
+            "HSN Description":"hsn_description",
+            "Location":"godown",
+            "PKM":"pkm",
+            "Batch Code":"batch_code",
+            "Expiry Date":"expiry_date",
+            "UPC":"upc",
+            "Units":"qty",
+            "Stocks in Days":"stock_in_days",
+            "Pur.Rate":"pur_rate",
+            "CGST Tax%":"rt",
+            "MRP":"mrp",
+            "Cur.Stk Value":"value"
+        }
+        dropna_columns = ["stock_id"]
+
+        @classmethod
+        def custom_preprocessing(cls, df: pd.DataFrame) -> pd.DataFrame:
+            df["hsn"] = df["hsn"].str.replace(".","")
+            df["pkm"] = df["pkm"].astype(str).str.zfill(4)
+            df["expiry_date"] = df["expiry_date"].dt.date
+            return df
+
+    class Meta: # type: ignore
+        db_table = "stock_report"
+
 
 class UserReportModel(BaseReportModel[ArgsT]):
     user = models.ForeignKey(User, on_delete=models.CASCADE, db_index=True)
