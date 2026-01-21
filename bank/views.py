@@ -185,7 +185,7 @@ def smart_match(queryset):
         for obj in objs :
             chq_matches = list(find_cheque_match(obj,company_ids, allowed_diff=0))
             #Strict match to have cheque number in desc
-            chq_matches = [ chq for chq in chq_matches if (chq.cheque_no in obj.desc) or (chq.cheque_no in obj.ref) ]
+            chq_matches = [ chq for chq in chq_matches if (chq.cheque_no.lstrip('0') in obj.desc) or (chq.cheque_no.lstrip('0') in obj.ref) ]
 
             if len(chq_matches) == 0 : 
                 #Try neft
