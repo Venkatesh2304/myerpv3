@@ -45,7 +45,8 @@ def clean_text(text):
 def find_cheque_match(bank_entry,company_ids,allowed_diff):
     qs = ChequeDeposit.objects.filter(deposit_date__isnull=False,company_id__in = company_ids).filter(
                     amt__gte=bank_entry.amt - allowed_diff,
-                    amt__lte=bank_entry.amt + allowed_diff
+                    amt__lte=bank_entry.amt + allowed_diff,
+                    deposit_date__gte = bank_entry.date - datetime.timedelta(days = 7)
                 ).filter( Q(bank_entry__isnull=True) | Q(bank_entry = bank_entry) )
     return qs
 
