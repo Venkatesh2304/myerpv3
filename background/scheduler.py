@@ -49,9 +49,9 @@ class BaseSession(requests.Session):
 
     def login(self):
         if self.username and self.password:
-            self.post("/login", data={"username": self.username, "password": self.password})
-            for cookie in self.cookies:
-                cookie.secure = False
+            res = self.post("/login", data={"username": self.username, "password": self.password})
+            jwt_token = res.json()['access']
+            self.headers.update({"Authorization": f"Bearer {jwt_token}"})
 
 def load_config(filename):
     config_path = os.path.join(os.path.dirname(__file__), filename)
