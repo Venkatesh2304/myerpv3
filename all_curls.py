@@ -98,6 +98,51 @@ ikea_outstanding = CurlRequest('POST',
 )
 
 cookies = {
+    'JSESSIONID': '2C24964250A36C566B6D52EE25B9A68B',
+    'isUserLoggedOut': 'No',
+    'maitabOpened': 'Yes',
+    'tabsOpened': '{"date":"2026-01-22T07:56:14.211Z","openedTabs":["Login","Item Wise Sales","Stock N Sales"]}',
+}
+
+headers = {
+    'accept': '*/*',
+    'accept-language': 'en-US,en;q=0.9',
+    'cache-control': 'no-cache',
+    'content-type': 'application/x-www-form-urlencoded; charset=UTF-8',
+    # 'cookie': 'JSESSIONID=2C24964250A36C566B6D52EE25B9A68B; isUserLoggedOut=No; maitabOpened=Yes; tabsOpened={"date":"2026-01-22T07:56:14.211Z","openedTabs":["Login","Item Wise Sales","Stock N Sales"]}',
+    'newrelic': 'eyJ2IjpbMCwxXSwiZCI6eyJ0eSI6IkJyb3dzZXIiLCJhYyI6IjEwMTUzNDciLCJhcCI6IjE1ODg3NTgxMDAiLCJpZCI6IjI1ZTkzMzQxM2MxNzJmMDIiLCJ0ciI6ImZjNWNmN2M0OTNmZDYwYTVlY2ZjNjBjNDkzYTI4ZGRjIiwidGkiOjE3NjkwNjk1NjE4MDMsInRrIjoiOTM1NzAifX0=',
+    'origin': 'https://leveredge18.hulcd.com',
+    'pragma': 'no-cache',
+    'priority': 'u=1, i',
+    'referer': 'https://leveredge18.hulcd.com/rsunify/app/reportsController/reportScreen?viewpage=report/stockNsales',
+    'sec-ch-ua': '"Not A(Brand";v="8", "Chromium";v="132", "Google Chrome";v="132"',
+    'sec-ch-ua-mobile': '?0',
+    'sec-ch-ua-platform': '"Linux"',
+    'sec-fetch-dest': 'empty',
+    'sec-fetch-mode': 'cors',
+    'sec-fetch-site': 'same-origin',
+    'traceparent': '00-fc5cf7c493fd60a5ecfc60c493a28ddc-25e933413c172f02-01',
+    'tracestate': '93570@nr=0-1-1015347-1588758100-25e933413c172f02----1769069561803',
+    'user-agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36',
+    'x-newrelic-id': 'VQYGVFVXDxABUVRWBQgCVlcH',
+    'x-requested-with': 'XMLHttpRequest',
+}
+
+data = {
+    'jsonData': '[]',
+    'jsonObjforheaders': '[{"1":"RS Code:","2":"","3":"RS Name:","4":"","5":"Profit Center:","6":"Location:","7":"Division:","8":"From Date:","9":"Category:","10":"To Date:","11":"Sub-Category:","12":"Report In:","13":"Brand:","14":"","15":"Basepack:","16":"","17":"Product Code:","val1":"41A392","val2":"","val3":"DEVAKI ENTERPRISES","val4":"","val5":"List of Profit Center","val6":"List of Locations","val7":"List of Divisions","val8":"01/12/2025","val9":"List of Categories","val10":"22/01/2026","val11":"List of Sub Categories","val12":"Units","val13":"List of Brands","val14":"","val15":"List of Basepacks","val16":"","val17":"List of Products"}]',
+    'jsonObjfileInfi': '[{"title":"Stock And Sales Report,StockNSales1","reportfilename":"StockNSales","viewpage":"report/stockNsales","viewname":"STOCK_N_SALES_REPORT_PROC","querycount":1}]',
+    'jsonObjWhereClause': '{":val1":"",":val2":"",":val3":"",":val4":"",":val5":"",":val6":"",":val7":"",":val8":"",":val9":"Units",":val10":"2025-12-01",":val11":"2026-01-22"}',
+}
+
+ikea_stock_movement = CurlRequest('POST',
+    'https://leveredge18.hulcd.com/rsunify/app/reportsController/generatereport',
+    cookies=cookies,
+    headers=headers,
+    data=data,
+)
+
+cookies = {
     'JSESSIONID': '5C051B71529522B788AB58A4E8B3E708',
     'mocProcesStatus': 'Completed',
     'processLastUpdatedTime': '0',
@@ -1044,7 +1089,7 @@ headers = {
 
 data = {
     'jsonObjfileInfi': '[{"title":"Collection Download, Collection Details, Retailer Bank,Payment Mode","reportfilename":"Collection Download","viewpage":"collecction","viewname":"COLLECTION_BULK_DWN_XL","querycount":3}]',
-    'jsonObjWhereClause': '{":val1":"",":val2":"-1",":val3":-1,":val4":-1,":val5":"",":val6":"",":val7":-1,":val8":-1,":val9":"29/03/2024",":val10":"25/09/2024",":val11":"",":val12":""}',
+    'jsonObjWhereClause': '{":val1":"",":val2":"-1",":val3":-1,":val4":-1,":val5":"",":val6":-1,":val7":-1,":val8":-1,":val9":"29/03/2024",":val10":"25/09/2024",":val11":"",":val12":""}',
 }
 
 ikea_download_manual_collection = CurlRequest('POST',

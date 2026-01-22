@@ -14,6 +14,7 @@ urlpatterns = [
     path("sync_reports/", views.sync_reports, name="sync_reports"),
     path("outstanding_report/", views.outstanding_report, name="outstanding_report"),
     path("stock_report/", views.stock_report, name="stock_report"),
+    path("stock_ageing_report/", views.stock_ageing_report, name="stock_ageing_report"),
     path("pending_sheet/", views.pending_sheet, name="pending_sheet"),
     path("", include(router.urls)),
 ]

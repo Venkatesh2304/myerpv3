@@ -216,6 +216,37 @@ def stock_report(request) :
     return JsonResponse({"status":"success", "filepath": get_media_url(STOCK_REPORT_FILE)})
 
 @api_view(["POST"])
+def stock_ageing_report(request) : 
+    companies = request.user.companies.all()
+    days = int(request.data.get("days"))
+    dfs = {}
+    for company in companies :
+        i =  Ikea(company.pk)
+        tod = datetime.date.today()
+        fromd = tod - datetime.timedelta(days = days)
+        df = i.stock_movement_report(fromd,tod)
+        df = df[df["Location"] == "MAIN GODOWN"]
+        df = df.rename(columns = {"SKU7" : "code", #type: ignore
+                                  "Product Name" : "name",
+                                  "Open Stk in Units" : "opening_qty",
+                                  "Total Out Units" : "out_qty",
+                                  "Cl Stk Units" : "qty",
+                                  "Closing Stock Value TUR * CL STK in Units" : "value"})
+        df = df.groupby(["code","name"])[["opening_qty","out_qty","qty","value"]].sum().reset_index()
+        df = df[ (df.opening_qty > 0) & (df.out_qty == 0) ] 
+        df = df[["code","name","qty","value"]]
+        dfs[company.pk] = df
+
+    user_dir = os.path.join(settings.MEDIA_ROOT, "report", request.user.pk)
+    os.makedirs(user_dir, exist_ok=True)
+    STOCK_AGEING_REPORT_FILE = os.path.join(user_dir,"stock_ageing_report.xlsx")
+    with pd.ExcelWriter(open(STOCK_AGEING_REPORT_FILE,"wb+"), engine='xlsxwriter') as writer:
+        for company_id, df in dfs.items() :
+            df.to_excel(writer,sheet_name=company_id,index=False)
+            
+    return JsonResponse({"status":"success", "filepath": get_media_url(STOCK_AGEING_REPORT_FILE)})
+
+@api_view(["POST"])
 def pending_sheet(request) :
     date = request.data.get("date")
     date = datetime.datetime.strptime(date, "%Y-%m-%d").date()
