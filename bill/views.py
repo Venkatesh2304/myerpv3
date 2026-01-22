@@ -1,3 +1,4 @@
+from bank.models import ChequeDeposit
 from django.db.models.aggregates import Count
 from django.db.models.aggregates import Max
 from django.db.models.aggregates import Min
@@ -18,6 +19,7 @@ import time
 import contextlib
 from bill.credit_logic import PartyCreditLogic
 from bill.models import PartyCredit
+from report.models import PartyReport
 
 class ProcessStats:
     def __init__(self):
@@ -147,7 +149,6 @@ def get_order(request):
             # Phone: Fetch from PartyReport
             phone = "-"
             try:
-                from report.models import PartyReport
                 party = PartyReport.objects.get(company_id=company_id, code=first_item.get('pc'))
                 phone = party.phone or "-"
             except PartyReport.DoesNotExist:
@@ -155,17 +156,23 @@ def get_order(request):
             
             # OS: OutstandingReport
             os_list = []
+            os_bill_numbers = []
             try:
                 outstanding_bills = OutstandingReport.objects.filter(
                     company_id=company_id, 
                     party_id=party_code, 
-                    beat=first_item.get('m')
+                    beat=first_item.get('m'),
                 ).order_by("bill_date")
                 os_list = [(round(bill.balance),(today - bill.bill_date).days) for bill in outstanding_bills]
+                os_bill_numbers = [bill.inum for bill in outstanding_bills]
             except Exception:
                 pass
 
             os_val = "/ ".join([f"{bal}*{days}" for bal,days in os_list]) or "-"
+
+            #Cheque Pending
+            is_cheque_pending = ChequeDeposit.objects.filter(company_id=company_id, party_id=party_code,
+                                    bank_entry__isnull = True,collection__bill__in = os_bill_numbers).exists()
 
             # Coll: CollectionReport
             coll_list = []
@@ -217,7 +224,8 @@ def get_order(request):
                 "coll": coll_val,
                 "allow_order": allow_order,
                 "warning" : warning,
-                "order_category": order_category
+                "order_category": order_category,
+                "is_cheque_pending": is_cheque_pending
             })
 
         processed_orders.sort(key=lambda x: (x["allow_order"],x["salesman"],x["party"]))

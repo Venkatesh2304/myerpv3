@@ -31,6 +31,7 @@ class ChequeViewSet(viewsets.ModelViewSet):
         company = filters.CharFilter(field_name='company_id', lookup_expr='exact')
         deposit_date = filters.DateFilter(field_name='deposit_date', lookup_expr='exact')
         party = filters.CharFilter(field_name='party_id', lookup_expr='exact')
+        has_bank_entry = filters.BooleanFilter(field_name='bank_entry', lookup_expr='isnull')
 
         def filter_is_depositable(self, queryset, name, value):
             if value : 

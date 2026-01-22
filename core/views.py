@@ -1,9 +1,10 @@
 
 from collections import defaultdict
-from core.models import Company
 from django.http.response import JsonResponse
 from core.models import UserSession
 from rest_framework.decorators import api_view
+
+
 
 @api_view(["GET","POST"])
 def usersession_update(request):
