@@ -1,3 +1,4 @@
+from io import BytesIO
 from PyPDF2 import PdfReader
 from PyPDF2 import PdfWriter
 from report.helper import pending_sheet_pdf
@@ -15,6 +16,7 @@ from rest_framework.decorators import api_view
 from custom.classes import Ikea
 from core.models import Company
 from report.models import *
+from django.core.mail import EmailMessage
 
 @api_view(["GET"])
 def salesman_names(request):
@@ -132,13 +134,8 @@ def sync_reports(request):
             
     return JsonResponse(results)
 
-@api_view(["POST"])
-def outstanding_report(request):
+def outstanding_report(company_id,date,beat_type):
     today = datetime.date.today()
-    company_id = request.data.get("company")
-    date = request.data.get("date",today.strftime("%Y-%m-%d"))
-    beat_type = request.data.get("beat_type")
-    date = datetime.datetime.strptime(date,"%Y-%m-%d").date()
     day = date.strftime("%A").lower()
 
     ikea = Ikea(company_id)
@@ -173,7 +170,16 @@ def outstanding_report(request):
 
     all_outstanding = get_dataframe(base_qs)
     outstanding_greater_than_28 = pivot_fn(all_outstanding[all_outstanding.days >= 28])
-
+    return today_beat_outstanding,outstanding_greater_than_28,all_outstanding
+    
+@api_view(["POST"])
+def outstanding_report_view(request):
+    today = datetime.date.today()
+    company_id = request.data.get("company")
+    date = request.data.get("date",today.strftime("%Y-%m-%d"))
+    beat_type = request.data.get("beat_type")
+    date = datetime.datetime.strptime(date,"%Y-%m-%d").date()
+    today_beat_outstanding,outstanding_greater_than_28,all_outstanding = outstanding_report(company_id,date,beat_type)
     company_dir = os.path.join(settings.MEDIA_ROOT, "report", company_id)
     os.makedirs(company_dir, exist_ok=True)
     OUTSTANDING_REPORT_FILE = os.path.join(company_dir,"outstanding.xlsx")
@@ -267,9 +273,9 @@ def pending_sheet(request) :
     df = df[df["days"] > 0] #Filter Today Bills
     pdfs = [] 
     for beat_name , rows in df.groupby("beat") : 
-        max_days_per_party = rows.groupby("party_name")["days"].max().to_dict()
-        rows["max_days_per_party"] = rows["party_name"].map(max_days_per_party)
-        rows = rows.sort_values(by = ["max_days_per_party","party_name"] , ascending=False)
+        # max_days_per_party = rows.groupby("party_name")["days"].max().to_dict()
+        # rows["max_days_per_party"] = rows["party_name"].map(max_days_per_party)
+        rows = rows.sort_values(by = ["party_name","days"],ascending=[True,False])
         salesman = rows.iloc[0]["salesman"]
         beat_id = beat_name_to_id[beat_name]
         sheet_no = "PS" + date.strftime("%d%m%y") + str(beat_id)
@@ -289,3 +295,43 @@ def pending_sheet(request) :
     PENDING_SHEET_FILE = os.path.join(company_dir,"pending_sheet.pdf")
     writer.write(PENDING_SHEET_FILE)
     return JsonResponse({"status":"success", "filepath": get_media_url(PENDING_SHEET_FILE)})
+
+@api_view(["GET"])
+def mail_reports(request):
+    today = datetime.date.today()
+    for company in request.user.companies.all():
+        msg = EmailMessage()
+        msg.subject = f"Daily Report for {company.name.replace('_',' ').upper()} ({today.strftime('%d-%m-%Y')})"
+        msg.to = [company.email]
+        #Only bills > 28 days
+        retail = outstanding_report(company.pk,today,"retail")[1]
+        wholesale = outstanding_report(company.pk,today,"wholesale")[1]
+
+        #Summary of 28 days bills
+        summary = retail.reset_index().groupby("salesman").agg(
+                            { "bill":"count" , "balance":"sum" , "days" : "max"})[["bill","balance","days"]].reset_index()
+        summary = summary.sort_values("bill",ascending=False)
+        summary.columns = ["Salesman", "Bill Count", "Total Balance", "Max Days"]
+        
+        html_table = summary.to_html(index=False, classes="table table-striped", border=1, justify="center")
+        html_table = html_table.replace('border="1"', 'style="border-collapse: collapse; width: 100%;"')
+        html_table = html_table.replace('<th>', '<th style="border: 1px solid black; padding: 8px; background-color: #eee;">')
+        html_table = html_table.replace('<td>', '<td style="border: 1px solid black; padding: 8px;">')
+        
+        msg.body = f"""
+        <html>
+        <body>
+            <h3>Outstanding Summary</h3>
+            {html_table}
+        </body>
+        </html>
+        """
+        msg.content_subtype = "html"
+        
+        bytesio = BytesIO()
+        with pd.ExcelWriter(bytesio, engine='xlsxwriter') as writer:
+            retail.to_excel(writer,sheet_name="Retail")
+            wholesale.to_excel(writer,sheet_name="Wholesale")
+
+        msg.attach("28_days.xlsx", bytesio.getvalue(), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+        msg.send()
