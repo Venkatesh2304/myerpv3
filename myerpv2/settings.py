@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     "erp",
     "gst",
     "bill",
+    "load",
     "report",
     "printing",
     "bank",
@@ -209,6 +210,15 @@ if "runserver" in sys.argv :
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SAMESITE = "None"
     CSRF_COOKIE_SECURE = True
+
+#Mail Settings
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'email-smtp.ap-south-1.amazonaws.com'
+EMAIL_PORT = 465
+EMAIL_USE_SSL = True  # Use SSL for port 465
+EMAIL_HOST_USER = 'AKIA3IXCLYEJW47ZSJSE'
+EMAIL_HOST_PASSWORD = 'BCUluDrJ5x4SUubu7Hk21x98M9HfvuSae03UtDvCIxb9'
+DEFAULT_FROM_EMAIL = 'noreply@devaki.shop'
 
 from django.db.migrations.state import ModelState
 from typing import Generic

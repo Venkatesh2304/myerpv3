@@ -27,4 +27,5 @@ urlpatterns = [
     path("", include("printing.urls")),
     path("", include("report.urls")),
     path("", include("bank.urls")),
+    path("", include("load.urls")),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
