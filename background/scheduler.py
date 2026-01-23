@@ -125,6 +125,16 @@ def sync_daily():
         except Exception as e:
             logger.error(f"Error syncing {company}: {e}")
 
+def mail_report():
+    for company in ["devaki_hul"]:
+        logger.info(f"Mailing reports for {company}")
+        try:
+            s = BaseSession()
+            response = s.get("/mail_reports/", params={"company": company})
+            logger.info(f"Mail report result for {company}: {response.json()}")
+        except Exception as e:
+            logger.error(f"Error mailing report {company}: {e}")
+
 def main():
     scheduler = BlockingScheduler()
 
@@ -148,6 +158,12 @@ def main():
         sync_daily,
         trigger=CronTrigger(hour=0, minute=9,second=0),
         name="daily_sync"
+    )
+
+    scheduler.add_job(
+        mail_report,
+        trigger=CronTrigger(hour=0, minute=37,second=0),
+        name="mail_report"
     )
 
     logger.info("Starting scheduler...")

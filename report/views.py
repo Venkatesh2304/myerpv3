@@ -297,39 +297,39 @@ def pending_sheet(request) :
 @api_view(["GET"])
 def mail_reports(request):
     today = datetime.date.today()
-    for company in request.user.companies.all():
-        msg = EmailMessage()
-        msg.subject = f"Daily Report for {company.name.replace('_',' ').upper()} ({today.strftime('%d-%m-%Y')})"
-        msg.to = [company.email]
-        #Only bills > 28 days
-        retail = outstanding_report(company.pk,today,"retail")[1]
-        wholesale = outstanding_report(company.pk,today,"wholesale")[1]
-
-        #Summary of 28 days bills
-        summary = retail.reset_index().groupby("salesman").agg(
-                            { "bill":"count" , "balance":"sum" , "days" : "max"})[["bill","balance","days"]].reset_index()
-        summary = summary.sort_values("bill",ascending=False)
-        summary.columns = ["Salesman", "Bill Count", "Total Balance", "Max Days"]
-        
-        html_table = summary.to_html(index=False, classes="table table-striped", border=1, justify="center")
-        html_table = html_table.replace('border="1"', 'style="border-collapse: collapse; width: 100%;"')
-        html_table = html_table.replace('<th>', '<th style="border: 1px solid black; padding: 8px; background-color: #eee;">')
-        html_table = html_table.replace('<td>', '<td style="border: 1px solid black; padding: 8px;">')
-        
-        msg.body = f"""
-        <html>
-        <body>
-            <h3>Outstanding Summary</h3>
-            {html_table}
-        </body>
-        </html>
-        """
-        msg.content_subtype = "html"
-        
-        bytesio = BytesIO()
-        with pd.ExcelWriter(bytesio, engine='xlsxwriter') as writer:
-            retail.to_excel(writer,sheet_name="Retail")
-            wholesale.to_excel(writer,sheet_name="Wholesale")
-
-        msg.attach("28_days.xlsx", bytesio.getvalue(), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-        msg.send()
+    company_id = request.query_params.get("company")
+    company = Company.objects.get(name=company_id)
+    msg = EmailMessage()
+    msg.subject = f"Daily Report for {company.name.replace('_',' ').upper()} ({today.strftime('%d-%m-%Y')})"
+    msg.to = [company.email]
+    #Only bills > 28 days
+    retail = outstanding_report(company.pk,today,"retail")[1]
+    wholesale = outstanding_report(company.pk,today,"wholesale")[1]
+    #Summary of 28 days bills
+    summary = retail.reset_index().groupby("salesman").agg(
+                        { "bill":"count" , "balance":"sum" , "days" : "max"})[["bill","balance","days"]].reset_index()
+    summary = summary.sort_values("bill",ascending=False)
+    summary.columns = ["Salesman", "Bill Count", "Total Balance", "Max Days"]
+    
+    html_table = summary.to_html(index=False, classes="table table-striped", border=1, justify="center")
+    html_table = html_table.replace('border="1"', 'style="border-collapse: collapse; width: 100%;"')
+    html_table = html_table.replace('<th>', '<th style="border: 1px solid black; padding: 8px; background-color: #eee;">')
+    html_table = html_table.replace('<td>', '<td style="border: 1px solid black; padding: 8px;">')
+    
+    msg.body = f"""
+    <html>
+    <body>
+        <h3>Outstanding Summary</h3>
+        {html_table}
+    </body>
+    </html>
+    """
+    msg.content_subtype = "html"
+    
+    bytesio = BytesIO()
+    with pd.ExcelWriter(bytesio, engine='xlsxwriter') as writer:
+        retail.to_excel(writer,sheet_name="Retail")
+        wholesale.to_excel(writer,sheet_name="Wholesale")
+    msg.attach("28_days.xlsx", bytesio.getvalue(), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    msg.send()
+    return JsonResponse({"status":"success"})
