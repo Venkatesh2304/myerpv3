@@ -273,8 +273,6 @@ def pending_sheet(request) :
     df = df[df["days"] > 0] #Filter Today Bills
     pdfs = [] 
     for beat_name , rows in df.groupby("beat") : 
-        # max_days_per_party = rows.groupby("party_name")["days"].max().to_dict()
-        # rows["max_days_per_party"] = rows["party_name"].map(max_days_per_party)
         rows = rows.sort_values(by = ["party_name","days"],ascending=[True,False])
         salesman = rows.iloc[0]["salesman"]
         beat_id = beat_name_to_id[beat_name]
