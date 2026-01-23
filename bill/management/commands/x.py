@@ -1,3 +1,10 @@
+from load.models import TruckLoad
+from pydyf import Object
+from core.models import User
+from report.views import mail_reports
+from custom.classes import Billing
+from report.models import EmptyArgs
+from report.models import StockReport
 from report.models import CollectionReport
 import os
 import psutil
@@ -7,20 +14,56 @@ import numpy
 from core.models import Company
 from report.models import BillAgeingReport,CollectionReport
 from report.models import DateRangeArgs
-from custom.classes import Ikea,Billing
+from custom.classes import Ikea
 import datetime
 from report.models import SalesRegisterReport
 from dateutil.relativedelta import relativedelta
 import json
 from bank.models import ChequeDeposit
 
+TruckLoad.objects.create(purchase={
+   "p1" : {
+    "AX102": { 450: 10, 500: 5 },
+    "BY550": { 1200: 4 },
+    "CZ991": { 350: 20 }
+    }
+},
+scanned=[
+    {
+    "AX102": { 450: 2, 500: 2 },
+    "BY550": { 1200: 1 },
+    },
+    {
+    "AX102": { 450: 1 },
+    "BY550": { 1200: 3 },
+    "CZ991": { 350: 15 }
+    }
+]
+)
+exit(0)
+
+# r = Object()
+# r.user = User.objects.get(username="sathish")
+# mail_reports(r)
+# exit(0)
 
 # b = Billing.objects.get(company_id="devaki_hul",date=datetime.date(2025,12,19))
 # b = [ i for i in b.market_order_data["mol"] if i["on"] == "20SMN00014P1581920251218"]
 # with open("x.json","w+") as f:
 #     f.write(json.dumps(b))
-i = Billing("lakme_urban")
-i.collection(datetime.date(2025,6,1),datetime.date.today()).to_excel("a.xlsx")
+i = Billing("devaki_hul")
+i.download_manual_collection().to_excel("a.xlsx")
+# i.stock_movement_report(datetime.date(2025,12,10),datetime.date.today()).to_excel("a.xlsx")
+# durl = i.get_bill_durl("AB00001","AB00999","pdf")
+# bytesio = i.fetch_durl_content(durl)
+# with open("a.pdf","wb+") as f:
+#     f.write(bytesio.getvalue())
+
+# StockReport.update_db(i,Company.objects.get(name="lakme_urban"),EmptyArgs())
+# i.current_stock(datetime.date.today()).to_excel("a.xlsx")
+exit(0)
+
+# i.collection(datetime.date(2026,1,1),datetime.date(2026,1,7)).to_excel("a.xlsx")
 # CollectionReport.update_db(i,Company.objects.get(name="devaki_hul"),DateRangeArgs(datetime.date.today(),datetime.date.today()))
 exit(0)
 
