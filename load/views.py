@@ -152,6 +152,7 @@ def download_load_summary(request) :
     df = df[["cbu","sku","desc","mrp","purchase_qty","load_qty","diff"]]
     mismatch = df[df["diff"] != 0]
     mismatch_cbu = mismatch.groupby("cbu")[["purchase_qty","load_qty","diff"]].sum().reset_index()
+    mismatch_cbu = mismatch_cbu[mismatch_cbu["diff"] != 0]
     correct = df[df["diff"] == 0]
 
     user_dir = os.path.join(settings.MEDIA_ROOT, "load", request.user.pk)
