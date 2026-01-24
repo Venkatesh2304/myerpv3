@@ -152,7 +152,7 @@ def download_load_summary(request) :
     df = df[["cbu","sku","desc","mrp","purchase_qty","load_qty","diff"]]
     mismatch = df[df["diff"] != 0]
 
-    mismatch["diff_value"] = mismatch["diff"] * mismatch["mrp"]
+    mismatch["diff_value"] = mismatch.apply(lambda row : int(row["diff"]) * int(row["mrp"]), axis=1)
     cbu_diff_qty_map = mismatch.groupby("cbu")["diff"].sum().to_dict()
     cbu_diff_value_map = mismatch.groupby("cbu")["diff_value"].sum().to_dict()
     
@@ -161,7 +161,7 @@ def download_load_summary(request) :
     mismatch_higher_mrp = mismatch[(mismatch["cbu_diff_value"] > 0) & (mismatch["cbu_diff_qty"] == 0)]
     mismatch_lower_mrp = mismatch[(mismatch["cbu_diff_value"] < 0) & (mismatch["cbu_diff_qty"] == 0)]
     mismatch_cbu = mismatch[mismatch["cbu_diff_qty"] != 0]
-    del mismatch["diff_value"] , mismatch["cbu_diff_value"]
+    del mismatch["diff_value"] , mismatch["cbu_diff_value"] , mismatch["cbu_diff_qty"]
 
     correct = df[df["diff"] == 0]
     user_dir = os.path.join(settings.MEDIA_ROOT, "load", request.user.pk)
