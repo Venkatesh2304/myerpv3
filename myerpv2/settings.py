@@ -52,6 +52,7 @@ INSTALLED_APPS = [
     "report",
     "printing",
     "bank",
+    "bill_scan",
 ]
 
 

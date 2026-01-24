@@ -46,13 +46,11 @@ class Vehicle(CompanyModel) :
      name = models.CharField(max_length=30)
      vehicle_no = models.CharField(max_length=30)
      name_on_impact = models.CharField(max_length=30,null=True)
-     pk = models.CompositePrimaryKey("company","name")
 
      def __str__(self):
           return self.name 
 
 class Bill(CompanyModel) : 
-    
     bill_id = models.TextField(max_length=40,null=False,blank=False)
     bill_date = models.DateField(null=True,blank=True)
     bill_amt = models.FloatField(null=True,blank=True)
@@ -60,16 +58,19 @@ class Bill(CompanyModel) :
     party_id = models.TextField(max_length=30,null=True,blank=True)
     beat = models.TextField(max_length=30,null=True,blank=True)
     ctin = models.TextField(max_length=30,null=True,blank=True)
+    irn = models.TextField(null=True,blank=True)
     
     print_time = models.DateTimeField(null=True,blank=True)
     print_type = models.TextField(max_length=20,choices=(("first_copy","First Copy"),("loading_sheet","Loading Sheet")),null=True,blank=True)
     is_reloaded = models.BooleanField(default=False,db_default=False)
     reason = models.TextField(max_length=100,null=True,blank=True)
     loading_sheet_id = models.TextField(max_length=30,null=True,blank=True)
-    vehicle_id = models.TextField(max_length=30,null=True,blank=True)
+    plain_loading_sheet = models.BooleanField(db_default=False,default=False)
+
+    #Vehicle
+    vehicle = models.ForeignKey("bill.Vehicle",on_delete=models.DO_NOTHING,null=True,blank=True)
     loading_time = models.DateTimeField(null=True,blank=True)
     delivered_time = models.DateTimeField(null=True,blank=True)
-    irn = models.TextField(null=True,blank=True)
     delivered = models.BooleanField(null=True,blank=True)
     delivery_reason = models.TextField(choices=(("scanned","Scanned"),
                                                 ("bill_with_shop","Bill With Shop"),
@@ -77,7 +78,6 @@ class Bill(CompanyModel) :
                                                 ("bill_return","Bill Return"),
                                                 ("qrcode_not_found","QR Code Not Found"),
                                                 ("others","Other Reason")),null=True,blank=True)
-    plain_loading_sheet = models.BooleanField(db_default=False,default=False)
     cash_bill = models.BooleanField(default=False,db_default=False)
 
     class Meta :

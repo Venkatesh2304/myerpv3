@@ -1,5 +1,4 @@
 from load.models import TruckLoad
-from pydyf import Object
 from core.models import User
 from report.views import mail_reports
 from custom.classes import Billing
@@ -20,27 +19,17 @@ from report.models import SalesRegisterReport
 from dateutil.relativedelta import relativedelta
 import json
 from bank.models import ChequeDeposit
+from bill.models import Vehicle
 
-TruckLoad.objects.create(purchase={
-   "p1" : {
-    "AX102": { 450: 10, 500: 5 },
-    "BY550": { 1200: 4 },
-    "CZ991": { 350: 20 }
-    }
-},
-scanned=[
-    {
-    "AX102": { 450: 2, 500: 2 },
-    "BY550": { 1200: 1 },
-    },
-    {
-    "AX102": { 450: 1 },
-    "BY550": { 1200: 3 },
-    "CZ991": { 350: 15 }
-    }
-]
-)
+Vehicle.objects.create(
+    name="test",
+    vehicle_no="TN22343232423",
+    company_id="devaki_hul"
+).save()
 exit(0)
+
+
+
 
 # r = Object()
 # r.user = User.objects.get(username="sathish")
