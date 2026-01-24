@@ -116,7 +116,7 @@ def download_load_summary(request) :
     tod = datetime.date.today()
     fromd = tod - datetime.timedelta(days=15)
     dfs:list[pd.DataFrame] = []
-    for company in request.user.organization.companies.filter(name = 'lakme_rural').all():
+    for company in request.user.organization.companies.all():
         df = Ikea(company.pk).product_wise_purchase(fromd,tod)
         df["sku"] = df["Item Code"].str.slice(0,5)
         df["desc"] = df["Item Name"]
