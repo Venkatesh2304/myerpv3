@@ -151,16 +151,18 @@ def download_load_summary(request) :
     df = pd.merge(df, product_master[["sku","desc"]] , on="sku", how="left") 
     df = df[["cbu","sku","desc","mrp","purchase_qty","load_qty","diff"]]
     mismatch = df[df["diff"] != 0]
-    mismatch_cbu = mismatch.groupby("cbu")[["purchase_qty","load_qty","diff"]].sum().reset_index()
-    mismatch_cbu = mismatch_cbu[mismatch_cbu["diff"] != 0]
+    cbu_diff_map = mismatch.groupby("cbu")["diff"].sum().to_dict()
+    mismatch["cbu_diff"] = mismatch["cbu"].replace(cbu_diff_map)
+    mismatch_mrp = mismatch[mismatch["cbu_diff"] == 0]
+    mismatch_cbu = mismatch[mismatch["cbu_diff"] != 0]
     correct = df[df["diff"] == 0]
-
     user_dir = os.path.join(settings.MEDIA_ROOT, "load", request.user.pk)
     os.makedirs(user_dir, exist_ok=True)
     file_path = os.path.join(user_dir, f"load_summary_{load.id}.xlsx")
     with pd.ExcelWriter(file_path, engine='xlsxwriter') as writer:
-        mismatch.to_excel(writer, index=False, sheet_name='Mismatch')
         mismatch_cbu.to_excel(writer, index=False, sheet_name='Mismatch (CBU)')
+        mismatch_mrp.to_excel(writer, index=False, sheet_name='Mismatch (MRP)')
+        mismatch.to_excel(writer, index=False, sheet_name='Mismatch')
         correct.to_excel(writer, index=False, sheet_name='Correct')
         box_summary.to_excel(writer, index=False, sheet_name='Box')
         df.to_excel(writer, index=False, sheet_name='Summary')
