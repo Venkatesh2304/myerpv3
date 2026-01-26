@@ -28,6 +28,7 @@ class BillScanViewSet(viewsets.ModelViewSet):
         company = filters.CharFilter(field_name='company_id', lookup_expr='exact')
         vehicle = filters.CharFilter(field_name='vehicle_id', lookup_expr='exact')
         type = filters.CharFilter(field_name='type', method='filter_by_type')
+        bill_date = filters.DateFilter(field_name='bill_date', lookup_expr='date')
         loading_date = filters.DateFilter(field_name='loading_time', lookup_expr='date')
         delivery_date = filters.DateFilter(field_name='delivery_time', lookup_expr='date')
         party = filters.CharFilter(field_name='party_id', lookup_expr='exact')
@@ -35,7 +36,7 @@ class BillScanViewSet(viewsets.ModelViewSet):
         is_loading_sheet = filters.BooleanFilter(field_name='loading_sheet_id', lookup_expr='isnull',exclude=True)
         class Meta:
             model = Bill
-            fields = ['company','vehicle','type','loading_date','delivery_date','party','bill','is_loading_sheet']
+            fields = ['company','vehicle','type','bill_date','loading_date','delivery_date','party','bill','is_loading_sheet']
         
         def filter_by_type(self, queryset, name, value):
             if value == "not_delivered" : 
