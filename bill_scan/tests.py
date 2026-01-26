@@ -29,7 +29,7 @@ class BillPdfTest(TestCase):
         random.shuffle(bill_numbers)
         
         # Generate PDF
-        pdf_buffer = generate_bill_list_pdf(bill_numbers, columns=6)
+        pdf_buffer = generate_bill_list_pdf(bill_numbers, "Test Vehicle", "2026-01-26", columns=6)
         with open("files/test/bill_scan.pdf", "wb+") as f:
             f.write(pdf_buffer.getvalue())
         

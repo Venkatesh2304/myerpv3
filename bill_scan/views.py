@@ -58,7 +58,7 @@ def download_scan_pdf(request):
         qs = qs.filter(vehicle = vehicle, delivery_time__date=today)
     print(qs.count())
     bills = qs.values_list("bill_id", flat=True)
-    pdf_buffer = generate_bill_list_pdf(bills, columns=6)
+    pdf_buffer = generate_bill_list_pdf(bills, vehicle.name, today, columns=6)
     company_dir = os.path.join(settings.MEDIA_ROOT, "bill_scan", company.pk)
     os.makedirs(company_dir, exist_ok=True)
     BILL_SCAN_FILE = os.path.join(company_dir,"bill_scan.pdf")

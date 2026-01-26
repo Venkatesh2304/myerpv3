@@ -1,16 +1,28 @@
 from io import BytesIO
 from reportlab.lib.pagesizes import letter
-from reportlab.platypus import SimpleDocTemplate, Table, TableStyle
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Spacer
 from reportlab.lib import colors
 
-def generate_bill_list_pdf(bill_numbers, columns=6):
+def generate_bill_list_pdf(bill_numbers, vehicle_name, date, columns=6):
     bytesio = BytesIO()
     pdf = SimpleDocTemplate(bytesio, pagesize=letter, leftMargin=30, rightMargin=30, topMargin=30, bottomMargin=30)
     width, height = letter
     total_width = width - 60
     
+    # Header data
+    header_data = [[f"Vehicle: {vehicle_name}", f"Loading Date: {date.strftime('%d-%b-%Y') if hasattr(date, 'strftime') else date}"]]
+    header_table = Table(header_data, colWidths=[total_width * 0.5, total_width * 0.5])
+    header_table.setStyle(TableStyle([
+        ('ALIGN', (0, 0), (0, 0), 'LEFT'),
+        ('ALIGN', (1, 0), (1, 0), 'RIGHT'),
+        ('FONTNAME', (0, 0), (-1, -1), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, -1), 12),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 10),
+    ]))
+
     # Chunk the bill numbers into rows
     data = []
+    bill_numbers = list(bill_numbers)
     for i in range(0, len(bill_numbers), columns):
         row = bill_numbers[i:i + columns]
         # Pad the last row if necessary
@@ -37,7 +49,7 @@ def generate_bill_list_pdf(bill_numbers, columns=6):
         ('TOPPADDING', (0, 0), (-1, -1), 5),
     ]))
     
-    elements = [table]
+    elements = [header_table, Spacer(1, 10), table]
     pdf.build(elements)
     bytesio.seek(0)
     return bytesio

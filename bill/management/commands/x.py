@@ -27,7 +27,6 @@ vehicles = [("DEVAKI","TN45AP3219"),
 ("ASHOK","TN49AF5764"),
 ("BOLERO","TN81J5107"),
 ("TATA ACE NEW","TN52S5801")]
-Vehicle.objects.all().delete()
 for name,vehicle_no in vehicles:
     Vehicle.objects.create(
         name=name,
