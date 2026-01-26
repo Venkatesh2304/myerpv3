@@ -15,4 +15,4 @@ class BillScanSerializer(serializers.ModelSerializer):
     loading_sheet = serializers.CharField(source='loading_sheet_id')
     class Meta: 
         model = Bill
-        fields = ['bill', 'vehicle', 'party','loading_time', 'delivery_time', 'loading_sheet']
+        fields = ['bill', 'vehicle', 'party','loading_time', 'delivery_time', 'loading_sheet','bill_date']
