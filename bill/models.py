@@ -68,7 +68,7 @@ class Bill(CompanyModel) :
     plain_loading_sheet = models.BooleanField(db_default=False,default=False)
 
     #Vehicle
-    vehicle = models.ForeignKey("bill.Vehicle",on_delete=models.DO_NOTHING,null=True,blank=True)
+    vehicle = models.ForeignKey("bill.Vehicle",on_delete=models.SET_NULL,null=True,blank=True)
     loading_time = models.DateTimeField(null=True,blank=True)
     delivery_time = models.DateTimeField(null=True,blank=True)
     delivered = models.BooleanField(null=True,blank=True)
