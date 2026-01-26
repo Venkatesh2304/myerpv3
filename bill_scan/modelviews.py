@@ -28,7 +28,7 @@ class BillScanViewSet(viewsets.ModelViewSet):
         company = filters.CharFilter(field_name='company_id', lookup_expr='exact')
         vehicle = filters.CharFilter(field_name='vehicle_id', lookup_expr='exact')
         type = filters.CharFilter(field_name='type', method='filter_by_type')
-        bill_date = filters.DateFilter(field_name='bill_date', lookup_expr='date')
+        bill_date = filters.DateFilter(field_name='bill_date', lookup_expr='exact')
         loading_date = filters.DateFilter(field_name='loading_time', lookup_expr='date')
         delivery_date = filters.DateFilter(field_name='delivery_time', lookup_expr='date')
         party = filters.CharFilter(field_name='party_id', lookup_expr='exact')
