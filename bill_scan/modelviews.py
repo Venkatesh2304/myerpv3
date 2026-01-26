@@ -20,9 +20,10 @@ class VehicleViewSet(viewsets.ModelViewSet):
     filterset_class = VehicleFilter
     
 class BillScanViewSet(viewsets.ModelViewSet):
-    queryset = Bill.objects.all()
+    queryset = Bill.objects.exclude(beat__contains = "WHOLESALE")
     serializer_class = BillScanSerializer
     pagination_class = Pagination
+    ordering = ['-bill_date']
     
     class BillFilter(filters.FilterSet):
         company = filters.CharFilter(field_name='company_id', lookup_expr='exact')
