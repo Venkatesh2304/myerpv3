@@ -70,7 +70,7 @@ class Bill(CompanyModel) :
     #Vehicle
     vehicle = models.ForeignKey("bill.Vehicle",on_delete=models.DO_NOTHING,null=True,blank=True)
     loading_time = models.DateTimeField(null=True,blank=True)
-    delivered_time = models.DateTimeField(null=True,blank=True)
+    delivery_time = models.DateTimeField(null=True,blank=True)
     delivered = models.BooleanField(null=True,blank=True)
     delivery_reason = models.TextField(choices=(("scanned","Scanned"),
                                                 ("bill_with_shop","Bill With Shop"),

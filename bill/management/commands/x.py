@@ -21,11 +21,19 @@ import json
 from bank.models import ChequeDeposit
 from bill.models import Vehicle
 
-Vehicle.objects.create(
-    name="test",
-    vehicle_no="TN22343232423",
-    company_id="devaki_hul"
-).save()
+company_id = "devaki_hul"
+vehicles = [("DEVAKI","TN45AP3219"),
+("KAMACHI","TN48V1218"),
+("ASHOK","TN49AF5764"),
+("BOLERO","TN81J5107"),
+("TATA ACE NEW","TN52S5801")]
+Vehicle.objects.all().delete()
+for name,vehicle_no in vehicles:
+    Vehicle.objects.create(
+        name=name,
+        vehicle_no=vehicle_no,
+        company_id=company_id
+    ).save()
 exit(0)
 
 
