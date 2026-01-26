@@ -24,9 +24,13 @@ class AztecCodeGenerator:
         text_clip = pymupdf.Rect(0, 0, 600, 100)
         page_text = page.get_text("text", clip=text_clip)
         if "Page :\n1 of " in page_text:
-            match = re.findall(r"Invoice No[ \t]*:\n.{6}", page_text)
+            print(page_text)
+            match = re.findall(r"Invoice No[ \t]*:\n([A-Z0-9]*)", page_text)
             if match:
-                return match[0][-6:]  # Return the last 6 characters as the invoice number
+                inum = match[0].strip()
+                if len(inum) > 7 : 
+                    raise Exception("Invoice number is too long in extract invoice number : {}".format(inum))
+                return inum
         return None
 
     def _extract_invoice_number_salesman_loading_sheet(self, page) -> Optional[str]:
