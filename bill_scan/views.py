@@ -1,3 +1,4 @@
+from collections import defaultdict
 from core.utils import get_media_url
 from django.conf import settings
 import datetime
@@ -15,6 +16,7 @@ import os
 def scan_bill(request):
     vehicle_id = request.data.get('vehicle')
     bill = request.data.get('bill')
+    notes = request.data.get('notes','')
     scan_type = request.data.get('type') #load or delivery
     vehicle = Vehicle.objects.get(id=vehicle_id)
     current_time = datetime.datetime.now()
@@ -28,21 +30,29 @@ def scan_bill(request):
     if len(bills) == 0 : 
         return Response({'status': 'error', 'message': 'Bill not found'})
 
-    other_vehicle = ""
+    loaded_vehicle = ""
     if scan_type == "delivery" : 
         bill = bills[0]
         if bill.loading_time is None:
             return Response({'status': 'error', 'message': 'Bill not loaded in any vehicle'})
-        if bill.vehicle != vehicle :
-           other_vehicle = bill.vehicle.name
+        loaded_vehicle = bill.vehicle.name
 
+    update_fields = {}
+    
     if scan_type == "load" : 
-        updated_count = qs.update(vehicle_id=vehicle_id, loading_time=current_time)
+        update_fields["vehicle_id"] = vehicle_id
+        update_fields["loading_time"] = current_time
     if scan_type == "delivery" : 
-        updated_count = qs.update(delivery_time=current_time)
-
+        update_fields["delivery_time"] = current_time
+    
+    qs.update(**update_fields)
+    if notes != "" : 
+        for bill in qs.all() :
+            bill.add_notes(notes)
+            bill.save()
+             
     bills = qs.values_list("bill_id", flat=True)
-    return Response({'status': 'success', 'bills': list(bills) , 'other_vehicle': other_vehicle})
+    return Response({'status': 'success', 'bills': list(bills) , 'loaded_vehicle': loaded_vehicle})
 
 @api_view(["POST"])
 def download_scan_pdf(request):
@@ -66,6 +76,19 @@ def download_scan_pdf(request):
         f.write(pdf_buffer.getvalue())
     return Response({'status': 'success',  'filepath': get_media_url(BILL_SCAN_FILE)})
 
+@api_view(["POST"])
+def delivery_applicable(request):
+    bill_id = request.data.get('bill')
+    company = request.data.get('company')
+    notes = request.data.get('notes')
+    delivery_applicable = request.data.get('delivery_applicable')
+    bill = Bill.objects.get(bill_id=bill_id,company_id=company)
+    bill.delivery_applicable = delivery_applicable
+    if notes != "" : 
+        bill.add_notes(notes)
+    bill.save()
+    return Response({'status': 'success'})
+
 @api_view(['GET'])
 def scan_summary(request):
     company_id = request.query_params.get('company')    
@@ -73,22 +96,33 @@ def scan_summary(request):
     # Last 3 days: yesterday, day before yesterday, day before before yesterday
     dates = [today - datetime.timedelta(days=i) for i in range(1, 4)]
     
-    summary = {}
-    for filter_key,date_type in {"bill_date":"bill_date","loading_time__date":"loading_date"}.items():
-        date_type_summary = []
-        for date in dates:
-            qs = Bill.objects.filter(company_id=company_id, **{filter_key:date}).exclude(beat__contains="WHOLESALE").filter(loading_sheet_id__isnull=True)
-            not_loaded = qs.filter(loading_time__isnull=True).count()
-            loaded = qs.filter(loading_time__isnull=False).count()
-            delivered = qs.filter(delivery_time__isnull=False).count()
-            not_delivered = qs.filter(loading_time__isnull=False,delivery_time__isnull=True).count()
-            date_type_summary.append({
-                'date': date.strftime('%Y-%m-%d'),
-                'not_loaded': not_loaded,
-                'loaded': loaded,
-                'delivered': delivered,
-                'not_delivered': not_delivered
-            })
-        summary[date_type] = date_type_summary
+    summary = defaultdict(list)
+    company_qs = Bill.objects.filter(company_id=company_id)
+    for date in dates : 
+        qs = company_qs.filter(bill_date = date)
+        total = qs.count()
+        qs = qs.exclude(beat__contains="WHOLESALE",delivery_applicable=False).filter(loading_sheet_id__isnull=True)
+        not_loaded = qs.filter(loading_time__isnull=True).count()
+        loaded = qs.filter(loading_time__isnull=False).count()
+        not_applicable = total - loaded - not_loaded
+        summary["bill_date"].append({
+            "date":date.strftime('%Y-%m-%d'),
+            "not_loaded":not_loaded,
+            "loaded":loaded,
+            "not_applicable":not_applicable,
+            "total":total,
+        })
+        
+    for date in dates : 
+        qs = company_qs.filter(loading_time__date = date)
+        loaded = qs.count()
+        delivered = qs.filter(delivery_time__isnull=False).count()
+        not_delivered = loaded - delivered
+        summary["loading_date"].append({
+            "date":date.strftime('%Y-%m-%d'),
+            "loaded":loaded,
+            "not_delivered":not_delivered,
+            "delivered":delivered,
+        })
 
     return Response({'status': 'success', 'summary': summary})

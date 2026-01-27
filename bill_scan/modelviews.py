@@ -20,7 +20,7 @@ class VehicleViewSet(viewsets.ModelViewSet):
     filterset_class = VehicleFilter
     
 class BillScanViewSet(viewsets.ModelViewSet):
-    queryset = Bill.objects.exclude(beat__contains = "WHOLESALE")
+    queryset = Bill.objects.exclude(beat__contains = "WHOLESALE",delivery_applicable=False)
     serializer_class = BillScanSerializer
     pagination_class = Pagination
     ordering = ['-bill_date']

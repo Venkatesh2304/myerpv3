@@ -71,13 +71,8 @@ class Bill(CompanyModel) :
     vehicle = models.ForeignKey("bill.Vehicle",on_delete=models.SET_NULL,null=True,blank=True)
     loading_time = models.DateTimeField(null=True,blank=True)
     delivery_time = models.DateTimeField(null=True,blank=True)
-    delivered = models.BooleanField(null=True,blank=True)
-    delivery_reason = models.TextField(choices=(("scanned","Scanned"),
-                                                ("bill_with_shop","Bill With Shop"),
-                                                ("cash_bill_success","Cash Bill (Collected Money)"),
-                                                ("bill_return","Bill Return"),
-                                                ("qrcode_not_found","QR Code Not Found"),
-                                                ("others","Other Reason")),null=True,blank=True)
+    notes = models.JSONField(default=list,null=True,blank=True)
+    delivery_applicable = models.BooleanField(default=True,db_default=True)
     cash_bill = models.BooleanField(default=False,db_default=False)
 
     class Meta :
@@ -97,6 +92,11 @@ class Bill(CompanyModel) :
             ignore_conflicts=True
         )
 
+    def add_notes(self,note) :
+        if self.notes is None : 
+            self.notes = []
+        self.notes.append(note)
+        
 class PartyCredit(CompanyModel):
     company = models.ForeignKey("core.Company", on_delete=models.CASCADE)
     party_id = models.CharField(max_length=30)
