@@ -77,7 +77,7 @@ def scan_summary(request):
     for filter_key,date_type in {"bill_date":"bill_date","loading_time__date":"loading_date"}.items():
         date_type_summary = []
         for date in dates:
-            qs = Bill.objects.filter(company_id=company_id, **{filter_key:date}).exclude(beat__contains="WHOLESALE")
+            qs = Bill.objects.filter(company_id=company_id, **{filter_key:date}).exclude(beat__contains="WHOLESALE").filter(loading_sheet_id__isnull=True)
             not_loaded = qs.filter(loading_time__isnull=True).count()
             loaded = qs.filter(loading_time__isnull=False).count()
             delivered = qs.filter(delivery_time__isnull=False).count()
