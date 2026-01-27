@@ -101,7 +101,7 @@ def scan_summary(request):
     for date in dates : 
         qs = company_qs.filter(bill_date = date)
         total = qs.count()
-        qs = qs.exclude(beat__contains="WHOLESALE",delivery_applicable=False).filter(loading_sheet_id__isnull=True)
+        qs = qs.exclude(beat__contains="WHOLESALE").filter(loading_sheet_id__isnull=True,delivery_applicable=True)
         not_loaded = qs.filter(loading_time__isnull=True).count()
         loaded = qs.filter(loading_time__isnull=False).count()
         not_applicable = total - loaded - not_loaded
