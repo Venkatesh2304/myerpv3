@@ -34,8 +34,9 @@ for index,row in df.iterrows():
     print_time = parse_datetime(row["print_time"])
     print_type = row["print_type"]
     loading_sheet_id = row["loading_sheet_id"]
+    print("bill",bill)
     if Bill.objects.filter(bill_id=bill,company_id="devaki_hul").count() == 0 : 
-        print(bill)
+        print("Not found:",bill)
     Bill.objects.filter(bill_id=bill,company_id="devaki_hul").update(print_time=print_time,print_type=print_type,loading_sheet_id=loading_sheet_id)
 exit(0)
 # company_id = "devaki_hul"
