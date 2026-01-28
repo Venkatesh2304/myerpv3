@@ -55,7 +55,7 @@ class ReportParseError(Exception):
 
 class BaseIkea(Session):       
     key = "ikea"
-    load_cookies = False #This is not working for ikea 
+    load_cookies = True 
     force_base_url = True
     
     IKEA_GENERATE_REPORT_URL = "/rsunify/app/reportsController/generatereport"
@@ -67,7 +67,6 @@ class BaseIkea(Session):
         self.base_url = self.config["home"]
         retry_count = 1
         self.user_id = None
-        self.login()
         while not self.is_logged_in() : 
             self.login()
             retry_count += 1
@@ -381,7 +380,10 @@ class Ikea(IkeaReports):
                 "actdate": from_date.strftime("%d-%m-%Y") + " - " + to_date.strftime("%d-%m-%Y") , 
                 "selectedspid": "493299",
                 "meth":"ajxgetDetailsTrip"} #warning: spid is vehicle A1 (so we keep it default)
-        html = s.get(f"https://shogunlite.com/deliveryupload_home.do",params=form).text 
+        html = s.get(f"https://shogunlite.com/deliveryupload_home.do",params=form).text
+        with open("a.html","w") as f:
+            f.write(html)
+        return 
         soup = BeautifulSoup(html,"html.parser")      
         vehicle_codes = { option.text : option.get("value")  for option in soup.find("select",{"id":"mspid"}).find_all("option") }
         all_bill_codes = [ code.get("value") for code in soup.find_all("input",{"name":"selectedOutlets"}) ]
@@ -395,7 +397,8 @@ class Ikea(IkeaReports):
         form["selectedOutlets"] = [ bill_to_code_map[bill] for bill in bills if bill in bill_to_code_map ] 
         del form["beat"]
         del form["sub"]
-        s.post("https://shogunlite.com/deliveryupload_home.do",data = form).text
+        print(form)
+        # s.post("https://shogunlite.com/deliveryupload_home.do",data = form).text
 
 class Billing(Ikea) :
 
