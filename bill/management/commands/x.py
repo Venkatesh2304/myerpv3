@@ -1,3 +1,4 @@
+from bill.models import Bill
 from load.models import TruckLoad
 from core.models import User
 from report.views import mail_reports
@@ -20,21 +21,41 @@ from dateutil.relativedelta import relativedelta
 import json
 from bank.models import ChequeDeposit
 from bill.models import Vehicle
-
-company_id = "devaki_hul"
-vehicles = [("DEVAKI","TN45AP3219"),
-("KAMACHI","TN48V1218"),
-("ASHOK","TN49AF5764"),
-("BOLERO","TN81J5107"),
-("TATA ACE NEW","TN52S5801")]
-for name,vehicle_no in vehicles:
-    Vehicle.objects.create(
-        name=name,
-        vehicle_no=vehicle_no,
-        company_id=company_id
-    ).save()
+import pandas as pd
+import datetime
+from django.utils.dateparse import parse_datetime
+company = Company.objects.get(name="devaki_hul")
+today = datetime.date(2026,1,28)
+SalesRegisterReport.update_db(Ikea("devaki_hul"),company,DateRangeArgs(today - relativedelta(days=1),today))
+Bill.sync_with_salesregister(company,fromd = today - relativedelta(days=1),tod = today)
+df= pd.read_csv("print_bills_28.csv")
+for index,row in df.iterrows():
+    bill = row["bill_id"]
+    print_time = parse_datetime(row["print_time"])
+    print_type = row["print_type"]
+    loading_sheet_id = row["loading_sheet_id"]
+    if Bill.objects.filter(bill_id=bill,company_id="devaki_hul").count() == 0 : 
+        print(bill)
+    Bill.objects.filter(bill_id=bill,company_id="devaki_hul").update(print_time=print_time,print_type=print_type,loading_sheet_id=loading_sheet_id)
 exit(0)
+# company_id = "devaki_hul"
+# vehicles = [("DEVAKI","TN45AP3219"),
+# ("KAMACHI","TN48V1218"),
+# ("ASHOK","TN49AF5764"),
+# ("BOLERO","TN81J5107"),
+# ("TATA ACE NEW","TN52S5801")]
+# for name,vehicle_no in vehicles:
+#     Vehicle.objects.create(
+#         name=name,
+#         vehicle_no=vehicle_no,
+#         company_id=company_id
+#     ).save()
+# exit(0)
 
+
+# i = Ikea("devaki_hul")
+# i.sync_impact(datetime.date(2026,1,24),datetime.date.today(),[],"xx")
+# exit(0)
 
 
 
