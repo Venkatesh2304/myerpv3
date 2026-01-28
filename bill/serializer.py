@@ -67,7 +67,7 @@ class BillSerializer(serializers.ModelSerializer):
     einvoice = serializers.SerializerMethodField()
     class Meta:
         model = Bill
-        fields = ["company_id","bill", "party", "date", "salesman", "beat","amt","print_time","print_type","einvoice","delivered"]
+        fields = ["company_id","bill", "party", "date", "salesman", "beat","amt","print_time","print_type","einvoice"]
 
     def get_einvoice(self, obj):
         return bool(obj.ctin is None) or bool(obj.irn)
