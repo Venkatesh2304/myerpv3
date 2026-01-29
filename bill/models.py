@@ -85,12 +85,17 @@ class Bill(CompanyModel) :
 
     @classmethod
     def sync_with_salesregister(cls,company,fromd,tod) : 
-        invs = SalesRegisterReport.objects.filter(company_id=company.pk,date__gte=fromd,date__lte=tod,type="sales").values("inum","date","party_id","beat","party_name","amt","ctin")
+        invs = list(SalesRegisterReport.objects.filter(company_id=company.pk,date__gte=fromd,date__lte=tod,type="sales").values("inum","date","party_id","beat","party_name","amt","ctin"))
         cls.objects.bulk_create(
             [ cls(company_id=company.pk,bill_id=inv["inum"],bill_date=inv["date"],party_id = inv["party_id"],
                                 beat = inv["beat"],party_name = inv["party_name"],bill_amt = inv["amt"], ctin = inv["ctin"]) for inv in invs ],
             ignore_conflicts=True
         )
+        if len(invs) > 0 :
+            #Delete cancelled bills
+            qs = cls.objects.filter(company_id=company.pk,date__gte=fromd,date__lte=tod).exclude(bill_id__in=[inv["inum"] for inv in invs])
+            if qs.count() < 10 : 
+               qs.delete()
 
     def add_notes(self,note) :
         if self.notes is None : 
