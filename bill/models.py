@@ -93,7 +93,7 @@ class Bill(CompanyModel) :
         )
         if len(invs) > 0 :
             #Delete cancelled bills
-            qs = cls.objects.filter(company_id=company.pk,date__gte=fromd,date__lte=tod).exclude(bill_id__in=[inv["inum"] for inv in invs])
+            qs = cls.objects.filter(company_id=company.pk,bill_date__gte=fromd,bill_date__lte=tod).exclude(bill_id__in=[inv["inum"] for inv in invs])
             if qs.count() < 10 : 
                qs.delete()
 
