@@ -1125,7 +1125,7 @@ class Einvoice(Session) :
           url = "https://ewaybillgst.gov.in/Reports/CommomReport.aspx?id=3"
           res = self.get(url)
           form = extractForm(res.text)
-          form["ctl00$ContentPlaceHolder1$txtDate"] = (datetime.date.today() - datetime.timedelta(days=2)).strftime("%d/%m/%Y")
+          form["ctl00$ContentPlaceHolder1$txtDate"] = (datetime.date.today() - datetime.timedelta(days=3)).strftime("%d/%m/%Y")
           form["ctl00$ContentPlaceHolder1$ddlUserId"] = 0
           res = self.post(url,data=form)
           form = extractForm(res.text)
