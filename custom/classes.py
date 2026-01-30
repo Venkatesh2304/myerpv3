@@ -412,9 +412,6 @@ class Ikea(IkeaReports):
             df = dfs[-1]
         return list(df["BillNo"].values)
 
-
-
-
 class Billing(Ikea) :
 
     def __init__(self,user):
@@ -1127,11 +1124,12 @@ class Einvoice(Session) :
             raise Exception("Failed to upload eway bill, no EWB No column found in response")
         return df
     
-      def get_today_eway_bills(self) : 
+      def get_eway_bills(self) : 
           self.get("/SignleSignon/EwayBill").text
           url = "https://ewaybillgst.gov.in/Reports/CommomReport.aspx?id=3"
           res = self.get(url)
           form = extractForm(res.text)
+          form["ctl00$ContentPlaceHolder1$txtDate"] = (datetime.date.today() - datetime.timedelta(days=2)).strftime("%d/%m/%Y")
           form["ctl00$ContentPlaceHolder1$ddlUserId"] = 0
           res = self.post(url,data=form)
           form = extractForm(res.text)
