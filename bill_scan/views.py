@@ -150,6 +150,8 @@ def push_impact(request):
     beat_vehicle_counts = defaultdict(lambda: defaultdict(int))
     beat_total_counts = defaultdict(int)
     for bill in qs.all() :
+        #Skip bills with loading sheet for counts/stats
+        if bill.loading_sheet_id is not None : continue
         if bill.vehicle :
             beat_vehicle_counts[bill.beat][bill.vehicle_id] += 1
         beat_total_counts[bill.beat] += 1
@@ -158,7 +160,7 @@ def push_impact(request):
     current_vehicle_bills = Bill.objects.filter(vehicle = vehicle, loading_time__date=today).values_list('bill_id', flat=True)
     vehicle_bills[vehicle_id] = list(current_vehicle_bills)
     for bill in qs.all() :
-        if not bill.vehicle :
+        if (bill.vehicle is None) or (bill.vehicle.name_on_impact is None) :
             #Pick the vehicle with max count for that beat
             vehicle_counts = beat_vehicle_counts[bill.beat]
             if len(vehicle_counts) == 0 :
