@@ -59,6 +59,7 @@ class Bill(CompanyModel) :
     beat = models.TextField(max_length=30,null=True,blank=True)
     ctin = models.TextField(max_length=30,null=True,blank=True)
     irn = models.TextField(null=True,blank=True)
+    ewb_no = models.TextField(null=True,blank=True)
     
     print_time = models.DateTimeField(null=True,blank=True)
     print_type = models.TextField(max_length=20,choices=(("first_copy","First Copy"),("loading_sheet","Loading Sheet")),null=True,blank=True)
@@ -94,6 +95,7 @@ class Bill(CompanyModel) :
         if len(invs) > 0 :
             #Delete cancelled bills
             qs = cls.objects.filter(company_id=company.pk,bill_date__gte=fromd,bill_date__lte=tod).exclude(bill_id__in=[inv["inum"] for inv in invs])
+            #TODO: make this configurable
             if qs.count() < 10 : 
                qs.delete()
 

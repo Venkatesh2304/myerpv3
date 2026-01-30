@@ -1,3 +1,4 @@
+from requests import get
 from collections import defaultdict
 from typing import Literal
 import copy
@@ -287,9 +288,7 @@ class IkeaReports(BaseIkea):
         df2 = pd.read_excel(bytesio, dtype="str", sheet_name="Party Wise Sales Report")
         return (df1, df2)
     
-    def eway_excel(self, bills: list[str]) -> pd.DataFrame:
-        fromd = datetime.date.today() - datetime.timedelta(days=7)
-        tod = datetime.date.today()
+    def eway_excel(self,fromd: datetime.date,tod: datetime.date,bills: list[str]) -> pd.DataFrame:
         bills.sort()
         df = self.fetch_report_dataframe("ikea/eway_excel", r'(":val1":").{8}(",":val2":").{8}(.*":val5":")[^"]*(",":val6":")[^"]*',
                             (fromd.strftime("%Y%m%d"), tod.strftime("%Y%m%d"), bills[0], bills[-1]))
@@ -364,8 +363,9 @@ class Ikea(IkeaReports):
         files = {'file': ( "IRNGenByMe.xlsx" , bytesio )}
         res = self.post("/rsunify/app/stockmigration/eInvoiceIRNuploadFile",files=files)
         return res.json()
-    
-    def sync_impact(self,from_date,to_date,bills,vehicle_name):
+            
+    def push_impact(self,fromd,tod,bills,vehicle_name) -> list[str]:
+        """Pushes to Impact & returns the list of non pushed bills yet"""
         login_data = self.post("/rsunify/app/impactDeliveryUrl").json()
         url = login_data["url"]
         del login_data["url"]
@@ -381,24 +381,34 @@ class Ikea(IkeaReports):
                 "selectedspid": "493299",
                 "meth":"ajxgetDetailsTrip"} #warning: spid is vehicle A1 (so we keep it default)
         html = s.get(f"https://shogunlite.com/deliveryupload_home.do",params=form).text
-        with open("a.html","w") as f:
-            f.write(html)
-        return 
-        soup = BeautifulSoup(html,"html.parser")      
-        vehicle_codes = { option.text : option.get("value")  for option in soup.find("select",{"id":"mspid"}).find_all("option") }
+
+        dfs = pd.read_html(html)
+        if len(dfs) == 0 : 
+            return []
+
+        df = dfs[-1]
+        soup = BeautifulSoup(html,"html.parser")
+        vehicle_codes = { option.text.lower() : option.get("value")  for option in soup.find("select",{"id":"mspid"}).find_all("option") }
         all_bill_codes = [ code.get("value") for code in soup.find_all("input",{"name":"selectedOutlets"}) ]
-        all_bill_numbers = list(pd.read_html(html)[-1]["BillNo"].values)
-        bill_to_code_map = dict(zip(all_bill_numbers,all_bill_codes))      
+        all_bill_numbers = list(df["BillNo"].values)
+        bill_to_code_map = dict(zip(all_bill_numbers,all_bill_codes))
         form = extractForm(html)
         form["exedate"] = datetime.date.today().strftime("%d-%m-%Y")
-        form["mspid"] = vehicle_codes[vehicle_name]
+        form["mspid"] = vehicle_codes[vehicle_name.lower()]
         form["meth"] = "ajxgetMovieBillnumber"
         form["selectedspid"] = "493299"
-        form["selectedOutlets"] = [ bill_to_code_map[bill] for bill in bills if bill in bill_to_code_map ] 
+        form["selectedOutlets"] = [ bill_to_code_map[bill] for bill in bills if bill in bill_to_code_map ]
         del form["beat"]
         del form["sub"]
-        print(form)
-        # s.post("https://shogunlite.com/deliveryupload_home.do",data = form).text
+        res = s.post("https://shogunlite.com/deliveryupload_home.do",data = form).text
+        dfs = pd.read_html(res)
+        if len(dfs) == 0 : 
+            return []
+        df = dfs[-1]
+        return list(df["BillNo"].values)
+
+
+
 
 class Billing(Ikea) :
 
@@ -1091,12 +1101,11 @@ class Einvoice(Session) :
           html = re.sub(r'href=".*/(.*?)"','href="\\1"',html)
           with open("print_includes/bill.html","w+") as f  : f.write(html)
       
-      #Unverified
-      def upload_eway_bill(self,json_path) : 
+      def upload_eway_bill(self,json_str:str) : 
         self.get("/SignleSignon/EwayBill").text
         res = self.get("https://ewaybillgst.gov.in/BillGeneration/BulkUploadEwayBill.aspx")
         
-        buffer = open(json_path)
+        buffer = StringIO(json_str)
         files = { "ctl00$ContentPlaceHolder1$FileUploadControl" : ("eway.json", buffer  ,'application/json') }
 
         form = extractForm(res.text)        
@@ -1104,4 +1113,30 @@ class Einvoice(Session) :
 
         buffer.seek(0)
         form = extractForm(res.text) | {"ctl00$ContentPlaceHolder1$hdnConfirm": "Y"}
-        res = self.post("https://ewaybillgst.gov.in/BillGeneration/BulkUploadEwayBill.aspx",files = files,data =form)        
+        res = self.post("https://ewaybillgst.gov.in/BillGeneration/BulkUploadEwayBill.aspx",files = files,data =form)
+        dfs = pd.read_html(StringIO(res.text))
+        if len(dfs) == 0 : 
+            raise Exception("Failed to upload eway bill, no table generated")
+        df = dfs[0]
+        if "EWB No" not in df.columns : 
+            raise Exception("Failed to upload eway bill, no EWB No column found in response")
+        return df
+    
+      def get_today_eway_bills(self) : 
+          self.get("/SignleSignon/EwayBill").text
+          url = "https://ewaybillgst.gov.in/Reports/CommomReport.aspx?id=3"
+          res = self.get(url)
+          form = extractForm(res.text)
+          form["ctl00$ContentPlaceHolder1$ddlUserId"] = 0
+          res = self.post(url,data=form)
+          form = extractForm(res.text)
+          form["ctl00$ContentPlaceHolder1$ddlUserId"] = 0
+          res = self.post(url,data=form)
+          dfs = pd.read_html(StringIO(res.text))
+          if len(dfs) == 0 : 
+              raise Exception("Failed to get eway bills, no table generated")
+          df = dfs[0]
+          if "EWB No" not in df.columns : 
+              raise Exception("Failed to get eway bills, no EWB No column found in response")
+          return df
+  

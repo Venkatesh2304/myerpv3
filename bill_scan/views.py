@@ -1,3 +1,6 @@
+from django.http.response import JsonResponse
+from django.db.models import Max
+from django.db.models import Min
 from collections import defaultdict
 from core.utils import get_media_url
 from django.conf import settings
@@ -11,6 +14,13 @@ from bill.models import Vehicle, Bill
 from .serializers import VehicleSerializer
 from bill_scan.pdf_helper import generate_bill_list_pdf
 import os
+from custom.classes import Ikea, Einvoice
+from bill_scan.eway import eway_df_to_json
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.lib.pagesizes import A4
+from reportlab.lib import colors
+import pandas as pd
 
 @api_view(['POST'])
 def scan_bill(request):
@@ -66,7 +76,6 @@ def download_scan_pdf(request):
         qs = qs.filter(vehicle = vehicle, loading_time__date=today)
     if scan_type == "delivery" : 
         qs = qs.filter(vehicle = vehicle, delivery_time__date=today)
-    print(qs.count())
     bills = qs.values_list("bill_id", flat=True)
     pdf_buffer = generate_bill_list_pdf(bills, vehicle.name, today, columns=6)
     company_dir = os.path.join(settings.MEDIA_ROOT, "bill_scan", company.pk)
@@ -74,7 +83,7 @@ def download_scan_pdf(request):
     BILL_SCAN_FILE = os.path.join(company_dir,"bill_scan.pdf")
     with open(BILL_SCAN_FILE, "wb+") as f:
         f.write(pdf_buffer.getvalue())
-    return Response({'status': 'success',  'filepath': get_media_url(BILL_SCAN_FILE)})
+    return Response({'status': 'success',  'filepath': get_media_url(BILL_SCAN_FILE), 'scan_bills': len(bills)})
 
 @api_view(["POST"])
 def delivery_applicable(request):
@@ -126,3 +135,122 @@ def scan_summary(request):
         })
 
     return Response({'status': 'success', 'summary': summary})
+
+@api_view(['POST'])
+def push_impact(request):
+    vehicle_id = request.data.get('vehicle')
+    vehicle = Vehicle.objects.get(id=vehicle_id)
+    company = vehicle.company
+    today = datetime.date.today()
+    yesterday = today - datetime.timedelta(days=1)
+    i = Ikea(company.pk)
+
+    #Get beat_vehicle_counts  for yesterday bills
+    qs = Bill.objects.filter(bill_date = yesterday)
+    beat_vehicle_counts = defaultdict(lambda: defaultdict(int))
+    beat_total_counts = defaultdict(int)
+    for bill in qs.all() :
+        if bill.vehicle :
+            beat_vehicle_counts[bill.beat][bill.vehicle_id] += 1
+        beat_total_counts[bill.beat] += 1
+    
+    vehicle_bills = defaultdict(list)
+    current_vehicle_bills = Bill.objects.filter(vehicle = vehicle, loading_time__date=today,bill_date=yesterday).values_list('bill_id', flat=True)
+    vehicle_bills[vehicle_id] = list(current_vehicle_bills)
+    for bill in qs.all() :
+        if not bill.vehicle :
+            #Pick the vehicle with max count for that beat
+            vehicle_counts = beat_vehicle_counts[bill.beat]
+            if len(vehicle_counts) == 0 :
+                continue
+            max_vehicle_id = max(vehicle_counts, key=vehicle_counts.get) #type: ignore
+            max_vehicle_count = vehicle_counts.get(max_vehicle_id,0)
+            total_count = beat_total_counts[bill.beat]
+            if (max_vehicle_count >= total_count * 0.4) or (len(vehicle_counts) > 1) or (max_vehicle_count >= 4):
+                vehicle_bills[max_vehicle_id].append(bill.bill_id)
+                print("Pushing bill", bill.bill_id, bill.beat, "to vehicle", max_vehicle_id)
+
+    pending_bills = []
+    bills_count = 0
+    print("Current Vehicle count (All bill dates loading today):", len(current_vehicle_bills))
+    for vehicle_id, bills in vehicle_bills.items() :
+        bills_count += len(bills)
+        vehicle = Vehicle.objects.get(id=vehicle_id)
+        print("Pushing bills for vehicle", vehicle.name, "count", len(bills))
+        pending_bills = i.push_impact(fromd=today - datetime.timedelta(days=3),tod=today,bills=bills,vehicle_name = vehicle.name_on_impact)
+        print("Pending bills", len(pending_bills))
+
+    return Response({'status': 'success','pushed': bills_count , 'pending': len(pending_bills)})
+
+@api_view(['POST'])
+def upload_eway(request):
+    vehicle_id = request.data.get('vehicle')
+    vehicle = Vehicle.objects.get(id=vehicle_id)
+    company = vehicle.company
+    today = datetime.date.today()
+    
+    ikea = Ikea(company.pk)
+    einv = Einvoice(company.organization.pk)
+    if einv.is_logged_in() == False  : 
+        return JsonResponse({"key": "einvoice"}, status=501)
+
+    base_qs = Bill.objects.filter(company=company, vehicle=vehicle, loading_time__date=today)
+    qs = base_qs.filter(ewb_no__isnull=True)
+    bill_ids = list(qs.values_list('bill_id', flat=True))[:2]
+    bill_ids = []
+    
+    if bill_ids : 
+        # Download eway excel
+        dates = qs.aggregate(fromd=Min('bill_date'),tod=Max('bill_date'))
+        df_eway = ikea.eway_excel(dates['fromd'], dates['tod'], bill_ids)
+        
+        # Convert to JSON
+        json_output = eway_df_to_json(df_eway, lambda x: vehicle.vehicle_no, lambda x: 3)
+        
+        # Upload to einvoice (eway upload)
+        try:
+            df = einv.upload_eway_bill(json_output)
+            print(df)
+        except Exception as e:
+            print(f"E-way upload failed: {e}")
+        
+    df_today = einv.get_today_eway_bills()
+    for _, row in df_today.iterrows():
+        bill_no = str(row['Doc.No'])
+        ewb_no = str(row['EWB No'])
+        Bill.objects.filter(company=company, bill_id=bill_no).update(ewb_no=ewb_no)
+        
+    # Construct PDF for the table
+    pdf_df = df_today[["EWB No","EWB Date","Supply Type","Doc.No","Doc.Date"]]
+    company_dir = os.path.join(settings.MEDIA_ROOT, "vehicle", company.pk)
+    os.makedirs(company_dir, exist_ok=True)
+    filepath = os.path.join(company_dir, "eway_bills.pdf")
+    
+    doc = SimpleDocTemplate(filepath, pagesize=A4)
+    styles = getSampleStyleSheet()
+    elements = []
+    
+    header_text = f"<b>Vehicle:</b> {vehicle.name} | <b>Vehicle No:</b> {vehicle.vehicle_no}"
+    elements.append(Paragraph(header_text, styles['Normal']))
+    elements.append(Spacer(1, 12))
+    
+    data = [pdf_df.columns.tolist()] + pdf_df.values.tolist()
+    table = Table(data)
+    table.setStyle(TableStyle([
+        ('GRID', (0,0), (-1,-1), 0.5, colors.black),
+        ('BACKGROUND', (0,0), (-1,0), colors.lightgrey),
+        ('ALIGN', (0,0), (-1,-1), 'CENTER')
+    ]))
+    elements.append(table)
+    doc.build(elements)
+    
+    # success count should include the previous eway filed bills count also
+    total_success = base_qs.filter(ewb_no__isnull=False).count()
+    total_failed = base_qs.filter(ewb_no__isnull=True).count()
+
+    return Response({
+        'status': 'success',
+        'filepath': get_media_url(filepath),
+        'filed': total_success,
+        'not_filed': total_failed
+    })

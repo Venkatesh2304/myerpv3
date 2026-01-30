@@ -1,3 +1,5 @@
+from bill_scan.views import push_impact
+from bill_scan.views import upload_eway
 from bill_scan.views import delivery_applicable
 from bill_scan.views import download_scan_pdf
 from django.urls import path, include
@@ -16,4 +18,6 @@ urlpatterns = [
     path('download_scan_pdf/', download_scan_pdf, name='download_scan_pdf'),
     path('scan_summary/', scan_summary, name='scan_summary'),
     path('delivery_applicable/', delivery_applicable, name='delivery_applicable'),
+    path('upload_eway/', upload_eway, name='upload_eway'),
+    path('push_impact/', push_impact, name='push_impact'),
 ]
