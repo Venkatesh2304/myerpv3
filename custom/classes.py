@@ -377,7 +377,7 @@ class Ikea(IkeaReports):
         html = s.get("https://shogunlite.com/deliveryupload_home.do?meth=viewscr_home_tripplan&hid_id=&dummy=").text 
         form = extractForm(html,all_forms=True)
         form =  {"org.apache.struts.taglib.html.TOKEN": form["org.apache.struts.taglib.html.TOKEN"],
-                "actdate": from_date.strftime("%d-%m-%Y") + " - " + to_date.strftime("%d-%m-%Y") , 
+                "actdate": fromd.strftime("%d-%m-%Y") + " - " + tod.strftime("%d-%m-%Y") , 
                 "selectedspid": "493299",
                 "meth":"ajxgetDetailsTrip"} #warning: spid is vehicle A1 (so we keep it default)
         html = s.get(f"https://shogunlite.com/deliveryupload_home.do",params=form).text
