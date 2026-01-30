@@ -402,13 +402,14 @@ class Ikea(IkeaReports):
         form["selectedOutlets"] = [ bill_to_code_map[bill] for bill in bills if bill in bill_to_code_map ]
         del form["beat"]
         del form["sub"]
-        res = s.post("https://shogunlite.com/deliveryupload_home.do",data = form).text
-        with open("files/b.html","w+") as f :
-            f.write(res)
-        dfs = pd.read_html(res)
-        if len(dfs) == 0 : 
-            return []
-        df = dfs[-1]
+        if len(form["selectedOutlets"]) > 0 : 
+            res = s.post("https://shogunlite.com/deliveryupload_home.do",data = form).text
+            with open("files/b.html","w+") as f :
+                f.write(res)
+            dfs = pd.read_html(res)
+            if len(dfs) == 0 : 
+                return []
+            df = dfs[-1]
         return list(df["BillNo"].values)
 
 
