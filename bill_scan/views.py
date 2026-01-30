@@ -206,12 +206,10 @@ def upload_eway_bills(qs,company,default_vehicle_no = None) -> pd.DataFrame:
         dates = qs.aggregate(fromd=Min('bill_date'),tod=Max('bill_date'))
         df_eway = ikea.eway_excel(dates['fromd'], dates['tod'], bill_ids)
         bill_to_vehicle_no = qs.values_list('bill_id', 'vehicle__vehicle_no')
-        raise Exception(f"len(bill_to_vehicle_no):{len(bill_to_vehicle_no)}")
         bill_to_vehicle_no = dict(bill_to_vehicle_no)
         # Convert to JSON
         json_output = eway_df_to_json(df_eway, lambda series : series.apply(lambda x : bill_to_vehicle_no.get(x) or default_vehicle_no), 
                                                lambda series: series.apply(lambda x: 3))
-        sfdsdf
         # Upload to einvoice (eway upload)
         try:
             df = einv.upload_eway_bill(json_output)
