@@ -213,6 +213,7 @@ def upload_eway_bills(qs,company,default_vehicle_no = None) -> pd.DataFrame:
         # Upload to einvoice (eway upload)
         try:
             df = einv.upload_eway_bill(json_output)
+            print(df.iloc[0])
             print(df)
         except Exception as e:
             print(f"E-way upload failed: {e}")
