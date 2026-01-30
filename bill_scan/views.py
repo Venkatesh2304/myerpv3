@@ -1,3 +1,5 @@
+from dateutil.utils import today
+from core.models import Company
 from django.http.response import JsonResponse
 from django.db.models import Max
 from django.db.models import Min
@@ -187,29 +189,26 @@ def push_impact(request):
 
     return Response({'status': 'success','pushed': bills_count , 'pending': len(pending_bills)})
 
-@api_view(['POST'])
-def upload_eway(request):
-    vehicle_id = request.data.get('vehicle')
-    vehicle = Vehicle.objects.get(id=vehicle_id)
-    company = vehicle.company
-    today = datetime.date.today()
-    
-    ikea = Ikea(company.pk)
+
+class EinvoiceLoginException(Exception) :
+    pass
+
+def upload_eway_bills(qs,company,default_vehicle_no = None) -> pd.DataFrame:
     einv = Einvoice(company.organization.pk)
     if einv.is_logged_in() == False  : 
-        return JsonResponse({"key": "einvoice"}, status=501)
+        raise EinvoiceLoginException("E-way login failed")
 
-    base_qs = Bill.objects.filter(company=company, vehicle=vehicle, loading_time__date=today)
-    qs = base_qs.filter(ewb_no__isnull=True)
+    ikea = Ikea(company.pk)
     bill_ids = list(qs.values_list('bill_id', flat=True))
     
     if bill_ids : 
         # Download eway excel
         dates = qs.aggregate(fromd=Min('bill_date'),tod=Max('bill_date'))
         df_eway = ikea.eway_excel(dates['fromd'], dates['tod'], bill_ids)
-        
+        bill_to_vehicle_no = qs.values_list('bill_id', 'vehicle__vehicle_no')
+        bill_to_vehicle_no = dict(bill_to_vehicle_no)
         # Convert to JSON
-        json_output = eway_df_to_json(df_eway, lambda x: vehicle.vehicle_no, lambda x: 3)
+        json_output = eway_df_to_json(df_eway, lambda x: bill_to_vehicle_no.get(x) or default_vehicle_no, lambda x: 3)
         
         # Upload to einvoice (eway upload)
         try:
@@ -218,15 +217,55 @@ def upload_eway(request):
         except Exception as e:
             print(f"E-way upload failed: {e}")
         
-    df_today = einv.get_eway_bills()
-    for _, row in df_today.iterrows():
+    df = einv.get_eway_bills()
+    for _, row in df.iterrows():
         bill_no = str(row['Doc.No'])
         ewb_no = str(row['EWB No'])
         Bill.objects.filter(company=company, bill_id=bill_no).update(ewb_no=ewb_no)
-        
+    return df
+
+@api_view(['POST'])
+def upload_company_eway(request):
+    company_id = request.data.get('company')
+    bill_date = datetime.datetime.strptime(request.data.get('date'), '%Y-%m-%d').date()
+    company = Company.objects.get(pk=company_id)
+    vehicle = Vehicle.objects.filter(company_id=company_id).first()
+    if vehicle is None : 
+        return JsonResponse("Vehicle not found", status=404)
+    base_qs = Bill.objects.filter(company=company, bill_date = bill_date).exclude(beat__contains = "WHOLESALE")
+    qs = base_qs.filter(ewb_no__isnull=True)
+    if qs.count() > 0 : 
+        try :
+            df = upload_eway_bills(qs,company,vehicle.vehicle_no)
+        except EinvoiceLoginException :
+            return JsonResponse({"key": "einvoice"}, status=501)
+    rows = list(base_qs.values('bill_date','bill_id','party_name','ewb_no'))
+    df = pd.DataFrame(rows)
+    company_dir = os.path.join(settings.MEDIA_ROOT, "company", company.pk)
+    os.makedirs(company_dir, exist_ok=True)
+    filepath = os.path.join(company_dir, f"eway_{bill_date.strftime('%d_%m_%y')}.xlsx")
+    df.to_excel(filepath, index=False)
+    return JsonResponse({"status": "success","filepath": get_media_url(filepath)})
+
+@api_view(['POST'])
+def upload_vehicle_eway(request):
+    vehicle_id = request.data.get('vehicle')
+    vehicle = Vehicle.objects.get(id=vehicle_id)
+    company = vehicle.company
+    today = datetime.date.today()
+    
+    base_qs = Bill.objects.filter(company=company, vehicle=vehicle, loading_time__date=today)
+    qs = base_qs.filter(ewb_no__isnull=True)
+    bill_ids = list(qs.values_list('bill_id', flat=True))
+
+    try :
+        df = upload_eway_bills(qs,company)
+    except EinvoiceLoginException :
+        return JsonResponse({"key": "einvoice"}, status=501)
+
     # Construct PDF for the table
-    df_today = df_today[df_today['Doc.No'].isin(bill_ids)]
-    pdf_df = df_today[["EWB No","EWB Date","Supply Type","Doc.No","Doc.Date"]]
+    df = df[df['Doc.No'].isin(bill_ids)]
+    pdf_df = df[["EWB No","EWB Date","Supply Type","Doc.No","Doc.Date"]]
     company_dir = os.path.join(settings.MEDIA_ROOT, "vehicle", company.pk)
     os.makedirs(company_dir, exist_ok=True)
     filepath = os.path.join(company_dir, f"{vehicle.name}_eway_{today.strftime('%d_%m_%y')}.pdf")
