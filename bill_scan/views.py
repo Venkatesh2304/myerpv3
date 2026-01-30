@@ -179,7 +179,10 @@ def push_impact(request):
         bills_count += len(bills)
         vehicle = Vehicle.objects.get(id=vehicle_id)
         print("Pushing bills for vehicle", vehicle.name, "count", len(bills))
-        pending_bills = i.push_impact(fromd=today - datetime.timedelta(days=3),tod=today,bills=bills,vehicle_name = vehicle.name_on_impact)
+        df = i.push_impact(fromd=today - datetime.timedelta(days=3),tod=today,bills=bills,vehicle_name = vehicle.name_on_impact)
+        if df is not None : 
+            df = df[(~df["Beat Name"].str.contains("WHOLESALE")) & (df["Bill Date"] == yesterday.strftime('%Y-%m-%d'))]
+            pending_bills = df["BillNo"].values.tolist()
         print("Pending bills", len(pending_bills))
 
     return Response({'status': 'success','pushed': bills_count , 'pending': len(pending_bills)})
