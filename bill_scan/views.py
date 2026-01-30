@@ -223,6 +223,7 @@ def upload_eway(request):
         Bill.objects.filter(company=company, bill_id=bill_no).update(ewb_no=ewb_no)
         
     # Construct PDF for the table
+    df_today = df_today[df_today['Doc.No'].isin(bill_ids)]
     pdf_df = df_today[["EWB No","EWB Date","Supply Type","Doc.No","Doc.Date"]]
     company_dir = os.path.join(settings.MEDIA_ROOT, "vehicle", company.pk)
     os.makedirs(company_dir, exist_ok=True)
