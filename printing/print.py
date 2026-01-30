@@ -1,3 +1,5 @@
+from django.db import transaction
+import datetime
 from django.http.response import JsonResponse
 from requests.models import Response
 from printing.lib.einvoice import EinvoiceResult
@@ -50,7 +52,13 @@ class BillPrintingService:
         # Remove already printed, if not loading sheet
         if full_print_type in ["both_copy", "first_copy", "double_first_copy", "loading_sheet_salesman", "reload_bill"]:
             loading_sheets = list(qs.values_list("loading_sheet_id", flat=True).distinct())
-            qs.update(print_time=None, loading_sheet_id=None, is_reloaded=True)
+            with transaction.atomic() :
+                for bill in qs.filter(print_time__isnull = False) : 
+                    bill.add_notes(f"bill_reload: Loading Sheet was reprinted as {full_print_type} @ {datetime.datetime.now()}")
+                    bill.is_reloaded = True
+                    bill.print_time = None
+                    bill.loading_sheet_id = None
+                    bill.save()
             SalesmanLoadingSheet.objects.filter(company=self.company, inum__in=loading_sheets).delete()
             qs = qs.all() # Refetch
 

@@ -213,7 +213,6 @@ def upload_eway_bills(qs,company,default_vehicle_no = None) -> pd.DataFrame:
         # Upload to einvoice (eway upload)
         try:
             df = einv.upload_eway_bill(json_output)
-            print(df.iloc[0])
             print(df)
         except Exception as e:
             print(f"E-way upload failed: {e}")
@@ -229,6 +228,8 @@ def upload_eway_bills(qs,company,default_vehicle_no = None) -> pd.DataFrame:
 def upload_company_eway(request):
     company_id = request.data.get('company')
     bill_date = datetime.datetime.strptime(request.data.get('date'), '%Y-%m-%d').date()
+    if bill_date >= datetime.date.today() : 
+        return JsonResponse("Bill date cannot be today", status=400)
     company = Company.objects.get(pk=company_id)
     vehicle = Vehicle.objects.filter(company_id=company_id).first()
     if vehicle is None : 
