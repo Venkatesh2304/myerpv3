@@ -387,6 +387,8 @@ class Ikea(IkeaReports):
             return []
 
         df = dfs[-1]
+        with open("files/a.html","w+") as f :
+            f.write(html)
         soup = BeautifulSoup(html,"html.parser")
         vehicle_codes = { option.text.lower() : option.get("value")  for option in soup.find("select",{"id":"mspid"}).find_all("option") }
         all_bill_codes = [ code.get("value") for code in soup.find_all("input",{"name":"selectedOutlets"}) ]
@@ -401,7 +403,7 @@ class Ikea(IkeaReports):
         del form["beat"]
         del form["sub"]
         res = s.post("https://shogunlite.com/deliveryupload_home.do",data = form).text
-        with open("files/a.html","w+") as f :
+        with open("files/b.html","w+") as f :
             f.write(res)
         dfs = pd.read_html(res)
         if len(dfs) == 0 : 
