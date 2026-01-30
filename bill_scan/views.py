@@ -215,7 +215,7 @@ def upload_eway(request):
         except Exception as e:
             print(f"E-way upload failed: {e}")
         
-    df_today = einv.get_today_eway_bills()
+    df_today = einv.get_eway_bills()
     for _, row in df_today.iterrows():
         bill_no = str(row['Doc.No'])
         ewb_no = str(row['EWB No'])
