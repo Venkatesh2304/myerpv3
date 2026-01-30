@@ -198,8 +198,7 @@ def upload_eway(request):
 
     base_qs = Bill.objects.filter(company=company, vehicle=vehicle, loading_time__date=today)
     qs = base_qs.filter(ewb_no__isnull=True)
-    bill_ids = list(qs.values_list('bill_id', flat=True))[:2]
-    bill_ids = []
+    bill_ids = list(qs.values_list('bill_id', flat=True))
     
     if bill_ids : 
         # Download eway excel
