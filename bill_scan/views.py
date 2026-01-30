@@ -80,7 +80,7 @@ def download_scan_pdf(request):
     pdf_buffer = generate_bill_list_pdf(bills, vehicle.name, today, columns=6)
     company_dir = os.path.join(settings.MEDIA_ROOT, "bill_scan", company.pk)
     os.makedirs(company_dir, exist_ok=True)
-    BILL_SCAN_FILE = os.path.join(company_dir,"bill_scan.pdf")
+    BILL_SCAN_FILE = os.path.join(company_dir,f"{vehicle.name}_{scan_type}_{today.strftime('%d_%m_%y')}.pdf")
     with open(BILL_SCAN_FILE, "wb+") as f:
         f.write(pdf_buffer.getvalue())
     return Response({'status': 'success',  'filepath': get_media_url(BILL_SCAN_FILE), 'scan_bills': len(bills)})
@@ -155,7 +155,7 @@ def push_impact(request):
         beat_total_counts[bill.beat] += 1
     
     vehicle_bills = defaultdict(list)
-    current_vehicle_bills = Bill.objects.filter(vehicle = vehicle, loading_time__date=today,bill_date=yesterday).values_list('bill_id', flat=True)
+    current_vehicle_bills = Bill.objects.filter(vehicle = vehicle, loading_time__date=today).values_list('bill_id', flat=True)
     vehicle_bills[vehicle_id] = list(current_vehicle_bills)
     for bill in qs.all() :
         if not bill.vehicle :
@@ -224,7 +224,7 @@ def upload_eway(request):
     pdf_df = df_today[["EWB No","EWB Date","Supply Type","Doc.No","Doc.Date"]]
     company_dir = os.path.join(settings.MEDIA_ROOT, "vehicle", company.pk)
     os.makedirs(company_dir, exist_ok=True)
-    filepath = os.path.join(company_dir, "eway_bills.pdf")
+    filepath = os.path.join(company_dir, f"{vehicle.name}_eway_{today.strftime('%d_%m_%y')}.pdf")
     
     doc = SimpleDocTemplate(filepath, pagesize=A4)
     styles = getSampleStyleSheet()
