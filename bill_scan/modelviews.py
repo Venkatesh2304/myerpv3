@@ -1,3 +1,4 @@
+from django.db.models import Q
 from bill.modelviews import Pagination
 from bill_scan.serializers import BillScanSerializer
 from bill.models import Bill
@@ -34,7 +35,8 @@ class BillScanViewSet(viewsets.ModelViewSet):
         delivery_date = filters.DateFilter(field_name='delivery_time', lookup_expr='date')
         party = filters.CharFilter(field_name='party_id', lookup_expr='exact')
         bill = filters.CharFilter(field_name='bill_id', lookup_expr='contains')
-        is_loading_sheet = filters.BooleanFilter(field_name='loading_sheet_id', lookup_expr='isnull',exclude=True)
+        #TODO : filter
+        is_loading_sheet = filters.BooleanFilter(method='filter_by_is_loading_sheet')
         class Meta:
             model = Bill
             fields = ['company','vehicle','type','bill_date','loading_date','delivery_date','party','bill','is_loading_sheet']
@@ -48,6 +50,11 @@ class BillScanViewSet(viewsets.ModelViewSet):
                 return queryset.filter(loading_time__isnull=False)
             if value == "delivered" : 
                 return queryset.filter(delivery_time__isnull=False)
+            return queryset
+
+        def filter_by_is_loading_sheet(self, queryset, name, value):
+            if value == False : 
+                return queryset.filter(Q(loading_sheet_id__isnull=True) | Q(loading_time__isnull=False))
             return queryset
 
     filterset_class = BillFilter
