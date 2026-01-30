@@ -42,9 +42,9 @@ def scan_bill(request):
     if len(bills) == 0 : 
         return Response({'status': 'error', 'message': 'Bill not found'})
 
+    bill = bills[0]
     loaded_vehicle = ""
     if scan_type == "delivery" : 
-        bill = bills[0]
         if bill.loading_time is None:
             return Response({'status': 'error', 'message': 'Bill not loaded in any vehicle'})
         loaded_vehicle = bill.vehicle.name
@@ -53,7 +53,8 @@ def scan_bill(request):
     
     if scan_type == "load" : 
         update_fields["vehicle_id"] = vehicle_id
-        update_fields["loading_time"] = current_time
+        if (bill.loading_time is None) or (bill.vehicle_id != vehicle_id) or (bill.loading_time.date() != current_time.date()) : 
+            update_fields["loading_time"] = current_time
     if scan_type == "delivery" : 
         update_fields["delivery_time"] = current_time
     
@@ -105,7 +106,7 @@ def scan_summary(request):
     company_id = request.query_params.get('company')    
     today = datetime.date.today()
     # Last 3 days: yesterday, day before yesterday, day before before yesterday
-    dates = [today - datetime.timedelta(days=i) for i in range(1, 4)]
+    dates = [today - datetime.timedelta(days=i) for i in range(1, 5)]
     
     summary = defaultdict(list)
     company_qs = Bill.objects.filter(company_id=company_id)

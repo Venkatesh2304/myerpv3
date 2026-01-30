@@ -24,7 +24,7 @@ class BillScanViewSet(viewsets.ModelViewSet):
     queryset = Bill.objects.exclude(beat__contains = "WHOLESALE").filter(delivery_applicable=True)
     serializer_class = BillScanSerializer
     pagination_class = Pagination
-    ordering = ['-bill_date']
+    ordering = ['-loading_time']
     
     class BillFilter(filters.FilterSet):
         company = filters.CharFilter(field_name='company_id', lookup_expr='exact')
