@@ -54,7 +54,7 @@ class BillPrintingService:
             loading_sheets = list(qs.values_list("loading_sheet_id", flat=True).distinct())
             with transaction.atomic() :
                 for bill in qs.filter(print_time__isnull = False) : 
-                    bill.add_notes(f"bill_reload: Loading Sheet was reprinted as {full_print_type} @ {datetime.datetime.now()}")
+                    bill.add_notes(f"bill_reload: {bill.print_type} was reprinted as {full_print_type} @ {datetime.datetime.now()}")
                     bill.is_reloaded = True
                     bill.print_time = None
                     bill.loading_sheet_id = None

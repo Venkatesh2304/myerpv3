@@ -139,17 +139,21 @@ def scan_summary(request):
 
     return Response({'status': 'success', 'summary': summary})
 
+def get_yesterday():
+    today = datetime.date.today()
+    return today - datetime.timedelta(days=1) if today.weekday() != 0 else today - datetime.timedelta(days=2)
+
 @api_view(['POST'])
 def push_impact(request):
     vehicle_id = request.data.get('vehicle')
     vehicle = Vehicle.objects.get(id=vehicle_id)
     company = vehicle.company
     today = datetime.date.today()
-    yesterday = today - datetime.timedelta(days=1)
+    yesterday = get_yesterday()
     i = Ikea(company.pk)
 
     #Get beat_vehicle_counts  for yesterday bills
-    qs = Bill.objects.filter(bill_date = yesterday)
+    qs = Bill.objects.filter(bill_date__gte = yesterday)
     beat_vehicle_counts = defaultdict(lambda: defaultdict(int))
     beat_total_counts = defaultdict(int)
     for bill in qs.all() :
@@ -184,12 +188,11 @@ def push_impact(request):
         print("Pushing bills for vehicle", vehicle.name, "count", len(bills))
         df = i.push_impact(fromd=today - datetime.timedelta(days=3),tod=today,bills=bills,vehicle_name = vehicle.name_on_impact)
         if df is not None : 
-            df = df[(~df["Beat Name"].str.contains("WHOLESALE")) & (df["Bill Date"] == yesterday.strftime('%Y-%m-%d'))]
+            df = df[(~df["Beat Name"].str.contains("WHOLESALE")) & (df["Bill Date"] != today.strftime('%Y-%m-%d'))]
             pending_bills = df["BillNo"].values.tolist()
         print("Pending bills", len(pending_bills))
 
     return Response({'status': 'success','pushed': bills_count , 'pending': len(pending_bills)})
-
 
 class EinvoiceLoginException(Exception) :
     pass

@@ -24,7 +24,6 @@ class AztecCodeGenerator:
         text_clip = pymupdf.Rect(0, 0, 600, 100)
         page_text = page.get_text("text", clip=text_clip)
         if "Page :\n1 of " in page_text:
-            print(page_text)
             match = re.findall(r"Invoice No[ \t]*:\n([A-Z0-9]*)", page_text)
             if match:
                 inum = match[0].strip()

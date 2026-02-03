@@ -381,12 +381,11 @@ class Ikea(IkeaReports):
                 "selectedspid": "493299",
                 "meth":"ajxgetDetailsTrip"} #warning: spid is vehicle A1 (so we keep it default)
         html = s.get(f"https://shogunlite.com/deliveryupload_home.do",params=form).text
-
+        #TODO: REMOVE PRINT
+        print(form)
         dfs = pd.read_html(html)
-        if len(dfs) == 0 : 
-            return None
-
         df = dfs[-1]
+        print(df)
         soup = BeautifulSoup(html,"html.parser")
         vehicle_codes = { option.text.lower() : option.get("value")  for option in soup.find("select",{"id":"mspid"}).find_all("option") }
         all_bill_codes = [ code.get("value") for code in soup.find_all("input",{"name":"selectedOutlets"}) ]
