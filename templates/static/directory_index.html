@@ -1,0 +1,37 @@
+{% load i18n %}
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta http-equiv="Content-type" content="text/html; charset=utf-8">
+    <title>{% blocktranslate %}Index of {{ directory }}{% endblocktranslate %}</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            padding: 20px;
+        }
+
+        .item-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .item-list li {
+            margin: 5px 0;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>{% blocktranslate %}Index of {{ directory }}{% endblocktranslate %}</h1>
+    <ul class="item-list">
+        {% if directory != "/" %}
+        <li><a href="../">../</a></li>
+        {% endif %}
+        {% for f in file_list|dictsort:0 reversed %}
+        <li><a href="{{ f|urlencode }}">{{ f }}</a></li>
+        {% endfor %}
+    </ul>
+</body>
+
+</html>
