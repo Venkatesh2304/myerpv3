@@ -9,6 +9,7 @@ from logging.handlers import TimedRotatingFileHandler
 from apscheduler.schedulers.blocking import BlockingScheduler
 from apscheduler.triggers.cron import CronTrigger
 from dateutil import parser
+from dateutil.relativedelta import relativedelta
 
 # Setup Logger
 log_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'logs', 'scheduler')
@@ -135,6 +136,32 @@ def mail_report():
         except Exception as e:
             logger.error(f"Error mailing report {company}: {e}")
 
+def mail_monthly_bills():
+    # Calculate previous month
+    today = datetime.date.today()
+    last_month_date = today - relativedelta(months=1)
+    
+    month = last_month_date.month
+    year = last_month_date.year
+    
+    logger.info(f"Starting Monthly Bill Mailer for {month}/{year}")
+    
+    for company in COMPANIES:
+
+        logger.info(f"Mailing monthly bills for {company}")
+        try:
+            s = BaseSession()
+            payload = {
+                "company": company,
+                "month": month,
+                "year": year
+            }
+            # Using POST as per view definition
+            response = s.post("/mail_bills/", json=payload, timeout=600) 
+            logger.info(f"Mail bills result for {company}: {response.json()}")
+        except Exception as e:
+            logger.error(f"Error mailing bills for {company}: {e}")
+
 def main():
     scheduler = BlockingScheduler()
 
@@ -164,6 +191,12 @@ def main():
         mail_report,
         trigger=CronTrigger(hour=0, minute=37,second=0),
         name="mail_report"
+    )
+
+    scheduler.add_job(
+        mail_monthly_bills,
+        trigger=CronTrigger(day=4, hour=8, minute=55, second=0),
+        name="mail_monthly_bills"
     )
 
     logger.info("Starting scheduler...")

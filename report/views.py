@@ -301,7 +301,7 @@ def mail_reports(request):
     company = Company.objects.get(name=company_id)
     msg = EmailMessage()
     msg.subject = f"Daily Report for {company.name.replace('_',' ').upper()} ({today.strftime('%d-%m-%Y')})"
-    msg.to = [company.email]
+    msg.to = company.emails
     #Only bills > 28 days
     retail = outstanding_report(company.pk,today,"retail")[1]
     wholesale = outstanding_report(company.pk,today,"wholesale")[1]
@@ -454,7 +454,7 @@ def mail_bills(request):
         company = Company.objects.get(name=company_id)
         msg = EmailMessage()
         msg.subject = f"Bills for {company_name} : {month_name}, {year}"
-        msg.to = [company.email]
+        msg.to = company.emails
 
         zip_url = f"http://65.1.147.8:5000/{get_media_url(zip_filepath).lstrip('/')}"
         

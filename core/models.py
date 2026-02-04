@@ -21,7 +21,7 @@ class Company(models.Model):
     organization = models.ForeignKey("core.Organization", on_delete=models.CASCADE, related_name="companies")
     gst_types = models.JSONField(default=list,null=False,blank=False)
     einvoice_enabled = models.BooleanField(default=True,db_default=True)
-    email = models.EmailField(null=True,blank=True)
+    emails = models.JSONField(default=list,null=False,blank=False)
 
 class UserSession(models.Model):
     user = models.CharField(max_length=50)
