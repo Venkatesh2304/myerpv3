@@ -65,6 +65,13 @@ fi
 echo "==> Ensuring gunicorn is installed"
 pip install gunicorn
 
+#7z install
+if ! command -v 7z >/dev/null 2>&1; then
+  if command -v apt-get >/dev/null 2>&1; then
+    sudo apt-get install -y 7zip
+  fi
+fi
+
 echo "==> Ensuring PostgreSQL database '$DB_NAME' exists"
 if ! command -v psql >/dev/null 2>&1; then
   echo "Error: psql not found. Install PostgreSQL client tools and retry."

@@ -381,7 +381,7 @@ def mail_bills(request):
     results = {}
     i = Billing(company_id)
 
-    for date in dates[:2]: # Process all dates
+    for date in dates: # Process all dates
         day_str = date.strftime("%Y-%m-%d")
         file_path = os.path.join(date_dir, f"{day_str}.pdf")
         
