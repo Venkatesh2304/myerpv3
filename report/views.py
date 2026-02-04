@@ -456,14 +456,14 @@ def mail_bills(request):
         msg.subject = f"Bills for {company_name} : {month_name}, {year}"
         msg.to = [company.email]
 
-        zip_url = f"http://65.1.147.8:5000/{get_media_url(zip_dir).lstrip('/')}"
+        zip_url = f"http://65.1.147.8:5000/{get_media_url(zip_filepath).lstrip('/')}"
         
         html_content = f"""
         <html>
         <body>
             <p><strong>Company:</strong> {company_name}</p>
             <p><strong>Month:</strong> {month_name}, {year}</p>
-            <p><strong>Link:</strong> <a href="{zip_url}">{zip_url}</a></p>
+            <p><strong>Link:</strong>{zip_url}</p>
         </body>
         </html>
         """
