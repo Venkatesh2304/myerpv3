@@ -109,7 +109,7 @@ class Session(requests.Session, ABC):
                 request.url = self.base_url + request.url.split(".com")[1]
         
         self.logger.debug(f"Sending {request.method} request to {request.url}")
-        response = super().send(request, *args, **(kwargs | {"verify":False,"timeout":1200}))
+        response = super().send(request, *args, **({"verify":False,"timeout":1200} | kwargs))
         self.logger.debug(f"Received response from {response.url}: Status {response.status_code} | Time: {response.elapsed.total_seconds():.2f}s")
         return response
 

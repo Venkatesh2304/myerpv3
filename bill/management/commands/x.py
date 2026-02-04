@@ -1,3 +1,7 @@
+from report.views import mail_bills
+from custom.classes import Einvoice
+from bill_scan.eway import eway_df_to_json
+import time
 from bill.models import Bill
 from load.models import TruckLoad
 from core.models import User
@@ -7,7 +11,6 @@ from report.models import EmptyArgs
 from report.models import StockReport
 from report.models import CollectionReport
 import os
-import psutil
 import requests
 import pandas
 import numpy
@@ -24,21 +27,95 @@ from bill.models import Vehicle
 import pandas as pd
 import datetime
 from django.utils.dateparse import parse_datetime
-company = Company.objects.get(name="devaki_hul")
-today = datetime.date(2026,1,28)
-SalesRegisterReport.update_db(Ikea("devaki_hul"),company,DateRangeArgs(today - relativedelta(days=1),today))
-Bill.sync_with_salesregister(company,fromd = today - relativedelta(days=1),tod = today)
-df= pd.read_csv("print_bills_28.csv")
-for index,row in df.iterrows():
-    bill = row["bill_id"]
-    print_time = parse_datetime(row["print_time"])
-    print_type = row["print_type"]
-    loading_sheet_id = row["loading_sheet_id"]
-    print("bill",bill)
-    if Bill.objects.filter(bill_id=bill,company_id="devaki_hul").count() == 0 : 
-        print("Not found:",bill)
-    Bill.objects.filter(bill_id=bill,company_id="devaki_hul").update(print_time=print_time,print_type=print_type,loading_sheet_id=loading_sheet_id)
+
+from rest_framework.test import force_authenticate
+from rest_framework.test import APIRequestFactory
+
+factory = APIRequestFactory()
+user = User.objects.get(username='sathish')
+request = factory.post('/mail_bills/', {"month": 1, "year": 2026, "company": "devaki_hul"}, format='json')
+force_authenticate(request, user=user)
+response = mail_bills(request)
+print(response.json())
 exit(0)
+
+i = Billing("devaki_hul")
+durl = i.get_bill_durl("AB00001","AB00003","pdf")
+bytesio = i.fetch_durl_content(durl)
+with open("a.pdf","wb+") as f:
+    f.write(bytesio.getvalue())
+exit(0)
+
+
+
+today = datetime.date.today()
+df = i.push_impact(fromd=today - datetime.timedelta(days=3),tod=today,bills=["AB78074"],vehicle_name="ANAND")
+exit(0)
+
+df = i.eway_excel(datetime.date.today() - datetime.timedelta(days=1),datetime.date.today(),["AB77846"])
+df.to_excel("eway.xlsx")
+json_output = eway_df_to_json(df,lambda x : "TN81J5107",lambda x : 3)
+with open("eway.json","w+") as f:
+    f.write(json_output)
+sdf
+print(1)
+e = Einvoice("devaki")
+print(2)
+while not e.is_logged_in() : 
+    captcha = e.captcha()
+    with open("captcha.png","wb+") as f : 
+        f.write(captcha)
+    e.login(input("Enter captcha : "))
+
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle
+from reportlab.lib.pagesizes import A4
+from reportlab.lib import colors
+
+def df_to_pdf(df, pdf_path):
+    doc = SimpleDocTemplate(pdf_path, pagesize=A4)
+    data = [df.columns.tolist()] + df.values.tolist()
+
+    table = Table(data)
+    table.setStyle(TableStyle([
+        ('GRID', (0,0), (-1,-1), 0.5, colors.black),
+        ('BACKGROUND', (0,0), (-1,0), colors.lightgrey),
+        ('ALIGN', (0,0), (-1,-1), 'CENTER')
+    ]))
+
+    doc.build([table])
+
+df = e.get_eway_bills()
+df = df[["EWB No","EWB Date","Supply Type","Doc.No","Doc.Date"]]
+print(len(df.index))
+df_to_pdf(df,"eway.pdf")
+exit(0)
+
+input("going to upload:")
+e.upload_eway_bill(json_output)
+
+
+
+
+
+with open("eway.json","w+") as f:
+    f.write(json_output)
+
+
+exit(0)
+
+# i1 = Ikea("devaki_hul")
+# i2 = Ikea("devaki_hul")
+# if i1.cookies.get_dict() == i2.cookies.get_dict() : 
+#     print("Same")
+# else : 
+#     print(i1.cookies.get_dict())
+#     print(i2.cookies.get_dict())
+
+# for i in range(10) : 
+#     print(i1.is_logged_in())
+#     print(i2.is_logged_in())
+# exit(0)
+
 # company_id = "devaki_hul"
 # vehicles = [("DEVAKI","TN45AP3219"),
 # ("KAMACHI","TN48V1218"),

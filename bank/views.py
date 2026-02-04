@@ -696,7 +696,7 @@ def bank_summary(request):
     bank_totals = reorder_columns(df_group_entity(totals_to_df(bank_totals)),["Entity","cheque","upi","cash_deposit"])
     #TODO: total_comparison = {}
 
-    files_dir = os.path.join(settings.MEDIA_ROOT, "bank", request.user.pk)
+    files_dir = os.path.join(settings.MEDIA_ROOT, "bank", request.user.organization.pk)
     os.makedirs(files_dir, exist_ok=True)
     fpath = os.path.join(files_dir,"summary.xlsx")
 
