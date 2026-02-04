@@ -35,6 +35,7 @@ lxml==6.0.2
 markdown-it-py==4.0.0
 MarkupSafe==3.0.3
 mdurl==0.1.2
+memory-profiler==0.61.0
 mypy_extensions==1.1.0
 numpy==1.26.4
 nvidia-ml-py==13.590.44
