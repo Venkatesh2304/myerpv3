@@ -195,7 +195,7 @@ def main():
 
     scheduler.add_job(
         mail_monthly_bills,
-        trigger=CronTrigger(day=4, hour=20, minute=54, second=0),
+        trigger=CronTrigger(day=4, hour=20, minute=56, second=0),
         name="mail_monthly_bills"
     )
 
