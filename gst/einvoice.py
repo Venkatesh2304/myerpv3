@@ -74,12 +74,12 @@ def create_einv_json(
             "Loc": "TRICHY",
             "Stcd": "33",
         }
-
+        total_inv_val = round(sale.txval + 2*sale.cgst + sale.discount,2)
         val_dtls = {
             "AssVal": round(sale.txval, 2),  # type: ignore
             "CgstVal": round(sale.cgst, 2),  # type: ignore
             "SgstVal": round(sale.cgst, 2),  # type: ignore
-            "TotInvVal": round(sale.txval + 2*sale.cgst,2),
+            "TotInvVal": 0 if (total_inv_val < 0) and (total_inv_val > -1) else total_inv_val ,
             "RndOffAmt": round(sale.roundoff, 2),
             "Discount": round(-sale.discount, 2) if abs(sale.discount) > 1 else 0,
         }
