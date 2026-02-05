@@ -345,7 +345,6 @@ def einvoice_pdf(request):
 
     return FileResponse(open(f"static/{organization}/bills.zip","rb"),as_attachment=True,filename=f"bills_{period}.zip")
 
-
 #Gst Monthly Return APIs
 @api_view(["POST"])
 @check_login(Gst)

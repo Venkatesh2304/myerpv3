@@ -198,6 +198,7 @@ def mail_bills(request):
 def monthly_gst_import(request):
     month = request.data.get("month")
     year = request.data.get("year")
+    company_id = request.data.get("company")
     
     try:
         month = int(month)
@@ -213,30 +214,28 @@ def monthly_gst_import(request):
         "devaki_urban" : lambda qs : qs.exclude(type = "damage", party_id  = "P150") 
     }
 
-    companies = Company.objects.filter(organization=request.user.organization)
+    company = Company.objects.get(name=company_id)
     
-    results = {}
+    status = None
     
     args_dict = {
         DateRangeArgs: DateRangeArgs(fromd=fromd, tod=tod),
         EmptyArgs: EmptyArgs(),
     }
 
-    for company in companies:
-        try:
-             print(f"Processing GST for Company: {company.name} for Period: {period}")
-             GstFilingImport.run(company=company, args_dict=args_dict)
-             
-             qs = erp_models.Sales.objects.filter(type__in=company.gst_types, date__gte=fromd, date__lte=tod)
-             if company.name in GST_PERIOD_FILTER:
-                 qs = GST_PERIOD_FILTER[company.name](qs)
-             qs.update(gst_period=period)
-             results[company.name] = "Success"
-        except Exception as e:
-            results[company.name] = f"Error: {str(e)}"
-            print(f"Error processing {company.name}: {e}")
+    try:
+        print(f"Processing GST for Company: {company.name} for Period: {period}")
+        GstFilingImport.run(company=company, args_dict=args_dict)
+        qs = erp_models.Sales.objects.filter(type__in=company.gst_types, date__gte=fromd, date__lte=tod)
+        if company.name in GST_PERIOD_FILTER:
+            qs = GST_PERIOD_FILTER[company.name](qs)
+        qs.update(gst_period=period)
+        status = "success"
+    except Exception as e:
+        status = f"error: {str(e)}"
+        print(f"Error processing {company.name}: {e}")
 
-    return JsonResponse(results)
+    return JsonResponse({"status": status})
 
 @api_view(["POST"])
 def beat_export(request):
