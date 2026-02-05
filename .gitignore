@@ -20,3 +20,7 @@ profile.html
 *.json
 *.txt
 !background/billing_config.json
+bank/management/commands/fraud.py
+bank/management/commands/payment.py
+bill_scan/management/commands/impact_analysis.py
+

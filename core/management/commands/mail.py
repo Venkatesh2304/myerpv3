@@ -22,11 +22,11 @@ with open("a.xlsx", "rb") as f:
         filename="Monthly_Report.xlsx"
     )
 
-# 2. Secure Connection and Send
 context = ssl.create_default_context()
-
 with smtplib.SMTP_SSL(SMTP_SERVER, PORT, context=context) as server:
     server.login(USERNAME_SMTP, PASSWORD_SMTP)
     server.send_message(msg)
+
+
 
 print("Email sent via Port 465!")

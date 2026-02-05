@@ -1,11 +1,9 @@
-from report.views import mail_bills
 from custom.classes import Einvoice
 from bill_scan.eway import eway_df_to_json
 import time
 from bill.models import Bill
 from load.models import TruckLoad
 from core.models import User
-from report.views import mail_reports
 from custom.classes import Billing
 from report.models import EmptyArgs
 from report.models import StockReport
@@ -27,20 +25,24 @@ from bill.models import Vehicle
 import pandas as pd
 import datetime
 from django.utils.dateparse import parse_datetime
-
 from rest_framework.test import force_authenticate
 from rest_framework.test import APIRequestFactory
 
-factory = APIRequestFactory()
-user = User.objects.get(username='sathish')
-request = factory.post('/mail_bills/', {"month": 1, "year": 2026, "company": "devaki_hul"}, format='json')
-force_authenticate(request, user=user)
-response = mail_bills(request)
-print(response.json())
-exit(0)
 
-i = Billing("devaki_hul")
-durl = i.get_bill_durl("AB00001","AB00003","pdf")
+i = Billing("lakme_rural")
+# i.beat_export()
+# exit(0)
+
+# factory = APIRequestFactory()
+# user = User.objects.get(username='sathish')
+# request = factory.post('/mail_bills/', {"month": 1, "year": 2026, "company": "devaki_hul"}, format='json')
+# force_authenticate(request, user=user)
+# response = mail_bills(request)
+# print(response.json())
+# exit(0)
+
+
+durl = i.get_bill_durl("CB00919","CB00920","pdf")
 bytesio = i.fetch_durl_content(durl)
 with open("a.pdf","wb+") as f:
     f.write(bytesio.getvalue())

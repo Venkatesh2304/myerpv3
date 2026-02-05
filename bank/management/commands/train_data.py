@@ -7,7 +7,7 @@ data = {}
 for bank_id in Bank.objects.all().values_list("id",flat=True) :
     data[bank_id] = []
     for obj in BankStatement.objects.filter(bank_id = bank_id,type__in = ["neft"],
-                                            date__gte = datetime.date(2025,6,1)) :
+                                            date__gte = datetime.date(2025,6,1),date__lte = datetime.date(2025,11,30)) :
         parties = set()
         for coll in obj.all_collection :
             bill = SalesRegisterReport.objects.filter(company_id = coll.company,inum = coll.bill).first()
