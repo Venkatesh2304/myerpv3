@@ -43,6 +43,7 @@ from core.models import Company, UserSession
 # bank.save()
 # exit(0)
 
+exit(0)
 organization = Organization.objects.create(name='murugan')
 organization.save()
 companies = []
