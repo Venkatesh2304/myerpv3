@@ -242,7 +242,7 @@ def main():
     
     scheduler.add_job(
             monthly_gst_import_job,
-            trigger=CronTrigger(hour=19, minute=59, second=0),
+            trigger=CronTrigger(hour=20, minute=3, second=0),
             name="monthly_gst_import"
         )
 
