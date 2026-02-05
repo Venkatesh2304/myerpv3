@@ -195,7 +195,7 @@ def mail_bills(request):
     return JsonResponse(results)
 
 @api_view(["POST"])
-def monthly_gst(request):
+def monthly_gst_import(request):
     month = request.data.get("month")
     year = request.data.get("year")
     
