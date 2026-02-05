@@ -1,3 +1,4 @@
+from erp.management.commands.user import organization
 import datetime
 import calendar
 import os
@@ -199,6 +200,8 @@ def monthly_gst_import(request):
     month = request.data.get("month")
     year = request.data.get("year")
     company_id = request.data.get("company")
+    force = request.data.get("force", False)
+
     
     try:
         month = int(month)
@@ -215,8 +218,12 @@ def monthly_gst_import(request):
     }
 
     company = Company.objects.get(name=company_id)
-    
+    if not force : 
+        if erp_models.Sales.objects.filter(company_id=company_id,gst_period=period).exists() : 
+            return JsonResponse({"status" : "success", "message" : "GST already imported for this period"})
+
     status = None
+    message = None
     
     args_dict = {
         DateRangeArgs: DateRangeArgs(fromd=fromd, tod=tod),
@@ -231,11 +238,33 @@ def monthly_gst_import(request):
             qs = GST_PERIOD_FILTER[company.name](qs)
         qs.update(gst_period=period)
         status = "success"
+        message = "GST imported successfully"
     except Exception as e:
-        status = f"error: {str(e)}"
+        status = "error"
+        message = str(e)
         print(f"Error processing {company.name}: {e}")
 
-    return JsonResponse({"status": status})
+    #Send email to company
+    try:
+        msg = EmailMessage()
+        msg.subject = f"GST - Ikea Import  for {company.name} : {period}"
+        msg.to = company.emails
+        html_content = f"""
+        <html>
+        <body>
+            <p><strong>Status:</strong> {status}</p>
+            <p><strong>Message:</strong> {message}</p>
+            <p>Website: http://65.1.147.8:5000</p>
+        </body>
+        </html>
+        """
+        msg.body = html_content
+        msg.content_subtype = "html"
+        msg.send()
+    except Exception as e:
+        print(f"Error sending email: {e}")
+
+    return JsonResponse({"status": status, "message": message})
 
 @api_view(["POST"])
 def beat_export(request):

@@ -91,9 +91,9 @@ class BaseIkea(Session):
         self.cookies.clear()
         time_epochs = self._date_epochs()
         preauth_res_text = self.post("/rsunify/app/user/authentication",data={'userId': self.username , 'password': self.password, 'dbName': self.config["dbName"], 'datetime': time_epochs , 'diff': -330}).text
-        if ("CLOUD_LOGIN_PASSWORD_EXPIRED" == preauth_res_text) or ("Invalid Password" == preauth_res_text) : 
+        if ("CLOUD_LOGIN_PASSWORD_EXPIRED" == preauth_res_text) : 
             raise IkeaPasswordExpired("Ikea Password Expired")
-        elif "<body>" in preauth_res_text : 
+        elif ("<body>" in preauth_res_text) or ("Invalid Password" == preauth_res_text) : 
             raise IkeaWrongCredentails("Ikea Wrong Credentials")
         else : 
             pass 

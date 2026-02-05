@@ -410,6 +410,7 @@ class GstFilingImport:
     def run(cls, company: Company, args_dict: dict[Type[ReportArgs], ReportArgs]):
         reports_to_update = []
         start_time = time.time()
+        i = Ikea(company.pk)
         for import_class in cls.imports:
             reports_to_update.extend(import_class.reports)  # type: ignore
         with ThreadPoolExecutor(max_workers=10) as executor:
