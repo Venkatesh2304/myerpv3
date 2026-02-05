@@ -284,6 +284,7 @@ def einvoice_excel(request):
 
     return excel_response(sheets, f"{type}_{period}.xlsx")
 
+#TODO:Refactor and update the logic
 @api_view(["POST"])
 @check_login(Gst)
 def einvoice_pdf(request):

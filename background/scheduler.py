@@ -32,6 +32,8 @@ if not logger.handlers:
     logger.addHandler(console_handler)
 
 COMPANIES = ["devaki_hul","lakme_rural","lakme_urban"]
+GST_COMPANIES = ["devaki_hul","lakme_rural","lakme_urban","murugan_hul"]
+
 class BaseSession(requests.Session):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -177,7 +179,7 @@ def monthly_gst_import_job():
     last_month_date = today - relativedelta(months=1)
     month = last_month_date.month
     year = last_month_date.year
-    for company in COMPANIES:
+    for company in GST_COMPANIES:
         logger.info(f"Executing monthly gst import for {company}")
         try:
             s = BaseSession()
@@ -213,8 +215,26 @@ def main():
 
     scheduler.add_job(
         mail_report,
-        trigger=CronTrigger(hour=0, minute=37,second=0),
+        trigger=CronTrigger(hour=0, minute=30,second=0),
         name="mail_report"
+    )
+
+    scheduler.add_job(
+        beat_export_job,
+        trigger=CronTrigger(hour=6, minute=0, second=0),
+        name="beat_export_daily - 6:00"
+    )
+
+    scheduler.add_job(
+        beat_export_job,
+        trigger=CronTrigger(hour=6, minute=30, second=0),
+        name="beat_export_daily - 6:30"
+    )
+
+    scheduler.add_job(
+        monthly_gst_import_job,
+        trigger=CronTrigger(day = 3, hour=4, minute=0, second=0),
+        name="monthly_gst_import"
     )
 
     scheduler.add_job(
@@ -222,19 +242,7 @@ def main():
         trigger=CronTrigger(day=3, hour=5, minute=0, second=0),
         name="mail_monthly_bills"
     )
-
-    scheduler.add_job(
-        beat_export_job,
-        trigger=CronTrigger(hour=6, minute=0, second=0),
-        name="beat_export_daily"
-    )
-
-    scheduler.add_job(
-        monthly_gst_import_job,
-        trigger=CronTrigger(hour=17, minute=37, second=0),
-        name="monthly_gst_import_daily"
-    )
-
+    
     logger.info("Starting scheduler...")
     try:
         scheduler.start()

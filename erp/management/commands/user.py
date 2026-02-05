@@ -6,61 +6,56 @@ import pandas as pd
 from custom.classes import Einvoice, Gst
 from core.models import Company, UserSession
 
-organization = Organization.objects.get(name="devaki")
-companies = Company.objects.filter(organization=organization)
-user = User.objects.create_user(username='sathish_gst', password='1',organization=organization)
-for company in companies :
-    user.companies.add(company)
-user.save()
-exit(0)
 
-for company in Company.objects.all() :
-    config = UserSession.objects.filter(user=company.pk,key="ikea").first().config
-    UserSession(
-        user=company.pk,
-        key="ikea_bank",
-        username="BANK",
-        password="Bank@2004",
-        config={
-            "dbName": config["dbName"],
-            "home": config["home"],
-        },
-    ).save(force_insert=False)
-exit(0)
+
+# for company in Company.objects.all() :
+#     config = UserSession.objects.filter(user=company.pk,key="ikea").first().config
+#     UserSession(
+#         user=company.pk,
+#         key="ikea_bank",
+#         username="BANK",
+#         password="Bank@2004",
+#         config={
+#             "dbName": config["dbName"],
+#             "home": config["home"],
+#         },
+#     ).save(force_insert=False)
+# exit(0)
 
 # User.objects.filter(username='devaki').delete()
 # UserSession.objects.filter(user='devaki_hul').delete()
 
-bank = Bank.objects.create(account_number="00000042540766421",name="SBI OD",type="sbi")
-bank.companies.add(Company.objects.get(name="devaki_hul"))
-bank.save()
+# bank = Bank.objects.create(account_number="00000042540766421",name="SBI OD",type="sbi")
+# bank.companies.add(Company.objects.get(name="devaki_hul"))
+# bank.save()
 
-bank = Bank.objects.create(account_number="00000044030674591",name="SBI LAKME",type="sbi")
-bank.companies.add(Company.objects.get(name="lakme_urban"))
-bank.companies.add(Company.objects.get(name="lakme_rural"))
-bank.save()
+# bank = Bank.objects.create(account_number="00000044030674591",name="SBI LAKME",type="sbi")
+# bank.companies.add(Company.objects.get(name="lakme_urban"))
+# bank.companies.add(Company.objects.get(name="lakme_rural"))
+# bank.save()
 
-bank = Bank.objects.create(account_number="00000042536033659",name="SBI CA",type="sbi")
-bank.companies.add(Company.objects.get(name="devaki_hul"))
-bank.save()
+# bank = Bank.objects.create(account_number="00000042536033659",name="SBI CA",type="sbi")
+# bank.companies.add(Company.objects.get(name="devaki_hul"))
+# bank.save()
 
-bank = Bank.objects.create(account_number="1889135000001946",name="KVB CA",type="kvb")
-bank.companies.add(Company.objects.get(name="devaki_hul"))
-bank.save()
-exit(0)
+# bank = Bank.objects.create(account_number="1889135000001946",name="KVB CA",type="kvb")
+# bank.companies.add(Company.objects.get(name="devaki_hul"))
+# bank.save()
+# exit(0)
 
-Organization.objects.all().delete()
-organization = Organization.objects.create(name='devaki')
+organization = Organization.objects.create(name='murugan')
 organization.save()
 companies = []
-for company_name in ["devaki_hul","lakme_rural","lakme_urban"] :
+for company_name in ["murugan_hul"]: #["devaki_hul","lakme_rural","lakme_urban"] :
     company = Company.objects.create(name=company_name,organization = organization,gst_types = ["sales","salesreturn","claimservice"])
     company.save()
     companies.append(company)
 
-user = User.objects.create_user(username='sathish', password='1',organization=organization)
+user = User.objects.create_user(username='murugan_gst', password='1',organization=organization)
 user.companies.add(companies[0])
 user.save()
+exit(0)
+
 
 user = User.objects.create_user(username='kavitha', password='1',organization=organization)
 user.companies.add(companies[0])
