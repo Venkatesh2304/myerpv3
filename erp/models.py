@@ -112,13 +112,6 @@ class Sales(CompanyModel, PartyVoucher, GstVoucher) :
       class Meta: # type: ignore
         verbose_name_plural = 'Sales'
 
-      class SalesUserManager(models.Manager):
-            def for_user(self, user):
-                  # Returns only sales related to the user’s company
-                  return self.get_queryset().filter(company__user=user)
-      user_objects = SalesUserManager()
-      objects = models.Manager()
-
       @transaction.atomic
       def update_and_log(self, field: str, value , notes: str):
           old_value = self.__getattribute__(field)
@@ -178,14 +171,3 @@ class SalesChanges(CompanyModel) :
             from_fields=("company", "bill_id"),
             to_fields=("company", "inum"),
       )
-
-class Beat(CompanyModel):
-    name = CharField(max_length=80)
-    salesman_name = CharField(max_length=80, null=True, blank=True)
-    pk = CompositePrimaryKey("company", "name")
-
-    def __str__(self):
-        return self.name
-
-    class Meta:
-        verbose_name_plural = 'Beats'

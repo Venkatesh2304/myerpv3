@@ -16,7 +16,5 @@ urlpatterns = [
     path("stock_report/", views.stock_report, name="stock_report"),
     path("stock_ageing_report/", views.stock_ageing_report, name="stock_ageing_report"),
     path("pending_sheet/", views.pending_sheet, name="pending_sheet"),
-    path("mail_reports/", views.mail_reports, name="mail_reports"),
-    path("mail_bills/", views.mail_bills, name="mail_bills"),
     path("", include(router.urls)),
 ]

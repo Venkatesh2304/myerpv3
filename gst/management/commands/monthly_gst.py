@@ -4,7 +4,7 @@ import erp.models as models
 from core.models import Company
 from erp.erp_import import GstFilingImport
 from report.models import DateRangeArgs, EmptyArgs
-from custom.classes import IkeaDownloader
+from custom.classes import Ikea
 from dateutil.relativedelta import relativedelta
 import sys
 from django.db.models import Q
@@ -13,8 +13,8 @@ GST_PERIOD_FILTER = {
     "devaki_urban" : lambda qs : qs.exclude(type = "damage", party_id  = "P150") #NAIDU HALL DAMAGE EXCLUDE
 }
 
-usernames_or_companies = sys.argv[2:]
-companies = Company.objects.filter(Q(user_id__in = usernames_or_companies) | Q(name__in = usernames_or_companies)).distinct()
+organization_or_companies = sys.argv[2:]
+companies = Company.objects.filter(Q(organization_id__in = organization_or_companies) | Q(name__in = organization_or_companies)).distinct()
 print("Companies :",list(companies.values_list("name",flat=True)))
 today = datetime.date.today()
 prev_month = today - relativedelta(months=1)
@@ -29,7 +29,7 @@ args_dict = {
 
 for company in companies :
     print(f"Processing GST for Company: {company.name} for Period: {period}")
-    i = IkeaDownloader(company.pk)
+    i = Ikea(company.pk)
     GstFilingImport.run(company=company,args_dict=args_dict)
     qs = models.Sales.objects.filter(type__in = company.gst_types,date__gte = fromd,date__lte = tod)
     if company.name in GST_PERIOD_FILTER :

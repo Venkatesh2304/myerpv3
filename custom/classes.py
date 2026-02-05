@@ -407,6 +407,37 @@ class Ikea(IkeaReports):
             df = dfs[-1]
         return df
 
+    def beat_export(self,fromd,tod):
+        self.post("/rsunify/app/sfmIkeaIntegration/callSfmIkeaIntegrationSync")
+        data = self.post("/rsunify/app/quantumExport/getSalesmanData",
+                {"exportData" : f'{{"fromDate":"{fromd.strftime("%Y-%m-%d")}","toDate":"{tod.strftime("%Y-%m-%d")}"}}'}).json()
+        salesman_ids = set([ i[0] for i in data ])
+        self.post("/rsunify/app/ikeaCommonUtilController/qocRepopulation")
+        exportPayload = f'{{"fromDate":"{fromd.strftime("%Y-%m-%d")}","toDate":"{tod.strftime("%Y-%m-%d")}","salesManId":"{",".join(salesman_ids)}","beatId":"-1"}}'
+        export_id = self.post("/rsunify/app/quantumExport/startExport",{"exportData" : exportPayload}).json()
+        for _ in range(60):
+            status = self.post("/rsunify/app/quantumExport/getExportStatus",{"processId" : export_id}).json()
+            print(status)
+            if status[0] == "0" and status[1] == "0" and status[2] == "1" : 
+                print("Exported")
+                break
+            time.sleep(10)
+        self.post("/rsunify/app/sfmIkeaIntegration/callSfmIkeaIntegrationSync")
+        self.post("/rsunify/app/api/callikeatocommoutletcreationallapimethods")
+        self.post("/rsunify/app/fileUploadId/upload")
+
+        
+
+
+
+
+
+
+
+
+
+
+
 class Billing(Ikea) :
 
     def __init__(self,user):
@@ -1052,7 +1083,7 @@ class Einvoice(Session) :
           failed = pd.read_excel( self.get("/Invoice/FailedInvoiceDetails").content )
           return success , failed 
       
-      def get_filed_einvs(self,date) -> BytesIO : 
+      def get_filed_einvs(self,date) -> pd.DataFrame : 
           """This functions works on today - 2 to today (Only 3 past days data available)"""
           form = extractForm( self.get("/MisRpt").text )
           form["submit"] = "Date"
@@ -1062,7 +1093,9 @@ class Einvoice(Session) :
           if "<td>2154</td>" in table_html :
               return None
           irn_gen_by_me_excel_bytesio = self.get('/MisRpt/ExcelGenerratedIrnDetails?noofRec=1&Actn=GEN').content
-          return BytesIO(irn_gen_by_me_excel_bytesio)
+          df = pd.read_excel(BytesIO(irn_gen_by_me_excel_bytesio))
+          return df
+
           
       #Unverified
       def getinvs(self) : 

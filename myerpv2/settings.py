@@ -52,6 +52,7 @@ INSTALLED_APPS = [
     "report",
     "printing",
     "bank",
+    "misc",
     "bill_scan",
 ]
 
@@ -70,9 +71,9 @@ SIMPLE_JWT = {
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
-        # "core.auth_backends.DevAuthentication",
+        "core.auth_backends.DevAuthentication",
         # "core.auth_backends.CsrfExemptSessionAuthentication",
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
+        # 'rest_framework_simplejwt.authentication.JWTAuthentication',
     ],
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.IsAuthenticated",

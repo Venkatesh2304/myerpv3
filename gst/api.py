@@ -105,19 +105,19 @@ def excel_response(sheets:list[tuple],filename:str) :
 #Einvoice APIs
 def load_irns(request,gst = True,einvoice = True):
     period = request.data.get("period")
-    username = request.user.get_username()
+    organization = request.user.organization
     irn_mapping = {}
     if gst : 
         #Update using Gst data for the period
-        gst_client = Gst(username)
-        GSTR1Portal.update_db(gst_client, request.user, period)
+        gst_client = Gst(organization.pk)
+        GSTR1Portal.update_db(gst_client, organization, period)
         irn_mapping |= {
             inv.inum: inv.irn
-            for inv in GSTR1Portal.objects.filter(user=request.user, period=period)
+            for inv in GSTR1Portal.objects.filter(organization=organization, period=period)
         }
     if einvoice : 
         # Update using einvoice (last 3 days)
-        einvoice_client = Einvoice(username)
+        einvoice_client = Einvoice(organization.pk)
         for days_ago in range(3) : 
             date = datetime.date.today() - datetime.timedelta(days=days_ago)
             einv_data = einvoice_client.get_filed_einvs(date = date)
@@ -126,7 +126,7 @@ def load_irns(request,gst = True,einvoice = True):
             for _,row in einv_data.iterrows() : 
                 irn_mapping[row["Doc No"]] = row["IRN"]
 
-    invs = list(models.Sales.user_objects.for_user(request.user).filter(inum__in=irn_mapping.keys(), gst_period=period))
+    invs = list(models.Sales.objects.filter(inum__in=irn_mapping.keys(), gst_period=period,company__organization=organization))
     for inv in invs : 
         inv.irn = irn_mapping.get(inv.inum)
     models.Sales.objects.bulk_update(invs,["irn"])
@@ -144,8 +144,8 @@ def einvoice_stats(request):
     period = request.data.get("period")
     type = request.data.get("type")
     
-    invs = models.Sales.user_objects.for_user(request.user).filter(
-            gst_period=period, ctin__isnull=False, inventory__rt__gt = 0)
+    invs = models.Sales.objects.filter(
+            gst_period=period, ctin__isnull=False, inventory__rt__gt = 0,company__organization=request.user.organization)
     if type != "all" : invs = invs.filter(type=type)
     invs = invs.distinct()
     
@@ -176,10 +176,10 @@ def einvoice_stats(request):
 def file_einvoice(request):
     period = request.data.get("period")
     type = request.data.get("type")
-    qs = models.Sales.user_objects.for_user(request.user).filter(
-        gst_period=period, ctin__isnull=False, type=type, irn__isnull=True
+    qs = models.Sales.objects.filter(
+        gst_period=period, ctin__isnull=False, type=type, irn__isnull=True,company__organization=request.user.organization
     )
-    e = Einvoice(request.user.get_username())
+    e = Einvoice(request.user.organization.pk)
     seller_json = e.config["seller_json"]
     month, year = int(period[:2]), int(period[-4:])
     first_day_of_period = datetime.date(year, month, 1)
@@ -219,22 +219,22 @@ def file_einvoice(request):
         error = row[error_column]
         irn = re.findall(r'([a-f0-9]{64})', error)
         if not irn: continue
-        models.Sales.user_objects.for_user(request.user).filter(
-            inum=row["Invoice No"]
+        models.Sales.objects.filter(
+            inum=row["Invoice No"],company__organization=request.user.organization
         ).update(irn=irn[0])
 
     # Handle wrong gstin or cancelled gstin and move the sales invoices to ctin null
     wrong_gstin = failed[(failed["Error Code"] >= 3074) & (failed["Error Code"] <= 3079)]
     for _, row in wrong_gstin.iterrows():
-        inv:models.Sales = models.Sales.user_objects.for_user(request.user).get(
-            inum=row["Invoice No"]
+        inv:models.Sales = models.Sales.objects.get(
+            inum=row["Invoice No"],company__organization=request.user.organization
         )
         inv.update_and_log("ctin", None, row[error_column])
 
 
     for _, row in success.iterrows():
-        models.Sales.user_objects.for_user(request.user).filter(
-            inum=row["Doc No"]
+        models.Sales.objects.filter(
+            inum=row["Doc No"],company__organization=request.user.organization
         ).update(irn=row["IRN"])
     sheets = [("failed", failed), ("success", success)]
     return excel_response(sheets, f"einvoice_{datetime.date.today()}.xlsx")
@@ -243,8 +243,8 @@ def file_einvoice(request):
 def einvoice_excel(request):
     period = request.data.get("period")
     type = request.data.get("type")
-    qs = models.Sales.user_objects.for_user(request.user).filter(
-        gst_period=period, type=type
+    qs = models.Sales.  objects.filter(
+        gst_period=period, type=type,company__organization=request.user.organization
     )
     # Registered and unregisterted (ctin not null and null)
     qs = qs.annotate(
@@ -290,21 +290,21 @@ def einvoice_pdf(request):
     period = request.data.get("period")
     type = request.data.get("type")
     load_irns(request,gst = True,einvoice=False)
-    qs = models.Sales.user_objects.for_user(request.user).filter(
-        gst_period=period, type=type, ctin__isnull=False, irn__isnull=False
+    qs = models.Sales.objects.filter(
+        gst_period=period, type=type, ctin__isnull=False, irn__isnull=False,company__organization=request.user.organization
     ).prefetch_related("party")
     if qs.count() > 200 : 
         return Response(
             {"error": "Cannot generate more than 200 invoices at a time."}, status=400
         )
     tform = template.Template(open("gst/templates/einvoice_print_form.html").read())
-    username = request.user.get_username()
-    gst = Gst(username)
+    organization = request.user.organization.pk
+    gst = Gst(organization)
     gstin = gst.config["gstin"]
     path = "static/print_includes"
 
-    if os.path.exists(f"static/{username}/bills.zip") : 
-        os.remove(f"static/{username}/bills.zip")
+    if os.path.exists(f"static/{organization}/bills.zip") : 
+        os.remove(f"static/{organization}/bills.zip")
     
     def fetch_inv(row) :     
         doctype = "INV" if row.type in ("sales","claimservice") else "CRN"
@@ -340,10 +340,10 @@ def einvoice_pdf(request):
             party = inums_to_party.get(inum,"unknown")
             zip_file.writestr(f"{party}/{inum}.pdf", bytesio.getvalue())
 
-    with open(f"static/{username}/bills.zip", "wb") as f:
+    with open(f"static/{organization}/bills.zip", "wb") as f:
         f.write(zip_buffer.getvalue())
 
-    return FileResponse(open(f"static/{username}/bills.zip","rb"),as_attachment=True,filename=f"bills_{period}.zip")
+    return FileResponse(open(f"static/{organization}/bills.zip","rb"),as_attachment=True,filename=f"bills_{period}.zip")
 
 
 #Gst Monthly Return APIs
@@ -353,9 +353,10 @@ def einvoice_pdf(request):
 def generate_gst_return(request):
     period = request.data.get("period")
     load_irns(request)
-    gst_instance = Gst(request.user.get_username())
+    organization = request.user.organization
+    gst_instance = Gst(organization.pk)
     #It creates the workings excel and json 
-    summary = gst.generate(request.user, period, gst_instance)
+    summary = gst.generate(organization, period, gst_instance)
     gst_company_type_stats = summary["gst_company_type_stats"].reset_index().rename(columns={"company_id" : "Company",
                                                     "gst_type" : "GST Type",
                                                     "txval" : "Taxable Value",
@@ -371,29 +372,31 @@ def generate_gst_return(request):
 @api_view(["POST"])
 def gst_summary(request):
     period = request.data.get("period")
-    return FileResponse(open(f"static/{request.user.get_username()}/workings_{period}.xlsx","rb"),as_attachment=True,filename=f"gst_{period}_summary.xlsx")
+    organization = request.user.organization.pk
+    return FileResponse(open(f"static/{organization}/workings_{period}.xlsx","rb"),as_attachment=True,filename=f"gst_{period}_summary.xlsx")
 
 @api_view(["POST"])
 def gst_json(request):
     period = request.data.get("period")
-    return FileResponse(open(f"static/{request.user.get_username()}/{period}.json","rb"),as_attachment=True,filename=f"gst_{period}.json")
+    organization = request.user.organization.pk
+    return FileResponse(open(f"static/{organization}/{period}.json","rb"),as_attachment=True,filename=f"gst_{period}.json")
 
 @api_view(["POST"])
 def download_gst_return(request) :
-    username = request.user.get_username()
-    period = request.POST.get("period")
-    gst_instance = Gst(username)
-    b2b,b2cs,cdnr = gst.download_gst(request.user,period,gst_instance)
-    return FileResponse(open(f"static/{request.user.get_username()}/gst_{period}.xlsx","rb"),as_attachment=True,filename=f"gst_{period}.xlsx")
+    organization = request.user.organization
+    period = request.data.get("period")
+    gst_instance = Gst(organization.pk)
+    b2b,b2cs,cdnr = gst.download_gst(organization,period,gst_instance)
+    return FileResponse(open(f"static/{organization.pk}/gst_{period}.xlsx","rb"),as_attachment=True,filename=f"gst_{period}.xlsx")
 
 @api_view(["POST"])
 def upload_gst_return(request):
     period = request.POST.get("period")
-    username = request.user.get_username()
-    gst_instance = Gst(username)
-    status = gst_instance.upload(period,f"static/{username}/{period}.json")
+    organization = request.user.organization
+    gst_instance = Gst(organization.pk)
+    status = gst_instance.upload(period,f"static/{organization.pk}/{period}.json")
     if status["status"] == "ER" :  ## Full error json not uploaded
        return Response({ "success" : False , "error": status["er_msg"]})
-    b2b,b2c,cdnr = gst.download_gst(request.user,period,gst_instance)
+    b2b,b2c,cdnr = gst.download_gst(organization,period,gst_instance)
     return Response({ "success" : True , "error" : ""})
 

@@ -162,6 +162,26 @@ def mail_monthly_bills():
         except Exception as e:
             logger.error(f"Error mailing bills for {company}: {e}")
 
+def beat_export_job():
+    for company in COMPANIES:
+        logger.info(f"Executing beat export for {company}")
+        try:
+            s = BaseSession()
+            response = s.post("/beat_export/", json={"company": company})
+            logger.info(f"Beat export result for {company}: {response.json()}")
+        except Exception as e:
+            logger.error(f"Error in beat export for {company}: {e}")
+
+def monthly_gst_import_job():
+    for company in COMPANIES:
+        logger.info(f"Executing monthly gst import for {company}")
+        try:
+            s = BaseSession()
+            response = s.post("/monthly_gst_import/", json={"company": company})
+            logger.info(f"Monthly gst import result for {company}: {response.json()}")
+        except Exception as e:
+            logger.error(f"Error in monthly gst import for {company}: {e}")
+
 def main():
     scheduler = BlockingScheduler()
 
@@ -197,6 +217,18 @@ def main():
         mail_monthly_bills,
         trigger=CronTrigger(day=3, hour=5, minute=0, second=0),
         name="mail_monthly_bills"
+    )
+
+    scheduler.add_job(
+        beat_export_job,
+        trigger=CronTrigger(hour=6, minute=0, second=0),
+        name="beat_export_daily"
+    )
+
+    scheduler.add_job(
+        monthly_gst_import_job,
+        trigger=CronTrigger(hour=17, minute=25, second=0),
+        name="monthly_gst_import_daily"
     )
 
     logger.info("Starting scheduler...")

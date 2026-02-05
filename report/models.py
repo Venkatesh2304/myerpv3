@@ -1,3 +1,4 @@
+from core.models import Organization
 from django.db.models import FloatField
 from django.db.models import DecimalField
 from dateutil.relativedelta import relativedelta
@@ -609,33 +610,32 @@ class StockReport(EmptyReportModel):
     class Meta: # type: ignore
         db_table = "stock_report"
 
-
-class UserReportModel(BaseReportModel[ArgsT]):
-    user = models.ForeignKey(User, on_delete=models.CASCADE, db_index=True)
+class OrganizationReportModel(BaseReportModel[ArgsT]):
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, db_index=True)
 
     class Meta:
         abstract = True
 
     @classmethod
-    def delete_before_insert(cls, user: User,args: ArgsT):
+    def delete_before_insert(cls, organization: Organization,args: ArgsT):
         raise NotImplementedError("delete_before_insert method not implemented.")
 
     @classmethod
     def update_db(
-        cls, fetcher_obj: object, user: User, args: ArgsT
+        cls, fetcher_obj: object, organization: Organization, args: ArgsT
     ) -> int | None:
         df = cls.Report.get_dataframe(fetcher_obj, args)
-        df["user_id"] = user.pk
-        cls.delete_before_insert(user,args)
+        df["organization_id"] = organization.pk
+        cls.delete_before_insert(organization,args)
         inserted_rows = cls.save_to_db(df)
-        ReportSyncLog.update_log(cls, identifier=user.pk)
+        ReportSyncLog.update_log(cls, identifier=organization.pk)
         return inserted_rows
 
     @classmethod
-    def get_oldness(cls, user: User) -> datetime.timedelta :
-        return ReportSyncLog.get_oldness(cls, identifier=user.pk)
+    def get_oldness(cls, organization: Organization) -> datetime.timedelta :
+        return ReportSyncLog.get_oldness(cls, identifier=organization.pk)
 
-class GSTR1Portal(UserReportModel[MonthArgs]):
+class GSTR1Portal(OrganizationReportModel[MonthArgs]):
     arg_type = MonthArgs
     period = models.CharField(max_length=6, verbose_name="Period (MMYYYY)")
     date = models.DateField(verbose_name="Invoice Date")
@@ -676,9 +676,8 @@ class GSTR1Portal(UserReportModel[MonthArgs]):
         db_table = "gstr1_portal"
 
     @classmethod
-    def delete_before_insert(cls, user: User,args: MonthArgs):
-        cls.objects.filter(user = user,period = str(args)).delete()
-
+    def delete_before_insert(cls, organization: Organization,args: MonthArgs):
+        cls.objects.filter(organization = organization,period = str(args)).delete()
 
 # System check for models
 @register()

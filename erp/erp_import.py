@@ -1,3 +1,4 @@
+from custom.classes import Ikea
 from abc import abstractmethod
 import abc
 from collections import defaultdict
@@ -12,8 +13,6 @@ from django.db import connection, transaction
 import pandas as pd
 from core.models import Company
 import erp.models as models
-from custom.classes import IkeaDownloader
-from core.sql import engine
 from report.models import (
     CompanyReportModel,
     ArgsT,
@@ -29,13 +28,11 @@ from report.models import (
 from django.db.models import OuterRef, Subquery, Value, DecimalField, QuerySet
 from django.db.models.functions import Coalesce
 
-
 def batch_delete(queryset: QuerySet, batch_size: int):
     pks = list(queryset.values_list("pk", flat=True).iterator())
     for i in range(0, len(pks), batch_size):
         batch_pks = pks[i : i + batch_size]
         queryset.model.objects.filter(pk__in=batch_pks).delete()
-
 
 # TODO: Strict checks
 class BaseImport(Generic[ArgsT]):
@@ -45,28 +42,20 @@ class BaseImport(Generic[ArgsT]):
     reports: list[Type[CompanyReportModel[ArgsT]]] = []
 
     @classmethod
-    def update_reports(cls, company: Company, args: ArgsT):
-        # Update the Reports
-        inserted_row_counts = {}
-        for report in cls.reports:
-            # TODO: Better ways to log and handle errors
-            inserted_row_counts[report.__name__] = report.update_db(
-                IkeaDownloader(company.pk), company, args
-            )
-
-    @classmethod
-    @abstractmethod
-    def basic_run(cls, company: Company, args: ArgsT):
-        raise NotImplementedError("Basic Run method not implemented")
-
-    @classmethod
     @abstractmethod
     def run_atomic(cls, company: Company, args: ArgsT):
         raise NotImplementedError("Run Atomic method not implemented")
 
     @classmethod
-    def run(cls, company: Company, args: ArgsT):
-        IkeaGSTR1Report.update_db(IkeaDownloader(company.pk), company, args) # Modified this line
+    def run(cls, company: Company, args: ArgsT, update_reports: bool = False):
+        if update_reports:
+            # Update the Reports
+            inserted_row_counts = {}
+            for report in cls.reports:
+                # TODO: Better ways to log and handle errors
+                inserted_row_counts[report.__name__] = report.update_db(
+                    Ikea(company.pk), company, args
+                )
         cls.run_atomic(company, args)
 
 class DateImport(abc.ABC, BaseImport[DateRangeArgs]):
@@ -77,37 +66,9 @@ class DateImport(abc.ABC, BaseImport[DateRangeArgs]):
     def delete_before_insert(cls, company: Company, args: DateRangeArgs):
         raise NotImplementedError("Delete before insert method not implemented")
 
-    @classmethod
-    def basic_run(cls, company: Company, args: DateRangeArgs):
-        cls.delete_before_insert(company, args)
-        # Delete the existing rows in the date range (cascading delete)
-        cur = connection.cursor()
-        fromd_str = args.fromd.strftime("%Y-%m-%d")
-        tod_str = args.tod.strftime("%Y-%m-%d")
-
-        # Create a temp tables for the report tables (with the filtered date)
-        # Temp table name : eg: salesregister_report => salesregister_temp
-        # The table exists only for the duration of the transaction
-        for report in cls.reports:
-            db_table = report._meta.db_table
-            cur.execute(
-                f"""CREATE TEMP TABLE {db_table.replace("_report","_temp")} ON COMMIT DROP AS 
-                                SELECT * FROM {db_table} WHERE company_id = '{company.pk}' AND 
-                                                                date >= '{fromd_str}' AND date <= '{tod_str}'"""
-            )
-        return cur
-
 class SimpleImport(abc.ABC, BaseImport[EmptyArgs]):
     arg_type = EmptyArgs
     delete_all = False
-
-    @classmethod
-    def basic_run(cls, company: Company, args: EmptyArgs):
-        if cls.delete_all:
-            cls.model.objects.filter(company=company).delete()
-        cur = connection.cursor()
-        return cur
-
 
 class SalesImport(DateImport):
     reports = [SalesRegisterReport, IkeaGSTR1Report]
@@ -126,10 +87,10 @@ class SalesImport(DateImport):
     @transaction.atomic
     def run_atomic(cls, company: Company, args: DateRangeArgs):
         cls.delete_before_insert(company, args)
-        sales_qs = models.SalesRegisterReport.objects.filter(
+        sales_qs = SalesRegisterReport.objects.filter(
             company=company, date__gte=args.fromd, date__lte=args.tod
         )
-        inventory_qs = models.IkeaGSTR1Report.objects.filter(
+        inventory_qs = IkeaGSTR1Report.objects.filter(
             company=company, date__gte=args.fromd, date__lte=args.tod
         )
         
@@ -161,6 +122,7 @@ class SalesImport(DateImport):
                     obj.date,
                     "in ikea gstr1",
                 )
+                continue
             inum = inums.pop(0)
             obj.inum = inum
 
@@ -309,7 +271,7 @@ class MarketReturnImport(DateImport):
             .values("ctin")[:1]
         )
 
-        market_returns = models.DmgShtReport.objects.filter(
+        market_returns = DmgShtReport.objects.filter(
             return_from="market", company=company,
             date__gte=args.fromd, date__lte=args.tod
         ).annotate(
@@ -388,7 +350,7 @@ class StockImport(SimpleImport):
                 hsn=obj.hsn,
                 rt=obj.rt,
             )
-            for obj in models.StockHsnRateReport.objects.filter(
+            for obj in StockHsnRateReport.objects.filter(
                 company=company
             ).iterator()
         )
@@ -418,7 +380,7 @@ class PartyImport(SimpleImport):
                 phone=obj.phone,
                 ctin=obj.ctin,
             )
-            for obj in models.PartyReport.objects.filter(company=company).iterator()
+            for obj in PartyReport.objects.filter(company=company).iterator()
         )
         models.Party.objects.bulk_create(
             objs,
@@ -440,7 +402,7 @@ class GstFilingImport:
     def report_update_thread(
         cls, report: CompanyReportModel, company: Company, args: ReportArgs
     ):
-        inserted_count = report.update_db(IkeaDownloader(company.pk), company, args)
+        inserted_count = report.update_db(Ikea(company.pk), company, args)
         print(f"Report {report.__name__} updated")
         return inserted_count
 

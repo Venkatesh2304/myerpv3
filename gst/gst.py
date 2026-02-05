@@ -1,3 +1,5 @@
+from report.models import GSTR1Portal
+from core.models import Organization
 import decimal
 import json
 import os
@@ -90,26 +92,25 @@ def diff_dataframes(
         diff_df[col] = diff_df[col1].fillna(col2)
     return filter_cols(only_left), filter_cols(only_right), filter_cols(diff_df)
 
-def download_gst(user:User,period:str,gst:Gst) -> str:
-    username = user.username
+def download_gst(organization:Organization,period:str,gst:Gst) -> str:
+    org_name = organization.pk
     b2b = pd.DataFrame(gst.getinvs(period,"b2b"))
     b2cs = pd.DataFrame(gst.getinvs(period,"b2cs"))
     cdnr = pd.DataFrame(gst.getinvs(period,"cdnr"))    
-    writer = pd.ExcelWriter(f"static/{username}/gst_report_{period}.xlsx", engine='xlsxwriter')
+    writer = pd.ExcelWriter(f"static/{org_name}/gst_report_{period}.xlsx", engine='xlsxwriter')
     addtable(writer = writer , sheet = "B2B" , name = ["B2B"]  ,  data = [ b2b ] )  
     addtable(writer = writer , sheet = "B2CS" , name = ["B2CS"] ,  data = [b2cs] )
     addtable(writer = writer , sheet = "CDNR" , name = ["CDNR"] ,  data = [cdnr] )
     writer.close()
     return b2b,b2cs,cdnr 
 
-def generate(user:User,period:str,gst:Gst) -> dict[str,pd.DataFrame]:
-    os.makedirs(f"static/{user.username}", exist_ok=True)
+def generate(organization:Organization,period:str,gst:Gst) -> dict[str,pd.DataFrame]:
+    os.makedirs(f"static/{organization.pk}", exist_ok=True)
     gstin = gst.config["gstin"]
     coalesce_zero = lambda expr: Coalesce(
         expr, 0, output_field=decimal_field(decimal_places=3)
     )
-
-    invs_qs = models.Sales.objects.filter(gst_period=period, company__user=user).annotate(
+    invs_qs = models.Sales.objects.filter(gst_period=period, company__organization=organization).annotate(
         gst_type=Case(
             When(ctin__isnull=True, then=Value("b2c")),
             default=Case(
@@ -158,9 +159,8 @@ def generate(user:User,period:str,gst:Gst) -> dict[str,pd.DataFrame]:
         "irn"
     )
     invs = pd.DataFrame(invs_qs.iterator())
-
     items_qs = (
-        models.Inventory.objects.filter(company__user=user, sales__gst_period=period)
+        models.Inventory.objects.filter(company__organization=organization, sales__gst_period=period)
         .exclude(txval=0)
         .values("company_id", "bill_id", "txval")
         .annotate(
@@ -177,7 +177,7 @@ def generate(user:User,period:str,gst:Gst) -> dict[str,pd.DataFrame]:
     items = pd.DataFrame(items_qs.iterator()).rename(columns={"bill_id": "inum"})
     items["rt"] = items["rt"] * 2
 
-    gst_qs = models.GSTR1Portal.objects.filter(period=period, user=user).values()
+    gst_qs = GSTR1Portal.objects.filter(period=period, organization=organization).values()
     gst_portal = pd.DataFrame(gst_qs.iterator())
 
     registered_invs = invs[invs["gst_type"].isin(["b2b", "cdnr"])]
@@ -301,7 +301,7 @@ def generate(user:User,period:str,gst:Gst) -> dict[str,pd.DataFrame]:
         ["company_id", "inum", "date", "name", "ctin", "amt", "txval", "cgst"]
     ]
 
-    writer = pd.ExcelWriter(f"static/{user.username}/workings_{period}.xlsx", engine="xlsxwriter")
+    writer = pd.ExcelWriter(f"static/{organization.pk}/workings_{period}.xlsx", engine="xlsxwriter")
     addtable(
         writer=writer,
         sheet="Summary",
@@ -526,7 +526,7 @@ def generate(user:User,period:str,gst:Gst) -> dict[str,pd.DataFrame]:
         "hash": "hash",
     } | nil_rated_json
 
-    with open(f"static/{user.username}/{period}.json", "w+") as f:
+    with open(f"static/{organization.pk}/{period}.json", "w+") as f:
         json.dump(gst_json, f, indent=4,cls = DecimalEncoder)
     
     return {
