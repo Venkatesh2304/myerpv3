@@ -187,7 +187,8 @@ def file_einvoice(request):
 
     sales_qs = qs.filter(type__in=["sales","salesreturn"])
     json_data = []
-    if sales_qs.exists():
+    #Disable getting json from ikea
+    if False and sales_qs.exists():
         company_to_inums = defaultdict(list)
         for inv in sales_qs:
             company_to_inums[inv.company_id].append(inv.inum)
@@ -202,7 +203,6 @@ def file_einvoice(request):
     inums_from_ikea_einv_json = [ entry["DocDtls"]["No"] for entry in json_data ]
     qs = qs.exclude(inum__in=inums_from_ikea_einv_json)
     json_data += create_einv_json(qs, seller_json=seller_json)
-    print(json_data)
     
     json_data = change_einv_dates(json_data, fallback_date=last_day_of_period)
     json_data = einv_json_to_str(json_data)
