@@ -226,8 +226,7 @@ def main():
             name=f"beat_export_daily - 6:{minute}"
         )
 
-
-    for day in [3,4,5] :
+    for day in [3,4,5,6,7] :
         scheduler.add_job(
             monthly_gst_import_job,
             trigger=CronTrigger(day = day, hour=4, minute=0, second=0),
@@ -240,12 +239,6 @@ def main():
         name="mail_monthly_bills"
     )
     
-    scheduler.add_job(
-            monthly_gst_import_job,
-            trigger=CronTrigger(hour=20, minute=3, second=0),
-            name="monthly_gst_import"
-        )
-
     logger.info("Starting scheduler...")
     try:
         scheduler.start()
