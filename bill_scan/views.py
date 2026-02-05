@@ -262,7 +262,6 @@ def upload_vehicle_eway(request):
     
     base_qs = Bill.objects.filter(company=company, vehicle=vehicle, loading_time__date=today)
     qs = base_qs.filter(ewb_no__isnull=True)
-    bill_ids = list(qs.values_list('bill_id', flat=True))
 
     try :
         df = upload_eway_bills(qs,company)
@@ -270,6 +269,7 @@ def upload_vehicle_eway(request):
         return JsonResponse({"key": "einvoice"}, status=501)
 
     # Construct PDF for the table
+    bill_ids = list(base_qs.values_list('bill_id', flat=True))
     df = df[df['Doc.No'].isin(bill_ids)]
     pdf_df = df[["EWB No","EWB Date","Supply Type","Doc.No","Doc.Date"]]
     company_dir = os.path.join(settings.MEDIA_ROOT, "vehicle", company.pk)
