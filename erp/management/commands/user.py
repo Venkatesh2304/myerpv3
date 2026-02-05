@@ -6,6 +6,14 @@ import pandas as pd
 from custom.classes import Einvoice, Gst
 from core.models import Company, UserSession
 
+organization = Organization.objects.get(name="devaki")
+companies = Company.objects.filter(organization=organization)
+user = User.objects.create_user(username='sathish_gst', password='1',organization=organization)
+for company in companies :
+    user.companies.add(company)
+user.save()
+exit(0)
+
 for company in Company.objects.all() :
     config = UserSession.objects.filter(user=company.pk,key="ikea").first().config
     UserSession(
@@ -19,7 +27,6 @@ for company in Company.objects.all() :
         },
     ).save(force_insert=False)
 exit(0)
-
 
 # User.objects.filter(username='devaki').delete()
 # UserSession.objects.filter(user='devaki_hul').delete()
