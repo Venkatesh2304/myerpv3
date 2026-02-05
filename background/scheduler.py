@@ -179,7 +179,7 @@ def monthly_gst_import_job():
     last_month_date = today - relativedelta(months=1)
     month = last_month_date.month
     year = last_month_date.year
-    for company in ["murugan_hul"]: #GST_COMPANIES:
+    for company in GST_COMPANIES:
         logger.info(f"Executing monthly gst import for {company}")
         try:
             s = BaseSession()

@@ -253,7 +253,7 @@ def monthly_gst_import(request):
         <body>
             <p><strong>Status:</strong> {status}</p>
             <p><strong>Message:</strong> {message}</p>
-            <p>Website: http://65.1.147.8:5000</p>
+            <p>Website: http://65.1.147.8:8000</p>
         </body>
         </html>
         """
