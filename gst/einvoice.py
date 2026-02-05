@@ -81,7 +81,7 @@ def create_einv_json(
             "SgstVal": round(sale.cgst, 2),  # type: ignore
             "TotInvVal": round(sale.txval + 2*sale.cgst,2),
             "RndOffAmt": round(sale.roundoff, 2),
-            "Discount": round(sale.discount, 2),
+            "Discount": round(-sale.discount, 2) if abs(sale.discount) > 1 else 0,
         }
 
         items = []
