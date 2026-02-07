@@ -69,7 +69,7 @@ class EinvoiceHandler:
             einvoice_df.to_excel(today_einvs_bytesio, index=False)
             today_einvs_bytesio.seek(0)
             response = ikea.upload_irn(today_einvs_bytesio)
-            
+            print(response)
             if not response.get("valid"):
                pass 
 
