@@ -1081,6 +1081,8 @@ class Einvoice(Session) :
           upload_home = self.post("/Invoice/BulkUpload" ,  files = files , data = form ).text
           success = pd.read_excel( self.get("/Invoice/ExcelUploadedInvoiceDetails").content )
           failed = pd.read_excel( self.get("/Invoice/FailedInvoiceDetails").content )
+          print(failed)
+          failed.to_excel("failed_einv.xlsx")
           return success , failed 
       
       def get_filed_einvs(self,date) -> pd.DataFrame : 
