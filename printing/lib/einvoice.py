@@ -63,13 +63,16 @@ class EinvoiceHandler:
             # err = "No data generated for e-invoice upload from ikea."
 
         try:
-            today_einvs_bytesio = einvoice_service.get_filed_einvs(datetime.date.today())
+            einvoice_df = einvoice_service.get_filed_einvs(datetime.date.today())
+            
+            today_einvs_bytesio = BytesIO()
+            einvoice_df.to_excel(today_einvs_bytesio, index=False)
+            today_einvs_bytesio.seek(0)
             response = ikea.upload_irn(today_einvs_bytesio)
             
             if not response.get("valid"):
                pass 
 
-            einvoice_df = pd.read_excel(today_einvs_bytesio)
             for _, row in einvoice_df.iterrows():
                 # Update IRN in DB
                 Bill.objects.filter(company=self.company, bill_id=str(row["Doc No"]).strip()).update(irn=str(row["IRN"]).strip())
