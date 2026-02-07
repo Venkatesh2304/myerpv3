@@ -50,6 +50,7 @@ class EinvoiceHandler:
             try:
                 json_str = bytesio.getvalue().decode('utf-8')
                 success, failures = einvoice_service.upload(json_str)
+                failures = failures[failures["Error Code"] != 2150] if failures is not None else None
                 if failures is not None and not failures.empty:
                      failed_inums = failures["Invoice No"].tolist()
                      err = f"E-Invoice upload failed for {failed_inums}"
