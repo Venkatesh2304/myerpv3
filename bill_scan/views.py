@@ -197,14 +197,14 @@ def push_impact(request):
 class EinvoiceLoginException(Exception) :
     pass
 
-def upload_eway_bills(qs,company,default_vehicle_no = None) -> pd.DataFrame:
+def upload_eway_bills(qs,company,default_vehicle_no = None) -> tuple[pd.DataFrame,pd.DataFrame]:
     einv = Einvoice(company.organization.pk)
     if einv.is_logged_in() == False  : 
         raise EinvoiceLoginException("E-way login failed")
 
     ikea = Ikea(company.pk)
     bill_ids = list(qs.values_list('bill_id', flat=True))
-    
+    df_eway_upload = pd.DataFrame()
     if bill_ids : 
         # Download eway excel
         dates = qs.aggregate(fromd=Min('bill_date'),tod=Max('bill_date'))
@@ -218,8 +218,8 @@ def upload_eway_bills(qs,company,default_vehicle_no = None) -> pd.DataFrame:
             f.write(json_output)
         # Upload to einvoice (eway upload)
         try:
-            df = einv.upload_eway_bill(json_output)
-            print(df)
+            df_eway_upload = einv.upload_eway_bill(json_output)
+            print(df_eway_upload)
         except Exception as e:
             print(f"E-way upload failed: {e}")
         
@@ -228,7 +228,7 @@ def upload_eway_bills(qs,company,default_vehicle_no = None) -> pd.DataFrame:
         bill_no = str(row['Doc.No'])
         ewb_no = str(row['EWB No'])
         Bill.objects.filter(company=company, bill_id=bill_no).update(ewb_no=ewb_no)
-    return df
+    return df,df_eway_upload
 
 @api_view(['POST'])
 def upload_company_eway(request):
@@ -242,10 +242,10 @@ def upload_company_eway(request):
         return JsonResponse("Vehicle not found", status=404)
     base_qs = Bill.objects.filter(company=company, bill_date = bill_date).exclude(beat__contains = "WHOLESALE")
     qs = base_qs.filter(ewb_no__isnull=True)
+    df_eway_upload = None
     if qs.count() > 0 : 
         try :
-            print("1:",list(qs.values_list('bill_id', flat=True)))
-            df = upload_eway_bills(qs,company,vehicle.vehicle_no)
+            df,df_eway_upload = upload_eway_bills(qs,company,vehicle.vehicle_no)
         except EinvoiceLoginException :
             return JsonResponse({"key": "einvoice"}, status=501)
     rows = list(base_qs.values('bill_date','bill_id','party_name','ewb_no'))
@@ -253,7 +253,10 @@ def upload_company_eway(request):
     company_dir = os.path.join(settings.MEDIA_ROOT, "company", company.pk)
     os.makedirs(company_dir, exist_ok=True)
     filepath = os.path.join(company_dir, f"eway_{bill_date.strftime('%d_%m_%y')}.xlsx")
-    df.to_excel(filepath, index=False)
+    with pd.ExcelWriter(filepath) as writer:
+        df.to_excel(writer, sheet_name="Eway Bills", index=False)
+        if df_eway_upload is not None : 
+            df_eway_upload.to_excel(writer, sheet_name="Failed", index=False)
     return JsonResponse({"status": "success","filepath": get_media_url(filepath)})
 
 @api_view(['POST'])
@@ -267,7 +270,7 @@ def upload_vehicle_eway(request):
     qs = base_qs.filter(ewb_no__isnull=True)
 
     try :
-        df = upload_eway_bills(qs,company)
+        df,_ = upload_eway_bills(qs,company)
     except EinvoiceLoginException :
         return JsonResponse({"key": "einvoice"}, status=501)
 
