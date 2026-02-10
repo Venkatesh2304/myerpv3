@@ -214,6 +214,8 @@ def upload_eway_bills(qs,company,default_vehicle_no = None) -> pd.DataFrame:
         # Convert to JSON
         json_output = eway_df_to_json(df_eway, lambda series : series.apply(lambda x : bill_to_vehicle_no.get(x) or default_vehicle_no), 
                                                lambda series: series.apply(lambda x: 3))
+        with open("eway.json", "w+") as f:
+            f.write(json_output)
         # Upload to einvoice (eway upload)
         try:
             df = einv.upload_eway_bill(json_output)
@@ -242,6 +244,7 @@ def upload_company_eway(request):
     qs = base_qs.filter(ewb_no__isnull=True)
     if qs.count() > 0 : 
         try :
+            print("1:",list(qs.values_list('bill_id', flat=True)))
             df = upload_eway_bills(qs,company,vehicle.vehicle_no)
         except EinvoiceLoginException :
             return JsonResponse({"key": "einvoice"}, status=501)
