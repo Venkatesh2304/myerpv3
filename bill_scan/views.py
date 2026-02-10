@@ -256,6 +256,8 @@ def upload_company_eway(request):
     with pd.ExcelWriter(filepath) as writer:
         df.to_excel(writer, sheet_name="Eway Bills", index=False)
         if df_eway_upload is not None : 
+            ewb_not_exists = list(qs.values_list('bill_id', flat=True))
+            df_eway_upload = df_eway_upload[df_eway_upload['Doc No'].isin(ewb_not_exists)]
             df_eway_upload.to_excel(writer, sheet_name="Failed", index=False)
     return JsonResponse({"status": "success","filepath": get_media_url(filepath)})
 
