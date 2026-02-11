@@ -1,3 +1,5 @@
+from erp.models import Inventory
+from erp.models import Sales
 from custom.classes import Ikea
 from abc import abstractmethod
 import abc
@@ -100,19 +102,22 @@ class SalesImport(DateImport):
 
         # Sales Return
         date_original_inum_to_cn: defaultdict[tuple, list[str]] = defaultdict(list)
-        salesreturn_objs = list(sales_qs.filter(type="salesreturn").order_by("amt"))
+        salesreturn_qs = list(sales_qs.filter(type="salesreturn").order_by("amt"))
         salesreturn_inventory_objs = list(
             inventory_qs.filter(type="salesreturn").order_by("inv_amt")
         )
+        salesreturn_objs = []
+        salesreturn_objs_dict: defaultdict[str, list[Inventory]] = defaultdict(list)
 
         for obj in salesreturn_inventory_objs:
             obj.inum = obj.credit_note_no
             obj.txval = -obj.txval
             inums = date_original_inum_to_cn[(obj.date, obj.original_invoice_no)]
+            salesreturn_objs_dict[obj.inum].append(obj)
             if obj.inum not in inums:
                 inums.append(obj.credit_note_no)
 
-        for obj in salesreturn_objs:
+        for obj in salesreturn_qs:
             obj.roundoff = -obj.roundoff
             inums = date_original_inum_to_cn[(obj.date, obj.inum)]
             if len(inums) == 0:
@@ -123,8 +128,35 @@ class SalesImport(DateImport):
                     "in ikea gstr1",
                 )
                 continue
-            inum = inums.pop(0)
-            obj.inum = inum
+            elif len(inums) == 1 :
+                inum = inums.pop(0)
+                obj.inum = inum
+                salesreturn_objs.append(obj)
+            else:
+                inum = inums.pop(0)
+                obj.inum = inum
+                salesreturn_objs.append(obj)
+                balance = obj.amt
+                #Find the txval and for each inums 
+                for inum in inums:
+                    amt = sum(map(lambda x: round(x.txval * (1 + 2*x.rt/100)), salesreturn_objs_dict[inum]))
+                    amt = round(amt, 2)
+                    new_obj = SalesRegisterReport(
+                        company=company,
+                        type="salesreturn",
+                        inum=inum,
+                        date=obj.date,
+                        party_id=obj.party_id,
+                        ctin=obj.ctin,
+                        amt=amt
+                    )
+                    salesreturn_objs.append(new_obj)
+                    balance -= amt
+                obj.amt = round(balance, 2)
+
+
+                
+
 
         # ClaimService
         claimservice_inventory_objs = inventory_qs.filter(type="claimservice")
