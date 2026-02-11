@@ -391,7 +391,7 @@ def download_gst_return(request) :
 
 @api_view(["POST"])
 def upload_gst_return(request):
-    period = request.POST.get("period")
+    period = request.data.get("period")
     organization = request.user.organization
     gst_instance = Gst(organization.pk)
     status = gst_instance.upload(period,f"static/{organization.pk}/{period}.json")
