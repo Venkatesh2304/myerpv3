@@ -229,8 +229,13 @@ class IkeaReports(BaseIkea):
                                                         (fromd.strftime("%d/%m/%Y"), tod.strftime("%d/%m/%Y")))
         return df
     
+    def raw_damage_proposal(self, fromd: datetime.date, tod: datetime.date, sheet_name: str) -> pd.DataFrame:
+        df = self.fetch_moc_reports(fromd, tod, "ikea/damage_proposal", self.MOC_PAT, 
+                                    sheet_name=sheet_name, lookback=relativedelta.relativedelta(months=3))
+        return df
+    
     def damage_proposals(self, fromd: datetime.date, tod: datetime.date, type: Literal["sales", "purchase"]) -> pd.DataFrame:
-        column_map = {"sales": (" TRANSACTION DETAILS", "TRANS DATE"),
+        column_map = {  "sales": (" TRANSACTION DETAILS", "TRANS DATE"),
                         "purchase": ("STOCK OUT WITH CLAIM", "TRANS REF DATE")}
         if type not in column_map: raise Exception("Type should be sales or purchase")
         
@@ -242,6 +247,10 @@ class IkeaReports(BaseIkea):
     def claim_status(self, fromd: datetime.date, tod: datetime.date) -> pd.DataFrame:
         return self.fetch_moc_reports(fromd, tod, "ikea/claim_status",
                             self.MOC_PAT, sheet_name="SUMMARY", lookback=relativedelta.relativedelta(months=6))
+
+    def ushop_ledger(self, fromd: datetime.date, tod: datetime.date) -> BytesIO:
+        return self.fetch_report_bytes("ikea/ushop_ledger", r'(":val1":").{10}(",":val2":").{10}', 
+                                (fromd.strftime("%Y/%m/%d"), tod.strftime("%Y/%m/%d")))
                             
     def product_hsn_master(self) -> pd.DataFrame:
         dfs = []
@@ -957,7 +966,6 @@ class Gst(Session) :
          return inv | { "qrcode" : qrcode }
      
      def upload(self,period,fname) : 
-           input(self.getuser()["bname"])
            files = {'upfile': ( "gst.json" , open(fname) , 'application/json', { 'Content-Disposition': 'form-data' })}
            ret_ref = {"Referer": "https://return.gst.gov.in/returns/auth/gstr/offlineupload"}
            ref_id =  self.post(f"https://return.gst.gov.in/returndocs/offline/upload",
