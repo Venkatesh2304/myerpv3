@@ -445,6 +445,7 @@ class GstFilingImport:
         i = Ikea(company.pk)
         for import_class in cls.imports:
             reports_to_update.extend(import_class.reports)  # type: ignore
+        reports_to_update = []
         with ThreadPoolExecutor(max_workers=10) as executor:
             futures = []
             for report_model in reports_to_update:
