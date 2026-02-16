@@ -288,6 +288,7 @@ class SalesRegisterReport(DateReportModel):
     ushop = decimal_field(verbose_name="Ushop Redemption")
     pecom = decimal_field(verbose_name="Adjustments")
     roundoff = decimal_field(verbose_name="RoundOff")
+    shikhar_scheme = decimal_field(verbose_name="Shikar Scheme")
     other_discount = decimal_field(
         verbose_name="Other Discount (DisFinAdj + ReversedPayout)"
     )
@@ -308,6 +309,7 @@ class SalesRegisterReport(DateReportModel):
             "OutPyt Adj": "outpyt",
             "Ushop Redemption": "ushop",
             "Adjustments": "pecom",
+            "Shikhar Scheme": "shikhar_scheme",
             "GSTIN Number": "ctin",
             "RoundOff": "roundoff",
             "TCS Amt": "tcs",

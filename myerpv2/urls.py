@@ -29,5 +29,7 @@ urlpatterns = [
     path("", include("bank.urls")),
     path("", include("load.urls")),
     path("", include("bill_scan.urls")),
+    path("", include("ledger.urls")),
+    path("", include("product_scan.urls")),
     path("", include("misc.urls")),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT, show_indexes=True)

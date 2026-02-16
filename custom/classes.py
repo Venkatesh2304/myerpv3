@@ -358,8 +358,16 @@ class Ikea(IkeaReports):
           return self.fetch_report_bytes("ikea/einvoice_json",r'(":val1":").{8}(",":val2":").{8}(.*":val9":")[^"]*' , 
                               (fromd.strftime("%Y%m%d"),tod.strftime("%Y%m%d"),",".join(bills)) )
 
+    def retrive_bill(self,bill_no):
+        self.post("/rsunify/app/ikeaCommonUtilController/removeScreenNameFromSession",data={"screenName":"Manual Billing"})
+        data = self.get("/rsunify/app/billing/retrievebill",params={"billRef":bill_no}).json()
+        sal_id = data["billHdVO"]["blhDsrId"]
+        self.get("/rsunify/app/billing/deletemutable",params={"salesmanId":sal_id})
+        return data
+
+
     def product_hsn(self) -> dict : 
-        return get_curl("ikea/list_of_products").send(self).json() 
+        return get_curl("ikea/list_of_products").send(self).json()
     
     def pending_statement_pdf(self,beats,date) : 
           r = get_curl("ikea/pending_statement_pdf")

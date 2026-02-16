@@ -1286,6 +1286,51 @@ ikea_collection_report = CurlRequest('POST',
 )
 
 cookies = {
+    'JSESSIONID': '9304431D349AD79AFEDF80E10ECA6385',
+    'isUserLoggedOut': 'No',
+    'maitabOpened': 'Yes',
+    'tabsOpened': '{"date":"2026-02-09T14:02:54.183Z","openedTabs":["Login","Sales Return Register","Ushop Points Ledger"]}',
+}
+
+headers = {
+    'accept': '*/*',
+    'accept-language': 'en-US,en;q=0.9',
+    'cache-control': 'no-cache',
+    'content-type': 'application/x-www-form-urlencoded; charset=UTF-8',
+    'newrelic': 'eyJ2IjpbMCwxXSwiZCI6eyJ0eSI6IkJyb3dzZXIiLCJhYyI6IjEwMTUzNDciLCJhcCI6IjE1ODg3NTgxMDAiLCJpZCI6IjNlNjI5YTY4MGEyYmYyNzUiLCJ0ciI6IjE4ODU2MjU4NThiMmEzYzU4ZTE3NDBmODE4MzE4Y2Y0IiwidGkiOjE3NzA2NDc3OTM1MjcsInRrIjoiOTM1NzAifX0=',
+    'origin': 'https://leveredge18.hulcd.com',
+    'pragma': 'no-cache',
+    'priority': 'u=1, i',
+    'referer': 'https://leveredge18.hulcd.com/rsunify/app/reportsController/reportScreen?viewpage=report/UnipayPointsLedgerReport',
+    'sec-ch-ua': '"Not(A:Brand";v="8", "Chromium";v="144", "Google Chrome";v="144"',
+    'sec-ch-ua-mobile': '?0',
+    'sec-ch-ua-platform': '"Linux"',
+    'sec-fetch-dest': 'empty',
+    'sec-fetch-mode': 'cors',
+    'sec-fetch-site': 'same-origin',
+    'traceparent': '00-1885625858b2a3c58e1740f818318cf4-3e629a680a2bf275-01',
+    'tracestate': '93570@nr=0-1-1015347-1588758100-3e629a680a2bf275----1770647793527',
+    'user-agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36',
+    'x-newrelic-id': 'VQYGVFVXDxABUVRWBQgCVlcH',
+    'x-requested-with': 'XMLHttpRequest',
+    # 'cookie': 'JSESSIONID=9304431D349AD79AFEDF80E10ECA6385; isUserLoggedOut=No; maitabOpened=Yes; tabsOpened={"date":"2026-02-09T14:02:54.183Z","openedTabs":["Login","Sales Return Register","Ushop Points Ledger"]}',
+}
+
+data = {
+    'jsonData': '[]',
+    'jsonObjforheaders': '[{"1":"RS Name              :","2":" ","3":"Redeem Req From Date :","4":" ","5":"Redeem Req To Date   :","6":" ","7":"Party HUL Code       :","8":" ","val1":"DEVAKI ENTERPRISES","val3":"21/09/2025","val5":"20/10/2025","val7":"List of Party HUL Code"}]',
+    'jsonObjfileInfi': '[{"title":"Ushop Points Ledger,Ushop Ledger,Sales Return Ushop Ledger","reportfilename":"Ushop_Points_Ledger","viewpage":"report/UshopPointsLedgerReport","viewname":"UnipayPointsLedgerReport","querycount":2}]',
+    'jsonObjWhereClause': '{":val1":"2025/09/21",":val2":"2025/10/20",":val3":"",":val4":"ALL",":querycount":2}',
+}
+
+ikea_ushop_ledger = CurlRequest('POST',
+    'https://leveredge18.hulcd.com/rsunify/app/reportsController/generatereport',
+    cookies=cookies,
+    headers=headers,
+    data=data,
+)
+
+cookies = {
     'JSESSIONID': '4787093FE5FC9570C1F75CAD8D7D6CFD',
     'mocProcesStatus': 'Completed',
     'processLastUpdatedTime': '0',

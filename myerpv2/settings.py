@@ -49,11 +49,13 @@ INSTALLED_APPS = [
     "gst",
     "bill",
     "load",
+    "product_scan",
     "report",
     "printing",
     "bank",
     "misc",
     "bill_scan",
+    "ledger",
 ]
 
 
