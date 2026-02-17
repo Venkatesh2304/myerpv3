@@ -10,6 +10,53 @@ from django.conf import settings
 import os
 import datetime
 from core.utils import get_media_url
+from .models import Barcode
+from report.models import StockReport
+
+@api_view(['GET', 'POST'])
+def barcode_view(request):
+    if request.method == 'GET':
+        code = request.query_params.get('code')
+        if not code:
+            return JsonResponse({'error': 'code is required'}, status=400)
+        
+        barcode_obj = Barcode.objects.filter(barcode=code).first()
+        if not barcode_obj:
+            return JsonResponse({'basepack': None}, status=404)
+        
+        basepack = barcode_obj.basepack
+        products = StockReport.objects.filter(basepack=basepack).values('stock_id', 'mrp', 'name').distinct()
+        
+        result = []
+        for p in products:
+            result.append({
+                'sku': p['stock_id'],
+                'mrp': p['mrp'],
+                'name': p['name']
+            })
+            
+        return JsonResponse({'products': result, 'basepack': basepack})
+
+    elif request.method == 'POST':
+        code = request.data.get('code')
+        sku = request.data.get('sku')
+        # mrp = request.data.get('mrp') # Not needed as per user request
+        
+        if not all([code, sku]):
+            return JsonResponse({'error': 'code and sku are required'}, status=400)
+            
+        # Find basepack from StockReport
+        # We need to find a record with this sku to get the basepack
+        stock_entry = StockReport.objects.filter(stock_id=sku).first()
+        
+        if not stock_entry:
+             return JsonResponse({'error': 'Product not found in Stock Report to derive basepack'}, status=404)
+        
+        basepack = stock_entry.basepack
+        
+        Barcode.objects.update_or_create(barcode=code, defaults={'basepack': str(basepack)})
+        
+        return JsonResponse({'status': 'success'})
 
 @api_view(['POST'])
 def sales_scan_id(request):
@@ -17,42 +64,46 @@ def sales_scan_id(request):
     company_id = request.data.get('company_id')
     if not bill_no or not company_id:
         return JsonResponse({'error': 'bill_no and company_id are required'}, status=400)
+    if len(bill_no) <= 5 : 
+        return JsonResponse({'error': 'Enter Full Bill Number'}, status=400)
+    if not bill_no[-5:].isdigit():
+        return JsonResponse({'error': 'Invalid Bill Number'}, status=400)
 
-    sales_scan, created = SalesScan.objects.get_or_create(
-        bill_no=bill_no,
-        company_id=company_id,
-    )
+    bill_scan_exists = SalesScan.objects.filter(bill_no=bill_no, company_id=company_id).exists()
+    ikea = Ikea(company_id)
+    bill_data = ikea.retrive_bill(bill_no)
+    if not bill_data or 'billingProductMasterVOList' not in bill_data:
+        return JsonResponse({'error': 'Bill not found in Ikea API, Check Company'}, status=404)
+
+    if not bill_scan_exists:
+        #Validate bill number
+        billDtStr = bill_data["billHdVO"]["billDtStr"]
+        bill_date = datetime.datetime.strptime(billDtStr, '%d/%m/%Y')
+        if bill_date < datetime.datetime.now() - datetime.timedelta(days=10):
+            return JsonResponse({'error': 'Bill is older than 10 days'}, status=404)
+        sales_scan = SalesScan.objects.create(bill_no=bill_no, company_id=company_id)
+    else : 
+        sales_scan = SalesScan.objects.get(bill_no=bill_no, company_id=company_id)
     
     # If new or empty, fetch data from Ikea API
-    #TODO: remove True
-    if created or not sales_scan.bill_products or True:
-        ikea = Ikea(company_id)
-        bill_data = ikea.retrive_bill(bill_no)
-        
-        if not bill_data or 'billingProductMasterVOList' not in bill_data:
-            sales_scan.delete()
-            return JsonResponse({'error': 'Bill not found in Ikea API'}, status=404)
-        products_list = bill_data['billingProductMasterVOList']
-        bill_products = defaultdict(lambda: defaultdict(dict))
-        
-        for item in products_list:
-            sku = item.get('prodCode')
-            mrp = int(item.get('mrp', 0))
-            if not sku: continue
-            existing_sku_mrp_data =  bill_products[sku][mrp]
-            bill_products[sku][mrp] = {
-                'qUnits': int(item.get('qUnits', 0)) + int(existing_sku_mrp_data.get('qUnits', 0)),
-                'qCases': int(item.get('qCase', 0)) + int(existing_sku_mrp_data.get('qCases', 0)),
-                'unitsCase': int(item.get('unitsCase', 1)),
-                'basepack': str(item.get('itemVarCode')),
-                'name': item.get('prodName', '')
-            }
-        
-        sales_scan.bill_products = bill_products
-        sales_scan.save()
-        
+    products_list = bill_data['billingProductMasterVOList']
+    bill_products = defaultdict(lambda: defaultdict(dict))
+    for item in products_list:
+        sku = item.get('prodCode')
+        mrp = int(item.get('mrp', 0))
+        if not sku: continue
+        existing_sku_mrp_data =  bill_products[sku][mrp]
+        bill_products[sku][mrp] = {
+            'qUnits': int(item.get('qUnits', 0)) + int(existing_sku_mrp_data.get('qUnits', 0)),
+            'qCases': int(item.get('qCase', 0)) + int(existing_sku_mrp_data.get('qCases', 0)),
+            'unitsCase': int(item.get('unitsCase', 1)),
+            'basepack': str(item.get('itemVarCode')),
+            'name': item.get('prodName', '')
+        }
+    
+    sales_scan.bill_products = bill_products
+    sales_scan.save()
     return JsonResponse({'id': sales_scan.id})
-
 
 @api_view(['GET', 'POST'])
 def scan_sales_box(request):
@@ -110,7 +161,6 @@ def scan_sales_box(request):
             'current_scanned': current_scanned,
             'others_scanned': others_scanned
         })
-
 
 def generate_sales_scan_pdf(sales_scan, output_path):
     # Reduced margins (20 points = ~0.7cm)

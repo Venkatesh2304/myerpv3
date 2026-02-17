@@ -27,3 +27,11 @@ class SalesScan(CompanyModel):
 
     class Meta:
         unique_together = ('bill_no', 'company_id')
+
+
+class Barcode(models.Model):
+    barcode = models.CharField(max_length=255, primary_key=True)
+    basepack = models.CharField(max_length=255)
+
+    def __str__(self):
+        return f"{self.barcode} - {self.basepack}"

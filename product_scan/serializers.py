@@ -1,23 +1,11 @@
 from rest_framework import serializers
-from .models import SalesScan
+from .models import SalesScan, Barcode
 from collections import defaultdict
 import json
 import os
 from django.conf import settings
 
-# Cache barcodes data
-BARCODES_DATA = None
 CBU_DATA = None
-def get_barcodes_data():
-    global BARCODES_DATA
-    if BARCODES_DATA is None:
-        try:
-            with open(os.path.join(settings.BASE_DIR, 'barcodes.json'), 'r') as f:
-                BARCODES_DATA = json.load(f)
-        except Exception as e:
-            print(f"Error loading barcodes.json: {e}")
-            return {}
-    return BARCODES_DATA
 
 def get_cbu_data():
     global CBU_DATA
@@ -29,13 +17,6 @@ def get_cbu_data():
             print(f"Error loading cbu.json: {e}")
             return {}
     return CBU_DATA
-
-def get_basepack_to_barcodes(barcodes_data):
-    # Invert the map: Basepack -> list of Barcodes
-    bp_to_bc = defaultdict(list)
-    for barcode, basepack in barcodes_data.items():
-        bp_to_bc[str(basepack)].append(barcode)
-    return bp_to_bc
 
 class SalesScanSerializer(serializers.ModelSerializer):
     bill_qty_map = serializers.SerializerMethodField()
@@ -79,13 +60,26 @@ class SalesScanSerializer(serializers.ModelSerializer):
         return box_count
 
     def get_barcode_map(self, obj):
-        barcodes_data = get_barcodes_data()
-        bp_to_bc = get_basepack_to_barcodes(barcodes_data)
+        # Extract all basepacks from the bill
+        basepacks = set()
+        for sku, mrp_data in obj.bill_products.items():
+            for mrp, data in mrp_data.items():
+                if data.get('basepack'):
+                    basepacks.add(str(data.get('basepack')))
+        
+        # Query Barcode model for these basepacks
+        barcodes_qs = Barcode.objects.filter(basepack__in=basepacks)
+        
+        # Create a map: basepack -> list of barcodes
+        bp_to_bc = defaultdict(list)
+        for b in barcodes_qs:
+            bp_to_bc[str(b.basepack)].append(b.barcode)
+
         barcode_map = defaultdict(list)
         
         for sku, mrp_data in obj.bill_products.items():
             for mrp, data in mrp_data.items():
-                basepack = data.get('basepack')
+                basepack = str(data.get('basepack'))
                 barcodes = bp_to_bc.get(basepack, [])
                 for bc in barcodes:
                     if sku not in barcode_map[bc]:
