@@ -116,7 +116,7 @@ def billing(company):
         logger.error(f"Error posting orders: {e}")
 
 def sync_daily():
-    reports = ["party", "beat", "bill_ageing", "outstanding", "salesregister", "collection"]
+    reports = ["party", "beat", "bill_ageing", "closing_stock", "outstanding", "salesregister", "collection"]
     reports_str = ",".join(reports)
     
     for company in COMPANIES:
@@ -209,7 +209,7 @@ def main():
     # Schedule Daily Sync at 23:30
     scheduler.add_job(
         sync_daily,
-        trigger=CronTrigger(hour=0, minute=9,second=0),
+        trigger=CronTrigger(hour=0, minute=15,second=0),
         name="daily_sync"
     )
 

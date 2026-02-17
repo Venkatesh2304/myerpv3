@@ -117,6 +117,7 @@ def sync_reports(request):
     report_handlers = {
         "party": (PartyReport, EmptyArgs()),
         "beat": (BeatReport, EmptyArgs()),
+        "closing_stock": (StockReport, EmptyArgs()),
         "bill_ageing": (BillAgeingReport, EmptyArgs()),
         "outstanding": (OutstandingReport, EmptyArgs()),
         "salesregister": (SalesRegisterReport, DateRangeArgs(fromd=today - datetime.timedelta(days=30), tod=today)),
