@@ -24,14 +24,14 @@ def sales_scan_id(request):
     )
     
     # If new or empty, fetch data from Ikea API
-    if created or not sales_scan.bill_products:
+    #TODO: remove True
+    if created or not sales_scan.bill_products or True:
         ikea = Ikea(company_id)
         bill_data = ikea.retrive_bill(bill_no)
         
         if not bill_data or 'billingProductMasterVOList' not in bill_data:
             sales_scan.delete()
             return JsonResponse({'error': 'Bill not found in Ikea API'}, status=404)
-        print(bill_data)
         products_list = bill_data['billingProductMasterVOList']
         bill_products = defaultdict(lambda: defaultdict(dict))
         
@@ -39,11 +39,11 @@ def sales_scan_id(request):
             sku = item.get('prodCode')
             mrp = int(item.get('mrp', 0))
             if not sku: continue
-            
+            existing_sku_mrp_data =  bill_products[sku][mrp]
             bill_products[sku][mrp] = {
-                'qUnits': item.get('qUnits', 0),
-                'qCases': item.get('qCase', 0),
-                'unitsCase': item.get('unitsCase', 1),
+                'qUnits': int(item.get('qUnits', 0)) + int(existing_sku_mrp_data.get('qUnits', 0)),
+                'qCases': int(item.get('qCase', 0)) + int(existing_sku_mrp_data.get('qCases', 0)),
+                'unitsCase': int(item.get('unitsCase', 1)),
                 'basepack': str(item.get('itemVarCode')),
                 'name': item.get('prodName', '')
             }
