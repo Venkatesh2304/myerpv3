@@ -18,6 +18,9 @@ class SalesScan(CompanyModel):
     
     # Stores logs for each box
     logs = models.JSONField(default=list)
+    
+    # Stores the time when scanned_products was last updated
+    scanned_time = models.DateTimeField(null=True, blank=True)
 
     def update_from_bill_data(self, bill_data):
         from collections import defaultdict
@@ -28,7 +31,8 @@ class SalesScan(CompanyModel):
         
         bill_hd = bill_data.get('billHdVO', {})
         blh_status = bill_hd.get('blhStatus', 0)
-        self.is_posted = (blh_status != 0)
+        eInvBillEditMsg = bill_hd.get('eInvBillEditMsg', '')
+        self.is_posted = (blh_status != 0) or (eInvBillEditMsg != "")
 
         # Extract bill date
         billDtStr = bill_hd.get("billDtStr")
@@ -59,11 +63,6 @@ class SalesScan(CompanyModel):
         self.bill_products = {sku: dict(mrps) for sku, mrps in bill_products.items()}
         self.save()
 
-    @property
-    def scanned_time(self):
-        if self.updated_at:
-            return self.updated_at
-        return None
 
     @property
     def bill_qty_map(self):
@@ -120,10 +119,6 @@ class SalesScan(CompanyModel):
                 all_pairs.add((sku, mrp))
                 
         bill_qty_map = self.bill_qty_map
-        if self.bill_no == "CA02505":
-            print(bill_qty_map)
-            print(scanned_totals)
-            print(all_pairs)
         for sku, mrp in all_pairs:
             mrp_str = str(mrp)
             billed_qty = bill_qty_map.get(sku, {}).get(mrp_str, 0)

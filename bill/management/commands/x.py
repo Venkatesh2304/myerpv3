@@ -30,10 +30,10 @@ from rest_framework.test import force_authenticate
 from rest_framework.test import APIRequestFactory
 
 i = Ikea("lakme_urban")
-SalesRegisterReport.update_db(i,Company.objects.get(name="lakme_urban"),
-                                DateRangeArgs(datetime.date(2026,2,1),datetime.date.today()))
+# SalesRegisterReport.update_db(i,Company.objects.get(name="lakme_urban"),
+#                                 DateRangeArgs(datetime.date(2026,2,1),datetime.date.today()))
 with open("b.json","w+") as f:
-    f.write(json.dumps(i.retrive_bill("CA02505")))
+    f.write(json.dumps(i.retrive_bill("CA02506")))
 exit(0)
 
 df = pd.read_excel("~/Documents/LeverEDGE_41B862_CurrentStock_2026021310205520552055.xlsx")

@@ -133,6 +133,8 @@ def scan_sales_box(request):
             sales_scan.scanned_products.append({})
             sales_scan.logs.append([])
         
+        from django.utils import timezone
+        sales_scan.scanned_time = timezone.now()
         sales_scan.save()
         return JsonResponse({'box_no': len(sales_scan.scanned_products)})
 
