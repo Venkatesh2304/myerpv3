@@ -16,11 +16,24 @@ class Command(BaseCommand):
         with open(file_path, 'r') as f:
             data = json.load(f)
 
-        barcodes_to_create = []
-        for barcode, basepack in data.items():
-            barcodes_to_create.append(Barcode(barcode=barcode, basepack=basepack))
-        
-        # Using ignore_conflicts=True to avoid errors if run multiple times
-        Barcode.objects.bulk_create(barcodes_to_create, ignore_conflicts=True)
+        created_count = 0
+        updated_count = 0
+        skipped_count = 0
 
-        self.stdout.write(self.style.SUCCESS(f'Successfully loaded {len(barcodes_to_create)} barcodes.'))
+        for barcode_val, basepack_val in data.items():
+            barcode_obj, created = Barcode.objects.get_or_create(
+                barcode=barcode_val,
+                defaults={'basepack': str(basepack_val), 'manual': False}
+            )
+            if created:
+                created_count += 1
+            else:
+                if not barcode_obj.manual:
+                    if barcode_obj.basepack != str(basepack_val):
+                        barcode_obj.basepack = str(basepack_val)
+                        barcode_obj.save()
+                        updated_count += 1
+                else:
+                    skipped_count += 1
+
+        self.stdout.write(self.style.SUCCESS(f'Successfully processed barcodes. Created: {created_count}, Updated: {updated_count}, Skipped (Manual): {skipped_count}'))

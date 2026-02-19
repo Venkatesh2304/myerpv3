@@ -12,6 +12,7 @@ import datetime
 from core.utils import get_media_url
 from .models import Barcode
 from report.models import StockReport
+import time
 
 @api_view(['GET', 'POST'])
 def barcode_view(request):
@@ -54,7 +55,7 @@ def barcode_view(request):
         
         basepack = stock_entry.basepack
         
-        Barcode.objects.update_or_create(barcode=code, defaults={'basepack': str(basepack)})
+        Barcode.objects.update_or_create(barcode=code, defaults={'basepack': str(basepack), 'manual': True})
         
         return JsonResponse({'status': 'success'})
 
@@ -69,40 +70,25 @@ def sales_scan_id(request):
     if not bill_no[-5:].isdigit():
         return JsonResponse({'error': 'Invalid Bill Number'}, status=400)
 
-    bill_scan_exists = SalesScan.objects.filter(bill_no=bill_no, company_id=company_id).exists()
+    sales_scan = SalesScan.objects.filter(bill_no=bill_no, company_id=company_id).first()
+    
+    if sales_scan and sales_scan.is_posted:
+        return JsonResponse({'id': sales_scan.id})
+
     ikea = Ikea(company_id)
     bill_data = ikea.retrive_bill(bill_no)
     if not bill_data or 'billingProductMasterVOList' not in bill_data:
         return JsonResponse({'error': 'Bill not found in Ikea API, Check Company'}, status=404)
 
-    if not bill_scan_exists:
+    if not sales_scan:
         #Validate bill number
         billDtStr = bill_data["billHdVO"]["billDtStr"]
         bill_date = datetime.datetime.strptime(billDtStr, '%d/%m/%Y')
         if bill_date < datetime.datetime.now() - datetime.timedelta(days=10):
             return JsonResponse({'error': 'Bill is older than 10 days'}, status=404)
         sales_scan = SalesScan.objects.create(bill_no=bill_no, company_id=company_id)
-    else : 
-        sales_scan = SalesScan.objects.get(bill_no=bill_no, company_id=company_id)
     
-    # If new or empty, fetch data from Ikea API
-    products_list = bill_data['billingProductMasterVOList']
-    bill_products = defaultdict(lambda: defaultdict(dict))
-    for item in products_list:
-        sku = item.get('prodCode')
-        mrp = int(item.get('mrp', 0))
-        if not sku: continue
-        existing_sku_mrp_data =  bill_products[sku][mrp]
-        bill_products[sku][mrp] = {
-            'qUnits': int(item.get('qUnits', 0)) + int(existing_sku_mrp_data.get('qUnits', 0)),
-            'qCases': int(item.get('qCase', 0)) + int(existing_sku_mrp_data.get('qCases', 0)),
-            'unitsCase': int(item.get('unitsCase', 1)),
-            'basepack': str(item.get('itemVarCode')),
-            'name': item.get('prodName', '')
-        }
-    
-    sales_scan.bill_products = bill_products
-    sales_scan.save()
+    sales_scan.update_from_bill_data(bill_data)
     return JsonResponse({'id': sales_scan.id})
 
 @api_view(['GET', 'POST'])
@@ -124,16 +110,28 @@ def scan_sales_box(request):
     if request.method == 'POST':
         box_no = int(request.data.get('box_no')) - 1
         scanned = request.data.get('scanned', {})
+        logs = request.data.get('logs', [])
+        
         if not sales_scan.scanned_products:
-             sales_scan.scanned_products.append({})
+             sales_scan.scanned_products = []
+        
+        if not sales_scan.logs:
+             sales_scan.logs = []
              
-        if box_no < len(sales_scan.scanned_products):
-             sales_scan.scanned_products[box_no] = scanned
-        else:
-             raise ValueError("Box number out of bounds")
-
-        if len(sales_scan.scanned_products[-1]) > 0:
+        # Initialize up to current box
+        while len(sales_scan.scanned_products) <= box_no:
             sales_scan.scanned_products.append({})
+        
+        while len(sales_scan.logs) <= box_no:
+            sales_scan.logs.append([])
+
+        sales_scan.scanned_products[box_no] = scanned
+        sales_scan.logs[box_no] = logs
+
+        # Add empty box if last box has content
+        if len(sales_scan.scanned_products) > 0 and len(sales_scan.scanned_products[-1]) > 0:
+            sales_scan.scanned_products.append({})
+            sales_scan.logs.append([])
         
         sales_scan.save()
         return JsonResponse({'box_no': len(sales_scan.scanned_products)})
@@ -167,7 +165,7 @@ def generate_sales_scan_pdf(sales_scan, output_path):
     doc = SimpleDocTemplate(output_path, pagesize=letter, topMargin=20, bottomMargin=20, leftMargin=20, rightMargin=20)
     elements = []
     
-    sku_name_map = sales_scan.get_sku_name_map()
+    sku_name_map = sales_scan.sku_name_map
     
     # 0. Header (Bill No & Time)
     from reportlab.platypus import Paragraph
@@ -187,28 +185,43 @@ def generate_sales_scan_pdf(sales_scan, output_path):
     elements.append(Spacer(1, 4)) # Reduced gap
     
     # 1. Box Summary Table (Total pieces per box)
-    summary_data = [["Box Number", "Total Pieces"]]
+    summary_data = [["Box Number", "Cases", "Pcs"]]
     box_totals = []
     
     # Detailed data for the second table
-    detailed_data = [["Box", "Product Name", "MRP", "Qty"]]
+    detailed_data = [["Box", "Product Name", "MRP", "Cases", "Pcs"]]
     
+    bill_products = sales_scan.bill_products
+
     for box_idx, box_data in enumerate(sales_scan.scanned_products):
         box_num = box_idx + 1
-        box_total_qty = 0
+        box_total_cases = 0
+        box_total_pcs = 0
         box_has_content = False
         
         for sku, mrp_data in box_data.items():
             for mrp, qty in mrp_data.items():
                 if qty > 0:
-                    box_total_qty += qty
+                    # Get unitsCase from bill_products
+                    mrp_str = str(mrp)
+                    mrp_entry = bill_products.get(sku, {}).get(mrp_str, {})
+                    units_per_case = mrp_entry.get('unitsCase', 1)
+                    if not units_per_case or units_per_case == 0:
+                        units_per_case = 1
+                    
+                    cases = qty // units_per_case
+                    pcs = qty % units_per_case
+
+                    box_total_cases += cases
+                    box_total_pcs += pcs
+
                     product_name = sku_name_map.get(sku, sku)
-                    detailed_data.append([str(box_num), str(product_name), str(mrp), str(qty)])
+                    detailed_data.append([str(box_num), str(product_name), str(mrp), str(cases), str(pcs)])
                     box_has_content = True
         
         if box_has_content:
-            summary_data.append([str(box_num), str(box_total_qty)])
-            box_totals.append(box_total_qty)
+            summary_data.append([str(box_num), str(box_total_cases), str(box_total_pcs)])
+            box_totals.append(box_total_cases + box_total_pcs)
 
     # Styling for B&W Printer (No backgrounds, simple borders, minimal padding)
     bw_style = TableStyle([
@@ -226,7 +239,7 @@ def generate_sales_scan_pdf(sales_scan, output_path):
         from reportlab.lib.styles import getSampleStyleSheet
         styles = getSampleStyleSheet()
         
-        summary_table = Table(summary_data, colWidths=[100, 100])
+        summary_table = Table(summary_data, colWidths=[100, 100, 100])
         summary_table.setStyle(bw_style)
         elements.append(summary_table)
         elements.append(Spacer(1, 8)) # Reduced gap
@@ -279,50 +292,4 @@ def sales_scan_mismatch(request):
     except SalesScan.DoesNotExist:
         return JsonResponse({'error': 'Scan not found'}, status=404)
 
-    # 1. Calculate Scanned Totals
-    scanned_totals = defaultdict(lambda: defaultdict(int))
-    for box_data in sales_scan.scanned_products:
-        for sku, mrp_data in box_data.items():
-            for mrp, qty in mrp_data.items():
-                scanned_totals[sku][mrp] += qty
-
-    # 2. Calculate Billed Totals & Compare
-    mismatches = []
-    
-    # Get SKU Name Map
-    sku_name_map = sales_scan.get_sku_name_map()
-    
-    # We need to iterate over both billed and scanned to catch all differences
-    # Set of all (sku, mrp) pairs
-    all_pairs = set()
-    
-    # Add from bill_products
-    for sku, mrp_data in sales_scan.bill_products.items():
-        for mrp in mrp_data.keys():
-            all_pairs.add((sku, mrp))
-            
-    # Add from scanned_totals (in case of extra items scanned)
-    for sku, mrp_data in scanned_totals.items():
-        for mrp in mrp_data.keys():
-            all_pairs.add((sku, mrp))
-            
-    for sku, mrp in all_pairs:
-        # Get Billed Qty
-        billed_qty = 0
-        if sku in sales_scan.bill_products and mrp in sales_scan.bill_products[sku]:
-            item = sales_scan.bill_products[sku][mrp]
-            billed_qty = (item.get('qCases', 0) * item.get('unitsCase', 1)) + item.get('qUnits', 0)
-            
-        # Get Scanned Qty
-        scanned_qty = scanned_totals[sku][mrp]
-        
-        if billed_qty != scanned_qty:
-            mismatches.append({
-                'sku': sku,
-                'name': sku_name_map.get(sku, sku),
-                'mrp': mrp,
-                'billed': billed_qty,
-                'scanned': scanned_qty
-            })
-            
-    return JsonResponse({'mismatches': mismatches})
+    return JsonResponse({'mismatches': sales_scan.mismatches})
