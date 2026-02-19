@@ -120,7 +120,10 @@ class SalesScan(CompanyModel):
                 all_pairs.add((sku, mrp))
                 
         bill_qty_map = self.bill_qty_map
-        
+        if self.bill_no == "CA02505":
+            print(bill_qty_map)
+            print(scanned_totals)
+            print(all_pairs)
         for sku, mrp in all_pairs:
             mrp_str = str(mrp)
             billed_qty = bill_qty_map.get(sku, {}).get(mrp_str, 0)

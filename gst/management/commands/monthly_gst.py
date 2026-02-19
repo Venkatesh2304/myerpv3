@@ -29,7 +29,7 @@ args_dict = {
 
 for company in companies :
     print(f"Processing GST for Company: {company.name} for Period: {period}")
-    i = Ikea(company.pk)
+    i = Ikea(company.pk)    
     GstFilingImport.run(company=company,args_dict=args_dict)
     qs = models.Sales.objects.filter(type__in = company.gst_types,date__gte = fromd,date__lte = tod)
     if company.name in GST_PERIOD_FILTER :

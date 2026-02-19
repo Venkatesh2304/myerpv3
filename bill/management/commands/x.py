@@ -1,3 +1,4 @@
+from collections import defaultdict
 from custom.classes import Einvoice
 from bill_scan.eway import eway_df_to_json
 import time
@@ -28,8 +29,33 @@ from django.utils.dateparse import parse_datetime
 from rest_framework.test import force_authenticate
 from rest_framework.test import APIRequestFactory
 
+i = Ikea("lakme_urban")
+SalesRegisterReport.update_db(i,Company.objects.get(name="lakme_urban"),
+                                DateRangeArgs(datetime.date(2026,2,1),datetime.date.today()))
+with open("b.json","w+") as f:
+    f.write(json.dumps(i.retrive_bill("CA02505")))
+exit(0)
 
-i = Billing("lakme_rural")
+df = pd.read_excel("~/Documents/LeverEDGE_41B862_CurrentStock_2026021310205520552055.xlsx")
+
+# df = pd.read_excel("~/Documents/LeverEDGE_41B864_CurrentStock_2026021706515051505150.xlsx")
+# barcode_to_basepack = json.load(open("barcodes.json"))
+# basepack_to_barcode = defaultdict(list)
+# for barcode,basepack in barcode_to_basepack.items() : 
+#     basepack_to_barcode[basepack].append(barcode)
+
+# Using Barcode model
+from product_scan.models import Barcode
+basepack_to_barcode = defaultdict(list)
+# Loading all might be okay for a script, or iterate
+for b in Barcode.objects.all():
+    basepack_to_barcode[str(b.basepack)].append(b.barcode)
+
+df["BarCode"] = df["Basepack Code"].apply(lambda x : ",".join(basepack_to_barcode[str(x).split(".")[0]]))
+df.to_excel("b.xlsx")
+exit(0)
+# i = Billing("lakme_rural")
+# i.stock_master()
 # i.beat_export()
 # exit(0)
 
