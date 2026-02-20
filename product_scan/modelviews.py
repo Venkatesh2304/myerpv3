@@ -2,6 +2,9 @@ from rest_framework import viewsets
 from rest_framework.response import Response
 from .models import SalesScan
 from .serializers import SalesScanSummarySerializer, SalesScanDetailSerializer
+from django_filters import rest_framework as filters
+from django_filters.rest_framework import DjangoFilterBackend
+from django.db.models import Q
 from custom.classes import Ikea
 from bill.modelviews import Pagination
 from django.core.cache import cache
@@ -11,9 +14,35 @@ import time
 from report.models import SalesRegisterReport, DateRangeArgs
 from collections import defaultdict
 
+class SalesScanFilter(filters.FilterSet):
+    scan_type = filters.CharFilter(method='filter_scan_type')
+
+    class Meta:
+        model = SalesScan
+        fields = {
+            'bill_date': ['exact', 'gte', 'lte'],
+        }
+
+    def filter_scan_type(self, queryset, name, value):
+        if value == 'scanned':
+            return queryset.exclude(
+                Q(scanned_products=[]) | 
+                Q(scanned_products=[{}]) | 
+                Q(scanned_products__isnull=True)
+            )
+        elif value == 'not_scanned':
+            return queryset.filter(
+                Q(scanned_products=[]) | 
+                Q(scanned_products=[{}]) | 
+                Q(scanned_products__isnull=True)
+            )
+        return queryset
+
 class SalesScanViewSet(viewsets.ModelViewSet):
     queryset = SalesScan.objects.all().order_by('-created_at')
     pagination_class = Pagination
+    filter_backends = [DjangoFilterBackend]
+    filterset_class = SalesScanFilter
 
     def get_serializer_class(self):
         if self.action == 'list':

@@ -1,3 +1,4 @@
+from printing.printers import PickingLoadingSheetPrinter,LoadingSheetPrinter
 from collections import defaultdict
 from custom.classes import Einvoice
 from bill_scan.eway import eway_df_to_json
@@ -28,12 +29,27 @@ import datetime
 from django.utils.dateparse import parse_datetime
 from rest_framework.test import force_authenticate
 from rest_framework.test import APIRequestFactory
+from custom.classes import get_curl
 
-i = Ikea("lakme_urban")
+
+i = Billing("lakme_urban")
+
+exit(0)
+
+
+
+
+# PickingLoadingSheetPrinter("").generate(["CA02506","CA02507","CA02508","CA02499","CA02501"],{},i)
+# exit(0)
+
 # SalesRegisterReport.update_db(i,Company.objects.get(name="lakme_urban"),
 #                                 DateRangeArgs(datetime.date(2026,2,1),datetime.date.today()))
+# x,y=i.loading_sheet(["CA02506"])
+# x.to_excel("a.xlsx")
+# exit(0)
+
 with open("b.json","w+") as f:
-    f.write(json.dumps(i.retrive_bill("CA02506")))
+    f.write(json.dumps(i.retrive_bill("CA02540")))
 exit(0)
 
 df = pd.read_excel("~/Documents/LeverEDGE_41B862_CurrentStock_2026021310205520552055.xlsx")

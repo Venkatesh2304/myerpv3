@@ -126,10 +126,9 @@ class IkeaReports(BaseIkea):
             r.data['jsonObjWhereClause'] = curl_replace(pat, replaces, r.data['jsonObjWhereClause'])
             if "jsonObjforheaders" in r.data: del r.data['jsonObjforheaders']
         print(r.data)
-        durl = r.send(self).text    
+        durl = r.send(self).text 
         if not durl:
-            raise ReportFetchError(f"Failed to generate report for key: {key}")
-        
+            raise ReportFetchError(f"Failed to generate report for key: {key}")        
         return self.fetch_durl_content(durl)
 
     def fetch_report_dataframe(self, key: str, pat: str = "", replaces: tuple = tuple(), **kwargs) -> pd.DataFrame:
@@ -361,6 +360,7 @@ class Ikea(IkeaReports):
     def retrive_bill(self,bill_no):
         self.post("/rsunify/app/ikeaCommonUtilController/removeScreenNameFromSession",data={"screenName":"Manual Billing"})
         data = self.get("/rsunify/app/billing/retrievebill",params={"billRef":bill_no}).json()
+        print(data)
         if data.get("billHdVO") is None : return None
         sal_id = data["billHdVO"]["blhDsrId"]
         self.get("/rsunify/app/billing/deletemutable",params={"salesmanId":sal_id})
@@ -698,14 +698,28 @@ class Billing(Ikea) :
     def get_bill_durl(self,billfrom,billto,report_type,**kwargs) :
         return self.get(f"/rsunify/app/commonPdfRptContrl/pdfRptGeneration?strJsonParams=%7B%22billFrom%22%3A%22{billfrom}%22%2C%22billTo%22%3A%22{billto}%22%2C%22reportType%22%3A%22{report_type}%22%2C%22blhVatFlag%22%3A2%2C%22shade%22%3A1%2C%22pack%22%3A%22910%22%2C%22damages%22%3Anull%2C%22halfPage%22%3A0%2C%22bp_division%22%3A%22%22%2C%22salesMan%22%3A%22%22%2C%22party%22%3A%22%22%2C%22market%22%3A%22%22%2C%22planset%22%3A%22%22%2C%22fromDate%22%3A%22%22%2C%22toDate%22%3A%22%22%2C%22veh_Name%22%3A%22%22%2C%22printId%22%3A0%2C%22printerName%22%3A%22TVS+MSP+250+Star%22%2C%22Lable_position%22%3A2%2C%22billType%22%3A2%2C%22printOption%22%3A%220%22%2C%22RptClassName%22%3A%22BILL_PRINT_REPORT%22%2C%22reptName%22%3A%22billPrint%22%2C%22RptId%22%3A%22910%22%2C%22freeProduct%22%3A%22Default%22%2C%22shikharQrCode%22%3Anull%2C%22rptTypOpt%22%3A%22pdf%22%2C%22gstTypeVal%22%3A%221%22%2C%22billPrint_isPrint%22%3A0%2C%22units_only%22%3A%22Y%22%7D",**kwargs).text
 
-    def fetch_bill_pdfs(self, bills: list[str],ignore_checks = False) -> BytesIO:
+    def get_bill_new_pdf(self,billfrom,billto):
+        r = get_curl("ikea/bill_pdf")
+        r.json["payload"]["billFrom"] = billfrom
+        r.json["payload"]["billTo"] = billto
+        r.json["payload"]["bill_from"] = billfrom
+        r.json["payload"]["bill_to"] = billto
+        fileName = r.send(self).json()["payload"]
+        print(fileName)
+        return BytesIO(self.get("/rsunify/app/visualizer/rf/report/stream",params={"FILE":fileName}).content)
+
+    def get_bill_old_pdf(self,billfrom,billto):
+        return self.fetch_durl_content( self.get_bill_durl(billfrom,billto,"pdf") )
+    
+    def fetch_bill_pdfs(self, bills: list[str],ignore_checks = False,old_pdf = True) -> BytesIO:
         pdfs = []
+        self.get_bill_pdf = self.get_bill_old_pdf if old_pdf else self.get_bill_new_pdf
         self.logger.info(f"Fetching bill PDFs for {len(bills)} bills")
         for group in self.__group_consecutive_bills(bills):
              self.logger.debug(f"Fetching PDF for group: {group[0]} to {group[-1]}")
-             pdf1 = self.fetch_durl_content( self.get_bill_durl(group[0],group[-1],"pdf"))
+             pdf1 = self.get_bill_pdf(group[0],group[-1])
              if not ignore_checks :
-                pdf2 = self.fetch_durl_content( self.get_bill_durl(group[0],group[min(1,len(group)-1)],"pdf"))
+                pdf2 = self.get_bill_pdf(group[0],group[min(1,len(group)-1)])
                 #PDF2 has only one bill and verifies if the pages of pdf2 and pdf1 are same (pdf2 is a subset of pdf1)
                 
                 reader1 = PdfReader(pdf1).pages

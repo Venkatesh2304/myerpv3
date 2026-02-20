@@ -10,10 +10,8 @@ from typing import Dict, List, Any
 from PyPDF2 import PdfMerger
 from django.conf import settings
 from core.utils import get_media_url
-
-
 from bill.models import Bill, SalesmanLoadingSheet
-from .printers import FirstCopyPrinter, SecondCopyPrinter, LoadingSheetPrinter, SalesmanLoadingSheetPrinter, PrintContext, PrintType, Printer
+from .printers import FirstCopyPrinter, FirstCopyPrinterNew, SecondCopyPrinter, LoadingSheetPrinter, SalesmanLoadingSheetPrinter, PickingLoadingSheetPrinter, PrintContext, PrintType, Printer
 from .lib.pdf import LoadingSheetPDF, PendingSheetPDF, PDFEditor
 from .lib.aztec import AztecCodeGenerator
 from .lib.secondary_bills import SecondaryBillGenerator
@@ -34,9 +32,11 @@ class BillPrintingService:
         # Initialize Printers
         self.printers: Dict[PrintType, Printer] = {
             PrintType.FIRST_COPY: FirstCopyPrinter(self.files_dir),
+            PrintType.FIRST_COPY_NEW: FirstCopyPrinterNew(self.files_dir),
             PrintType.SECOND_COPY: SecondCopyPrinter(self.files_dir),
             PrintType.LOADING_SHEET: LoadingSheetPrinter(self.files_dir),
             PrintType.LOADING_SHEET_SALESMAN: SalesmanLoadingSheetPrinter(self.files_dir),
+            PrintType.PICKING_LOADING_SHEET: PickingLoadingSheetPrinter(self.files_dir),
         }
 
     def print_bills(self, data: Dict[str, Any]) -> Dict[str, Any]:
@@ -50,7 +50,7 @@ class BillPrintingService:
         qs = Bill.objects.filter(company=self.company, bill_id__in=bills)
 
         # Remove already printed, if not loading sheet
-        if full_print_type in ["both_copy", "first_copy", "double_first_copy", "loading_sheet_salesman", "reload_bill"]:
+        if full_print_type in ["both_copy", "first_copy", "first_copy_new", "double_first_copy", "loading_sheet_salesman", "reload_bill"]:
             loading_sheets = list(qs.values_list("loading_sheet_id", flat=True).distinct())
             with transaction.atomic() :
                 for bill in qs.filter(print_time__isnull = False) : 
@@ -93,10 +93,12 @@ class BillPrintingService:
         print_types_map = {
             "both_copy": [PrintType.FIRST_COPY, PrintType.SECOND_COPY],
             "first_copy": [PrintType.FIRST_COPY],
+            "first_copy_new": [PrintType.FIRST_COPY_NEW],
             "double_first_copy": [PrintType.FIRST_COPY],
             "second_copy": [PrintType.SECOND_COPY],
             "loading_sheet": [PrintType.LOADING_SHEET],
-            "loading_sheet_salesman": [PrintType.LOADING_SHEET_SALESMAN]
+            "loading_sheet_salesman": [PrintType.LOADING_SHEET_SALESMAN],
+            "picking_sheet": [PrintType.PICKING_LOADING_SHEET]
         }
         
         if full_print_type not in print_types_map:
@@ -123,10 +125,12 @@ class BillPrintingService:
         print_files_map = {
             "both_copy": [ (PrintType.SECOND_COPY, 0), (PrintType.FIRST_COPY, 0) ], # secondary_bill.docx, bill.pdf
             "first_copy": [ (PrintType.FIRST_COPY, 0) ],
+            "first_copy_new": [ (PrintType.FIRST_COPY_NEW, 0) ],
             "double_first_copy": [ (PrintType.FIRST_COPY, 0), (PrintType.FIRST_COPY, 0) ],
             "second_copy": [ (PrintType.SECOND_COPY, 0) ],
             "loading_sheet": [ (PrintType.LOADING_SHEET, 0) ],
-            "loading_sheet_salesman": [ (PrintType.LOADING_SHEET_SALESMAN, 0), (PrintType.LOADING_SHEET_SALESMAN, 0) ]
+            "loading_sheet_salesman": [ (PrintType.LOADING_SHEET_SALESMAN, 0), (PrintType.LOADING_SHEET_SALESMAN, 0) ],
+            "picking_sheet": [ (PrintType.PICKING_LOADING_SHEET, 0) ]
         }
         
         if full_print_type not in print_files_map:

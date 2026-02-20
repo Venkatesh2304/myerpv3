@@ -1,5 +1,6 @@
 from printing.lib.secondary_bills import SecondaryBillGeneratorWeasy
 import os
+import pandas as pd
 import datetime
 from typing import List, Dict, Optional, TYPE_CHECKING
 from abc import ABC, abstractmethod
@@ -7,7 +8,7 @@ from dataclasses import dataclass
 from enum import Enum
 from core.models import Company
 from bill.models import Bill, SalesmanLoadingSheet
-from .lib.pdf import LoadingSheetPDF, LoadingSheetType, PDFEditor
+from .lib.pdf import LoadingSheetPDF, LoadingSheetType, PDFEditor, PickingLoadingSheetPDF
 from custom.classes import Billing
 
 from .lib.aztec import AztecCodeGenerator
@@ -15,10 +16,12 @@ from .lib.secondary_bills import SecondaryBillGenerator
 
 class PrintType(Enum):
     FIRST_COPY = "first_copy"
+    FIRST_COPY_NEW = "first_copy_new"
     DOUBLE_FIRST_COPY = "double_first_copy"
     SECOND_COPY = "second_copy"
     LOADING_SHEET = "loading_sheet"
     LOADING_SHEET_SALESMAN = "loading_sheet_salesman"
+    PICKING_LOADING_SHEET = "picking_loading_sheet"
 
 @dataclass
 class PrintContext:
@@ -44,7 +47,10 @@ class Printer(ABC):
         """
         pass
 
-class FirstCopyPrinter(Printer):
+class BaseFirstCopyPrinter(Printer):
+    old_pdf = True
+    print_type = PrintType.FIRST_COPY
+
     def __init__(self, files_dir: str):
         self.files_dir = files_dir
         self.pdf_editor = PDFEditor()
@@ -52,7 +58,7 @@ class FirstCopyPrinter(Printer):
 
     def generate(self, bills: List[str], context: PrintContext, billing: Billing) -> List[str]:
         # Download PDF
-        pdf_bytes = billing.fetch_bill_pdfs(bills=bills)
+        pdf_bytes = billing.fetch_bill_pdfs(bills=bills, old_pdf=self.old_pdf)
         
         bill_pdf_path = os.path.join(self.files_dir, "bill.pdf")
         
@@ -67,11 +73,19 @@ class FirstCopyPrinter(Printer):
         
         # Update DB
         Bill.objects.filter(company=context.company, bill_id__in=bills).update(
-            print_type=PrintType.FIRST_COPY.value, 
+            print_type=self.print_type.value, 
             print_time=datetime.datetime.now()
         )
         
         return [bill_pdf_path]
+
+class FirstCopyPrinter(BaseFirstCopyPrinter):
+    old_pdf = True
+    print_type = PrintType.FIRST_COPY
+
+class FirstCopyPrinterNew(BaseFirstCopyPrinter):
+    old_pdf = False
+    print_type = PrintType.FIRST_COPY_NEW
 
 class SecondCopyPrinter(Printer):
     def __init__(self, files_dir: str):
@@ -164,5 +178,55 @@ class SalesmanLoadingSheetPrinter(Printer):
             print_time=datetime.datetime.now(), 
             loading_sheet_id=loading_sheet.inum
         )
+        
+        return [output_path]
+
+class PickingLoadingSheetPrinter(Printer):
+    def __init__(self, files_dir: str):
+        self.files_dir = files_dir
+        self.picking_pdf = PickingLoadingSheetPDF()
+
+    def generate(self, bills: List[str], context: PrintContext, billing: Billing) -> List[str]:
+        data_list = []
+        for bill_no in bills:
+            try:
+                # Use retrieve_bill instead of loading_sheet
+                bill_data = billing.retrive_bill(bill_no)
+                if not bill_data:
+                    continue
+                
+                party_name = bill_data.get("partyInfoVO", {}).get("partyName", "N/A")
+                products = bill_data.get("billingProductMasterVOList", []) or []
+                
+                if not products:
+                    continue
+                    
+                # Convert to DataFrame
+                df = pd.DataFrame(products)
+                
+                # Standardize columns for PickingLoadingSheetPDF
+                df = df.rename(columns={
+                    "prodName": "Product Name",
+                    "mrp": "MRP",
+                    "qCase": "Case",
+                    "qUnits": "Units"
+                })
+                
+                data_list.append({
+                    "bill_no": bill_no,
+                    "party_name": party_name,
+                    "df": df
+                })
+            except Exception as e:
+                print(f"Error retrieving bill {bill_no}: {e}")
+                continue
+
+        if not data_list:
+            raise Exception("No data found for the selected bills")
+
+        buffer = self.picking_pdf.generate(data_list)
+        output_path = os.path.join(self.files_dir, "picking_loading_sheet.pdf")
+        with open(output_path, "wb") as f:
+            f.write(buffer.getvalue())
         
         return [output_path]

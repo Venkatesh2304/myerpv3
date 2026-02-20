@@ -4,11 +4,12 @@ from typing import Tuple, Dict, Any, List
 from enum import Enum
 import datetime
 import os
-from reportlab.lib import colors
-from reportlab.lib.pagesizes import A4
-from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Spacer
 from io import BytesIO
 import pymupdf
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import A4
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Spacer, Paragraph, PageBreak
+from reportlab.lib.styles import getSampleStyleSheet
 
 class LoadingSheetType(Enum):
     Salesman = "Salesman"
@@ -135,16 +136,105 @@ class LoadingSheetPDF(BaseTablePDF):
         self.output(output_path)
         return output_path
 
+class PickingLoadingSheetPDF:
+    def generate(self, data_list: List[Dict[str, Any]]) -> BytesIO:
+        buffer = BytesIO()
+        doc = SimpleDocTemplate(buffer, pagesize=A4, leftMargin=30, rightMargin=30, topMargin=30, bottomMargin=30)
+        elements: List[Any] = []
+        styles = getSampleStyleSheet()
+        
+        # 1. Prepare and filter data
+        processed_data = []
+        for record in data_list:
+            df_source = record.get("df")
+            if df_source is None: continue
+            df = df_source.copy()
+            # 1. Clean and Prepare Data
+            # Sort by MRP
+            df["mrp_num"] = pd.to_numeric(df["MRP"], errors='coerce').fillna(0)
+            df = df.sort_values("mrp_num")
+            df["MRP"] = df["mrp_num"].astype(int).astype(str)
+            
+            # Ensure Case and Units are clean strings (remove .0 if present)
+            def clean_qty(val):
+                s = str(val).split(".")[0]
+                return s if s not in ["nan", "0"] else ""
+
+            df["Case"] = df["Case"].apply(clean_qty)
+            df["Units"] = df["Units"].astype(str).str.split(".").str[0].replace("0", "")
+            
+            df["S.No"] = range(1, len(df) + 1)
+            
+            processed_data.append({
+                "bill_no": record.get("bill_no", ""),
+                "party_name": record.get("party_name", ""),
+                "df": df,
+                "rows": len(df)
+            })
+
+        # 2. Page Packing Optimization (Max 2 bills per page, total rows < 30)
+        # We sort by row count to pack efficiently
+        processed_data.sort(key=lambda x: x["rows"], reverse=True)
+        pages = []
+        while processed_data:
+            current_bill = processed_data.pop(0)
+            page_bills = [current_bill]
+            
+            # Find a partner bill
+            for i in range(len(processed_data)-1, -1, -1):
+                if current_bill["rows"] + processed_data[i]["rows"] < 28: # Using 28 as safe limit for headers/spacers
+                    page_bills.append(processed_data.pop(i))
+                    break # Max 2 bills
+            
+            pages.append(page_bills)
+
+        # 3. Build Elements
+        for i, page_bills in enumerate(pages):
+            for j, bill in enumerate(page_bills):
+                bill_no = bill["bill_no"]
+                party_name = bill["party_name"]
+                df = bill["df"]
+                
+                header_text = f"Bill No: <b>{bill_no}</b>    |    Party: {party_name}"
+                elements.append(Paragraph(header_text, styles['Normal']))
+                elements.append(Spacer(1, 10))
+                
+                cols_to_print = ["S.No", "Product Name", "MRP", "Case", "Units"]
+                data = [cols_to_print] + df[cols_to_print].values.tolist()
+                
+                table = Table(data, repeatRows=1, colWidths=[30, 250, 60, 50, 50])
+                table.setStyle(TableStyle([
+                    ('BACKGROUND', (0, 0), (-1, 0), colors.white),
+                    ('TEXTCOLOR', (0, 0), (-1, 0), colors.black),
+                    ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+                    ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                    ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                    ('GRID', (0, 0), (-1, -1), 1, colors.black),
+                    ('FONTSIZE', (0, 0), (-1, -1), 9),
+                ]))
+                elements.append(table)
+                
+                if j < len(page_bills) - 1:
+                    elements.append(Spacer(1, 40)) # Space between bills on same page
+            
+            if i < len(pages) - 1:
+                elements.append(PageBreak())
+        
+        doc.build(elements)
+        buffer.seek(0)
+        return buffer
+
 class PendingSheetPDF:
     def generate(self, df: pd.DataFrame, sheet_no: str, salesman: str, beat: str, date: datetime.date) -> BytesIO:
-        bytesio = BytesIO()
+        buffer = BytesIO()
         # Define the PDF document with specified margins
-        pdf = SimpleDocTemplate(bytesio, pagesize=A4, leftMargin=30, rightMargin=30, topMargin=10, bottomMargin=10)
+        doc = SimpleDocTemplate(buffer, pagesize=A4, leftMargin=30, rightMargin=30, topMargin=10, bottomMargin=10)
         
         # Calculate the width of the page and the columns
         width, height = A4
         total_width = width - 60  # Subtract margins
 
+        elements: List[Any] = []
         header_data = [[sheet_no, salesman], [beat, date.strftime("%d-%b-%Y")]]
         header_table = Table(header_data, colWidths=[total_width * 0.5, total_width * 0.5])
         header_table.setStyle(TableStyle([
@@ -159,19 +249,20 @@ class PendingSheetPDF:
         
         df = df.rename(columns={"Bill Net Amt": "Bill", "Collected Amount": "Coll", "OutstANDing Amount": "Outstanding", "Bill Ageing (In Days)": "Days", "Sr No": " "})
         if "Date" in df.columns:
-            df["Date"] = pd.to_datetime(df["Date"]).dt.strftime("%d/%m/%Y")
+            df["Date_fmt"] = pd.to_datetime(df["Date"], errors='coerce').dt.strftime("%d/%m/%Y").fillna("")
             
         for col in ["Coll", "Outstanding", "Bill"]:
             if col in df.columns:
-                df[col] = df[col].astype(str).str.split(".").str[0]
+                df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0).astype(int).astype(str)
                 
         data = []
         for _, row in df.iterrows():
             days = str(row.get("Days", "")).split(".")[0]
-            party_name = row.get("Party Name", "")
-            salesperson = row.get("Salesperson Name", "")
+            party_name = str(row.get("Party Name", ""))
+            salesperson = str(row.get("Salesperson Name", ""))
+            date_val = str(row.get("Date_fmt", "")) if "Date_fmt" in df.columns else ""
             
-            data.append([party_name.split("-")[0][:27], row.get("Date", ""), salesperson[:12], days, " ", " "])
+            data.append([party_name.split("-")[0][:27], date_val, salesperson[:12], days, " ", " "])
             data.append([str(row.get("Bill No", "")) + " " * 9 + days + " days", row.get("Bill", ""), row.get("Coll", ""), row.get("Outstanding", ""), " ", " "])
 
         # Create the table and specify column widths
@@ -216,10 +307,10 @@ class PendingSheetPDF:
         combined_table = [[c, d1, d2]]
         combined_table = Table(combined_table)
 
-        elements = [header_table, table, Spacer(1, 20), combined_table]
-        pdf.build(elements)
-        bytesio.seek(0)
-        return bytesio 
+        elements += [header_table, table, Spacer(1, 20), combined_table]
+        doc.build(elements)
+        buffer.seek(0)
+        return buffer 
 
 class PDFEditor:
     @staticmethod
