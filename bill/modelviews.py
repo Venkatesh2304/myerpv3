@@ -54,7 +54,7 @@ class BillViewSet(viewsets.ModelViewSet):
                 SalesRegisterReport.update_db(ikea,company,date_args)
             except Exception as e:
                 print("Exception in SalesRegisterReport Sync From OrderListView :",e)
-            Bill.sync_with_salesregister(company,fromd = date_args.fromd,tod = date_args.tod)
+            Bill.sync_with_salesregister(company,fromd = date - datetime.timedelta(days=1),tod = date)
         return super().list(request, *args, **kwargs)
 
     queryset = Bill.objects.all()
