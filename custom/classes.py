@@ -86,20 +86,45 @@ class BaseIkea(Session):
             self.logger.error("Login Check : Failed")
             return False 
 
+    def _get_token_from_redis(self):
+        import redis
+        import uuid
+        import time
+        import json
+        r = redis.Redis(host='localhost', port=6379, db=0)
+        req_id = str(uuid.uuid4())
+        
+        self.logger.info(f"Requesting token from Redis worker (req_id: {req_id})...")
+        r.rpush('token_requests', req_id)
+        
+        start_time = time.time()
+        while time.time() - start_time < 120:
+            res = r.get(f'token_response:{req_id}')
+            if res:
+                r.delete(f'token_response:{req_id}')
+                data = json.loads(res.decode('utf-8'))
+                return data['token']
+            time.sleep(1)
+            
+        raise Exception("Timeout waiting for token from Redis worker. Is the worker running?")
+
     def login(self) -> None: 
         self.logger.info("Login Initiated")
         self.cookies.clear()
         time_epochs = self._date_epochs()
-        print({'userId': self.username , 'password': self.password, 'dbName': self.config["dbName"], 'datetime': time_epochs , 'diff': -330})
-        preauth_res_text = self.post("/rsunify/app/user/authentication",data={'userId': self.username , 'password': self.password, 'dbName': self.config["dbName"], 'datetime': time_epochs , 'diff': -330}).text
+        token = self._get_token_from_redis()  #Need to get token 
+        #Example:token = "0cAFcWeA7NTbAekCLlLHrXkrBFYP7pe0NOiwQHj1CTKAtyWPSaszXPmgxMGbnwUmTwt3sR27ih7pQcfw05IRMXwNaX_QZPX4LIGPVKNPakvAjjcTJzoLZ1jRy4N1czV6u6HhkJe8SwQOz_51qDBek_86LC1MbutZiac05fQkMRn7OkcLA3ThWtNN1F0wKu9Vr2WV3rEOv4CQdCD9X23z5LGM57RzN9Uq4UYKLFoGurYC-XLtSBOJtg_zhX9Plje4otoCs6AyJnqn_oWE2emvWD1fOjtvq062etu34jmByGpr4ZjHpbYZUp5f7UsGzcbCQOf9T3kpphm8FXAtQKRYrEdIn8oRORrYiaSzEaEBndQeQKHjs_dCinwNkoHgEp69eyTN_Cgg811-C2--A27SqrU7MFv_OI2fN4MelJcvb5WJQVG6oAdsmToRQBbaiQALTgTU7w0rSCMQYFQ3IftYg_zs8cvYm4t9BeWfbgFYvOjU7unfOmraINgMpHoAqqwYeSs-r-kue899mSDU3286Bk6hRmZVtFGxpoSk2f6dOc7CIu3CJxRFl7mQqSYa0QdhVVTGhtGm-LwOVHeQ94U8VJVps0BKeAUHeRIrUIcuN1qMspzgldbV8dDVGST5MVVPpnorf08MY4GGd85uXXA4X9zRsVAPG3Ck0QKtn8iBj3go9nd-B-j2zBlqLTwrpWMKnQeVEcxJoxkfXXVagKnqydvtc-MAlgkBZF5zYDDYGnudiRBht6O58F3D7Zz9HK94ppEKHpwzlZL94q6xfKgyoRXTXtne9GQwSPmo3ESVf7gnMj7dVV3uMyStNeWs0GeLEINGS0bKniFk69G41IrlEFApqV6tq-MobRB574wvN68MEberJSpRkZp5BSGc-O3nJakOzxvDjYoQ0jKKHYLUR3jBYntTLjqUUmi2yTtREhaodU86BNFJKX9EKFjQhktepRtqrlre01tkc6sNjm-Pdj2lJ04Yy7ujN8GAjngrSVRPL0phLEDQ_YlOqjxrdAounvoKYgrNhaXYPrK4vlJZ6bOe1VShV6JkYVbjj4_tqoFtp9FOln4iJdbPvEjogXg-qxk2WdBl8QX684mVGyuR-q1w_jD98jDencUlfGkuPBi9ZoFDQ24cCzsBNCTmusTrUnMrBcctvGIbqyHJSZOL99bkVKkoVCG_Jz_ak0yNE05vm0GR8zbe7eBg4LtWoPDin3TXsu2BS5utC_KCiZKRkDXFXjUQRcBfRkqjLOeLx1HxTmglUjELaeUqwzxVJMdMTqEZpRGS7d7XUJEBdVyJCiZKcvspZ8iy0FLW3uR1d6gagjDtFP-Ups7R7yzFrM24IpSIRZ5VrmTRcfX7nMatb6ML6IsAVHwXZNnlvg1WdRWiSzYwnVencJdmG59pmmpT15dBCwsvdiSKjI4Kefy8VZ9-g3wSEk-LMREWoJSKg07Da37H4v_BbHt1xaLZRREf_xrCxS4RJPu8Rh2KEmxpumZfPACStAYZQ_6gbOoVkJN7SIzE6MLPPWZogKn8PI6k80HKC6rohkc7ldgrRVu5w8O9JB0NYupYAV_8FDJWa5PcfwUKmsahQ1GQNU_Q3tCFTeSi44SlSN-D5uDqqp6vqeBVG_jnhAXuIU7bW-AOaT_0UgLIbQQABmmknvn5vMISFJH-jP9meKhSYAqHYmBbcQ3p03CybNhEd0gpjanWSFiHHdPa_J72za5AOj7Dv1xvtXt6C9njvfZGXu7j-5aHprRen_ZL-Y-QLyBVaduEQbYCASZ0zKPZZ4Y6bK0BOS6i8kiLnvqGqxDw2vnia9f91GTWXO1lOnPkJ7-NWvlcVD9WEnsRYSq07N0DdCv7PIOSI3SfRtN0CwFk70nlExvPTp6hHrsOgzyEdLbF9W0jhlqVZF123tfl4oydnCxD9Qopt6UYsFsbJK-rkFuVJDTocxoLBS8-ApM9uVHxv0CQoPLAUgyD0bnHUEbk-h_yFrlonEQeogPYuD-nqi"
+        preauth_res_text = self.post("/rsunify/app/user/authentication",data={'userId': self.username , "g-recaptcha-response" : token,
+                        'password': self.password, 'dbName': self.config["dbName"], 'datetime': time_epochs , 'diff': -330},headers={"dbName": self.config["dbName"]}).text
         with open("a.html","w+") as f : f.write(preauth_res_text)
+        print(preauth_res_text[:20])
         if ("CLOUD_LOGIN_PASSWORD_EXPIRED" == preauth_res_text) : 
             raise IkeaPasswordExpired("Ikea Password Expired")
         elif ("<body>" in preauth_res_text) or ("Invalid Password" == preauth_res_text) : 
             raise IkeaWrongCredentails("Ikea Wrong Credentials")
         else : 
             pass 
-        response = self.post("/rsunify/app/user/authenSuccess",{})
+        response = self.post("/rsunify/app/user/authenSuccess",{"isDefaultPassword":False,"g-recaptcha-response":""})
         if response.status_code == 200 : 
             self.logger.info("Logged in successfully")
             self.user.update_cookies(self.cookies)

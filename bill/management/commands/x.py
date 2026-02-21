@@ -32,8 +32,8 @@ from rest_framework.test import APIRequestFactory
 from custom.classes import get_curl
 
 
-i = Billing("devaki_hul")
-i.login()
+i = Billing("lakme_urban")
+print(i.is_logged_in())
 exit(0)
 
 

@@ -12,6 +12,8 @@ SERVICE_NAME="backend.service"
 SERVICE_PATH="/etc/systemd/system/$SERVICE_NAME"
 SCHEDULER_NAME="scheduler.service"
 SCHEDULER_PATH="/etc/systemd/system/$SCHEDULER_NAME"
+WORKER_NAME="token_worker.service"
+WORKER_PATH="/etc/systemd/system/$WORKER_NAME"
 
 echo "==> Checking for $PYTHON"
 if ! command -v "$PYTHON" >/dev/null 2>&1; then
@@ -69,6 +71,15 @@ pip install gunicorn
 if ! command -v 7z >/dev/null 2>&1; then
   if command -v apt-get >/dev/null 2>&1; then
     sudo apt-get install -y 7zip
+  fi
+fi
+
+echo "==> Ensuring redis-server is installed"
+if ! command -v redis-server >/dev/null 2>&1; then
+  if command -v apt-get >/dev/null 2>&1; then
+    sudo apt-get update -y
+    sudo apt-get install -y redis-server
+    sudo systemctl enable --now redis-server
   fi
 fi
 
@@ -148,10 +159,33 @@ PrivateTmp=true
 WantedBy=multi-user.target
 EOF
 
+echo "==> Creating or updating systemd service ($WORKER_NAME)"
+sudo bash -c "cat > '$WORKER_PATH'" <<EOF
+[Unit]
+Description=Redis Token Worker for $PROJECT_NAME
+After=network.target redis-server.service
+
+[Service]
+Type=simple
+User=\$(whoami)
+Group=\$(id -gn)
+WorkingDirectory=$PROJECT_DIR
+Environment=PATH=$VENV_DIR/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin
+ExecStart=$VENV_DIR/bin/python3 redis_token_worker.py
+Restart=always
+RestartSec=3
+KillSignal=SIGQUIT
+TimeoutStopSec=10
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
 echo "==> Reloading and restarting systemd service"
 sudo systemctl daemon-reload
-sudo systemctl enable "$SERVICE_NAME" "$SCHEDULER_NAME"
-sudo systemctl restart "$SERVICE_NAME" "$SCHEDULER_NAME"
+sudo systemctl enable "$SERVICE_NAME" "$SCHEDULER_NAME" "$WORKER_NAME"
+sudo systemctl restart "$SERVICE_NAME" "$SCHEDULER_NAME" "$WORKER_NAME"
 
 echo "==> Setup complete."
-sudo systemctl status "$SERVICE_NAME" "$SCHEDULER_NAME" --no-pager || true
+sudo systemctl status "$SERVICE_NAME" "$SCHEDULER_NAME" "$WORKER_NAME" --no-pager || true
