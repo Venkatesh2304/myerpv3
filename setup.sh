@@ -107,11 +107,11 @@ echo "==> Applying Django migrations"
 python manage.py migrate --noinput
 
 export DJANGO_SUPERUSER_PASSWORD=1
-python3 manage.py createsuperuser \
-  --noinput \
-  --username admin \
-  --email "venkateshks2304@gmail.com" \
-  || echo "Superuser already exists or creation failed, continuing..."
+# python3 manage.py createsuperuser \
+#   --noinput \
+#   --username admin \
+#   --email "venkateshks2304@gmail.com" \
+#   || echo "Superuser already exists or creation failed, continuing..."
 
 unset PGPASSWORD
 
@@ -167,8 +167,8 @@ After=network.target redis-server.service
 
 [Service]
 Type=simple
-User=\$(whoami)
-Group=\$(id -gn)
+User=$(whoami)
+Group=$(id -gn)
 WorkingDirectory=$PROJECT_DIR
 Environment=PATH=$VENV_DIR/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin
 ExecStart=$VENV_DIR/bin/python3 redis_token_worker.py
