@@ -9,3 +9,4 @@ python3 manage.py migrate
 deactivate
 sudo systemctl restart backend.service
 sudo systemctl restart scheduler.service
+sudo systemctl restart redis_worker.service

@@ -12,7 +12,7 @@ SERVICE_NAME="backend.service"
 SERVICE_PATH="/etc/systemd/system/$SERVICE_NAME"
 SCHEDULER_NAME="scheduler.service"
 SCHEDULER_PATH="/etc/systemd/system/$SCHEDULER_NAME"
-WORKER_NAME="token_worker.service"
+WORKER_NAME="redis_worker.service"
 WORKER_PATH="/etc/systemd/system/$WORKER_NAME"
 
 echo "==> Checking for $PYTHON"
@@ -181,7 +181,7 @@ User=$(whoami)
 Group=$(id -gn)
 WorkingDirectory=$PROJECT_DIR
 Environment=PATH=$VENV_DIR/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin
-ExecStart=$VENV_DIR/bin/python3 redis_token_worker.py
+ExecStart=$VENV_DIR/bin/python3 redis_worker.py
 Restart=always
 RestartSec=3
 KillSignal=SIGQUIT
