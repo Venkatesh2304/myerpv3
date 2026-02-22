@@ -88,7 +88,7 @@ class Session(requests.Session, ABC):
     def request(self, method, url, *args, **kwargs):
         url = urljoin(self.base_url, url)
         res = super().request(method, url, *args, **kwargs)
-        if res.status_code in [200, 302, 304]:
+        if res.status_code in [200, 202, 302, 304]:
             return res
         raise StatusCodeError(
             f"""

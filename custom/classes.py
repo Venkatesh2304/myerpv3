@@ -1228,4 +1228,198 @@ class Einvoice(Session) :
           if "EWB No" not in df.columns : 
               raise Exception("Failed to get eway bills, no EWB No column found in response")
           return df
+
+class UnileverWrongCredentials(WrongCredentials):
+    pass
+
+class Unilever(Session):
+    key = "unilever"
+    load_cookies = True
+
+    def __init__(self, user: str):
+        super().__init__(user)
+        self.base_url = "https://web3.inpartner.unilever.com"
+        # We start by bypassing SSL verification globally for this session as required by Unilever SAP
+        self.verify = False 
+        
+        # Disable insecure request warnings caused by setting verify=False
+        import urllib3
+        urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+        
+        retry_count = 1
+        while not self.is_logged_in():
+            self.login()
+            retry_count += 1
+
+    def _get_cookies_from_redis(self):
+        import redis
+        import uuid
+        import time
+        import json
+        
+        r = redis.Redis(host='localhost', port=6379, db=0)
+        req_id = str(uuid.uuid4())
+        
+        self.logger.info(f"Requesting SAP cookies from Redis worker (req_id: {req_id})...")
+        
+        # We send a payload so the worker knows WHICH queue to process
+        payload = json.dumps({
+            "type": "unilever_cookies",
+            "req_id": req_id,
+            "username": self.username,
+            "password": self.password
+        })
+        
+        r.rpush('unilever_requests', payload)
+        
+        start_time = time.time()
+        while time.time() - start_time < 300: # Wait up to 5 minutes as browser GUI might be slow
+            res = r.get(f'unilever_response:{req_id}')
+            if res:
+                r.delete(f'unilever_response:{req_id}')
+                data = json.loads(res.decode('utf-8'))
+                
+                if "error" in data:
+                    raise Exception(f"Worker Error: {data['error']}")
+                    
+                return data['cookies']
+            time.sleep(1)
+            
+        raise Exception("Timeout waiting for SAP Cookies from Redis worker. Is the worker running?")
+
+    def login(self) -> None:
+        self.logger.info("SAP/Unilever Login Initiated (Via Desktop GUI Bot)")
+        self.cookies.clear()
+        
+        new_cookies = self._get_cookies_from_redis()
+
+        # new_cookies comes back as a list of dicts from the selenium driver
+        for cookie in new_cookies:
+            self.cookies.set(cookie['name'], cookie['value'], domain=cookie['domain'], path=cookie['path'])
+            
+        self.logger.info(f"Synced {len(new_cookies)} cookies! Verifying SAP Login...")
+        
+        if self.is_logged_in():
+            self.logger.info("Logged in successfully to Unilever SAP")
+            self.user.update_cookies(self.cookies)
+        else:
+            self.logger.error("Login Check failed immediately after cookie sync.")
+            raise UnileverWrongCredentials("Failed to authenticate with Redis-provided cookies.")
+
+    def _sap_batch_post(self, service_url, inner_get_url):
+        """
+        Helper to execute SAP OData $batch requests with a multipart boundary.
+        Reused for is_logged_in, ledger, and other SAP interactions.
+        """
+        import uuid
+        boundary = f"batch_{uuid.uuid4()}"
+        
+        headers = {
+            'Accept': 'multipart/mixed',
+            'Accept-Language': 'en',
+            'Connection': 'keep-alive',
+            'Content-Type': f'multipart/mixed;boundary={boundary}',
+            'DataServiceVersion': '2.0',
+            'MaxDataServiceVersion': '2.0',
+            'Origin': 'https://web3.inpartner.unilever.com',
+            'Referer': 'https://web3.inpartner.unilever.com/sap/bc/ui5_ui5/sap/zpmodel/index.html?sap-client=100&sap-language=EN',
+            'sap-cancel-on-close': 'true',
+            'sap-contextid-accept': 'header',
+        }
+        
+        payload_parts = [
+            f"--{boundary}",
+            "Content-Type: application/http",
+            "Content-Transfer-Encoding: binary",
+            "",
+            f"GET {inner_get_url} HTTP/1.1",
+            "sap-cancel-on-close: true",
+            "sap-contextid-accept: header",
+            "Accept: application/json",
+            "Accept-Language: en",
+            "DataServiceVersion: 2.0",
+            "MaxDataServiceVersion: 2.0",
+            "",
+            "",
+            f"--{boundary}--",
+            ""
+        ]
+        
+        data = "\r\n".join(payload_parts)
+        # Ensure service_url starts with / if not absolute
+        if not service_url.startswith('http') and not service_url.startswith('/'):
+            service_url = f"/{service_url}"
+            
+        full_url = f"{service_url}?sap-client=100" if "$batch" in service_url else f"{service_url}/$batch?sap-client=100"
+        
+        return self.post(full_url, headers=headers, data=data)
+
+    def is_logged_in(self) -> bool:
+        try:
+            service = "/sap/opu/odata/sap/YNGW_GET_ORDERS_PNTR_SRV"
+            inner = "UserInfo?sap-client=100"
+            
+            res = self._sap_batch_post(service, inner)
+            
+            self.logger.debug(f"SAP Login Check Response: {res.status_code}")
+            if res.status_code == 202 and self.username.upper() in res.text.upper():
+                self.logger.info("SAP Login Check: Passed")
+                return True
+            else:
+                self.logger.error(f"SAP Login Check: Failed (Status: {res.status_code})")
+                return False
+                
+        except Exception as e:
+            self.logger.error(f"SAP Login Check: Failed with Exception ({e})")
+            return False
+
+    def ledger(self, from_date, to_date):
+        """
+        Fetches the customer ledger from SAP for a given date range.
+        Dates should be in format DD.MM.YYYY
+        """
+        import urllib.parse
+        import pandas as pd
+        from io import StringIO
+
+        self.logger.info(f"Fetching SAP Ledger: {from_date} to {to_date}")
+        
+        filter_str = f"CompanyCode eq 'H' and Clerk eq '' and GLInd eq '' and (Date ge '{from_date}' and Date le '{to_date}') and Background eq ''"
+        encoded_filter = urllib.parse.quote(filter_str)
+        
+        service = "/sap/opu/odata/sap/YNWG_CUSTOMER_LEDGER_SRV"
+        inner = f"LedgerSet?sap-client=100&$filter={encoded_filter}"
+        
+        res = self._sap_batch_post(service, inner)
+        
+        # Parse multipart OData response
+        raw_text = res.text
+        json_start = raw_text.find('{"d":')
+        
+        if json_start == -1:
+            self.logger.error("Could not find JSON payload in SAP Ledger response.")
+            return pd.DataFrame()
+
+        # Find the end of JSON by looking for the next boundary or end of string
+        # SAP batch response usually ends the JSON line with \r\n--boundary
+        json_end = raw_text.find('\r\n--', json_start)
+        if json_end == -1:
+            json_end = len(raw_text)
+            
+        json_str = raw_text[json_start:json_end].strip()
+        data = json.loads(json_str)
+        
+        results = data.get('d', {}).get('results', [])
+        if not results:
+            # Maybe it's a single object
+            results = data.get('d', {})
+            if isinstance(results, dict):
+                results = [results] if results else []
+
+        df = pd.DataFrame(results)
+        if not df.empty and '__metadata' in df.columns:
+            df = df.drop(columns=['__metadata'])
+            
+        self.logger.info(f"Retrieved {len(df)} ledger records.")
+        return df
   
