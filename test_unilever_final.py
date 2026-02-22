@@ -18,7 +18,7 @@ logging.basicConfig(level=logging.INFO, stream=sys.stdout)
 logger = logging.getLogger('unilever')
 
 try:
-    username = "demo_unilever"
+    username = "lakme_rural"
     print(f"\n--- Initializing Unilever Session for user: {username} ---")
     unilever = Unilever(user=username)
 
