@@ -171,7 +171,7 @@ class UnileverLogin:
                 self.driver.save_screenshot("fatal_error_sap.png")
             except: pass
 
-    def login_with_ms_sso(self):
+    def login_ms_sso(self):
         """
         Superset login. Handles interactive Microsoft SSO first if required, then progresses to SAP login.
         """
@@ -245,8 +245,6 @@ class UnileverLogin:
             else:
                 print("\n--- Skipped Microsoft SSO Login (Already authenticated) ---")
 
-            self._execute_sap_login()
-
         except Exception as e:
             print(f"An unexpected error occurred in SSO flow: {e}")
             try:
@@ -256,10 +254,14 @@ class UnileverLogin:
 if __name__ == "__main__":
     # Example usage using context manager for automatic cleanup
     with UnileverLogin() as bot:
+        bot.sap_user = "R41B862"
+        bot.sap_pass = "Lakme$$2026"
         try:
             print("Attempting fast SAP login (Background)...")
             bot.login_sap_only()
         except MicrosoftNotLoggedIn as e:
             print(f"Exception Caught: {e}")
             print("Falling back to interactive MS SSO Login...")
-            bot.login_with_ms_sso()
+            bot.login_ms_sso()
+            bot.login_sap_only()
+
