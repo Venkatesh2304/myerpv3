@@ -387,7 +387,6 @@ class Ikea(IkeaReports):
     def retrive_bill(self,bill_no):
         self.post("/rsunify/app/ikeaCommonUtilController/removeScreenNameFromSession",data={"screenName":"Manual Billing"})
         data = self.get("/rsunify/app/billing/retrievebill",params={"billRef":bill_no}).json()
-        print(data)
         if data.get("billHdVO") is None : return None
         sal_id = data["billHdVO"]["blhDsrId"]
         self.get("/rsunify/app/billing/deletemutable",params={"salesmanId":sal_id})
