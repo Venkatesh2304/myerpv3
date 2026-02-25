@@ -59,12 +59,14 @@ class SalesScan(CompanyModel):
                 'name': item.get('prodName', '')
             }
         
+        print(self.bill_no, "Bill Status : ", blh_status)
         # Convert defaultdict to regular dict for JSONField serialization
         if blh_status != 4:
             self.bill_products = {sku: dict(mrps) for sku, mrps in bill_products.items()}
         elif blh_status == 4:
             #Bill is cancelled
             self.bill_products = {}
+            print(self.bill_no,self.scanned_qty_map)
             if len(self.scanned_qty_map) == 0 :
                 print("Calling delete on SalesScan : ", self.id)
                 self.delete()
