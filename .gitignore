@@ -25,4 +25,8 @@ profile.html
 bank/management/commands/fraud.py
 bank/management/commands/payment.py
 bill_scan/management/commands/impact_analysis.py
-
+.temp/
+*.png
+chrome_profile/
+ilm/
+*\.md*

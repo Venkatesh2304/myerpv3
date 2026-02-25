@@ -51,7 +51,7 @@ class Session(requests.Session, ABC):
         
         # Logging setup
         self.logger = logging.getLogger(f"{self.key}.{self.username}")
-        self.logger.setLevel(logging.DEBUG)
+        self.logger.setLevel(logging.INFO)
         
         if self.logging_enabled and not self.logger.handlers:
             log_dir = f"logs/{self.key}/{user}"

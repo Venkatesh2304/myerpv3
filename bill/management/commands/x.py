@@ -1,3 +1,4 @@
+from custom.classes import IkeaBank
 from printing.printers import PickingLoadingSheetPrinter,LoadingSheetPrinter
 from collections import defaultdict
 from custom.classes import Einvoice
@@ -32,9 +33,9 @@ from rest_framework.test import APIRequestFactory
 from custom.classes import get_curl
 
 
-i = Billing("lakme_urban")
-print(i.is_logged_in())
-exit(0)
+i = IkeaBank("lakme_rural")
+# print(i.is_logged_in())
+# exit(0)
 
 
 
@@ -49,7 +50,7 @@ exit(0)
 # exit(0)
 
 with open("b.json","w+") as f:
-    f.write(json.dumps(i.retrive_bill("CA02540")))
+    f.write(json.dumps(i.retrive_bill("CB01060")))
 exit(0)
 
 df = pd.read_excel("~/Documents/LeverEDGE_41B862_CurrentStock_2026021310205520552055.xlsx")

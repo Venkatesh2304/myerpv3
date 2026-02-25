@@ -32,7 +32,7 @@ class SalesScan(CompanyModel):
         bill_hd = bill_data.get('billHdVO', {})
         blh_status = bill_hd.get('blhStatus', 0)
         eInvBillEditMsg = bill_hd.get('eInvBillEditMsg', '')
-        self.is_posted = (blh_status != 0) or (eInvBillEditMsg != "")
+        self.is_posted = (blh_status in [0]) or (eInvBillEditMsg != "")
 
         # Extract bill date
         billDtStr = bill_hd.get("billDtStr")
@@ -60,7 +60,11 @@ class SalesScan(CompanyModel):
             }
         
         # Convert defaultdict to regular dict for JSONField serialization
-        self.bill_products = {sku: dict(mrps) for sku, mrps in bill_products.items()}
+        if blh_status != 4:
+            self.bill_products = {sku: dict(mrps) for sku, mrps in bill_products.items()}
+        elif blh_status == 4:
+            #Bill is cancelled
+            self.bill_products = {}
         self.save()
 
 

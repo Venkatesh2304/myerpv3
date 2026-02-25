@@ -36,7 +36,6 @@ def process_unilever_cookies(req_id, username, password):
     except Exception as e:
         return {"error": str(e), "traceback": traceback.format_exc()}
 
-
 def start_worker():
     print("Starting Unified Redis Worker...")
     r = redis.Redis(host='localhost', port=6379, db=0)

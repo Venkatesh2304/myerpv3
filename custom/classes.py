@@ -1,3 +1,4 @@
+import calendar
 from requests import get
 from collections import defaultdict
 from typing import Literal
@@ -7,6 +8,7 @@ from io import BytesIO
 import warnings
 import dateutil.relativedelta as relativedelta
 import json
+import uuid
 import random
 import numpy as np
 from functools import lru_cache
@@ -1306,19 +1308,27 @@ class Unilever(Session):
             self.logger.error("Login Check failed immediately after cookie sync.")
             raise UnileverWrongCredentials("Failed to authenticate with Redis-provided cookies.")
 
-    def _sap_batch_post(self, service_url, inner_get_url):
+    def _sap_odata_batch(self, service_url, requests_list):
         """
-        Helper to execute SAP OData $batch requests with a multipart boundary.
-        Reused for is_logged_in, ledger, and other SAP interactions.
+        Unified OData batch helper for Unilever SAP.
+        Handles both GET and POST with automatic CSRF management.
+        requests_list: list of dicts with {'method': 'GET'/'POST', 'url': '...', 'body': {...}}
         """
-        import uuid
-        boundary = f"batch_{uuid.uuid4()}"
         
+        batch_id = str(uuid.uuid4())[:8]
+        batch_boundary = f"batch_{batch_id}"
+        
+        # 1. CSRF Logic (Only if POST is present)
+        has_post = any(r.get('method', 'GET').upper() == 'POST' for r in requests_list)
+        csrf_token = None
+        if has_post:
+            csrf_token = self._get_csrf_token(service_url)
+            
         headers = {
             'Accept': 'multipart/mixed',
             'Accept-Language': 'en',
             'Connection': 'keep-alive',
-            'Content-Type': f'multipart/mixed;boundary={boundary}',
+            'Content-Type': f'multipart/mixed;boundary={batch_boundary}',
             'DataServiceVersion': '2.0',
             'MaxDataServiceVersion': '2.0',
             'Origin': 'https://web3.inpartner.unilever.com',
@@ -1326,43 +1336,143 @@ class Unilever(Session):
             'sap-cancel-on-close': 'true',
             'sap-contextid-accept': 'header',
         }
+        if csrf_token:
+            headers['x-csrf-token'] = csrf_token
+
+        # 2. Build Multipart Payload
+        payload_lines = []
+        for req in requests_list:
+            method = req.get('method', 'GET').upper()
+            inner_url = req.get('url')
+            body = req.get('body')
+            
+            payload_lines.append(f"--{batch_boundary}")
+            
+            if method == 'POST':
+                # POST requires a changeset boundary in SAP OData
+                changeset_id = str(uuid.uuid4())[:8]
+                changeset_boundary = f"changeset_{changeset_id}"
+                
+                payload_lines.extend([
+                    f"Content-Type: multipart/mixed; boundary={changeset_boundary}",
+                    "",
+                    f"--{changeset_boundary}",
+                    "Content-Type: application/http",
+                    "Content-Transfer-Encoding: binary",
+                    "",
+                    f"POST {inner_url} HTTP/1.1",
+                    "Content-Type: application/json",
+                    "Accept: application/json",
+                    "DataServiceVersion: 2.0",
+                    "MaxDataServiceVersion: 2.0"
+                ])
+                if csrf_token:
+                    payload_lines.append(f"x-csrf-token: {csrf_token}")
+                
+                if body:
+                    body_str = json.dumps(body) if isinstance(body, dict) else body
+                    payload_lines.append(f"Content-Length: {len(body_str)}")
+                    payload_lines.append("")
+                    payload_lines.append(body_str)
+                else:
+                    payload_lines.append("")
+                
+                payload_lines.append(f"--{changeset_boundary}--")
+            else:
+                # GET is simpler
+                payload_lines.extend([
+                    "Content-Type: application/http",
+                    "Content-Transfer-Encoding: binary",
+                    "",
+                    f"GET {inner_url} HTTP/1.1",
+                    "Accept: application/json",
+                    "DataServiceVersion: 2.0",
+                    "MaxDataServiceVersion: 2.0",
+                    "",
+                    ""
+                ])
+                
+        payload_lines.append(f"--{batch_boundary}--")
+        payload_lines.append("")
         
-        payload_parts = [
-            f"--{boundary}",
-            "Content-Type: application/http",
-            "Content-Transfer-Encoding: binary",
-            "",
-            f"GET {inner_get_url} HTTP/1.1",
-            "sap-cancel-on-close: true",
-            "sap-contextid-accept: header",
-            "Accept: application/json",
-            "Accept-Language: en",
-            "DataServiceVersion: 2.0",
-            "MaxDataServiceVersion: 2.0",
-            "",
-            "",
-            f"--{boundary}--",
-            ""
-        ]
+        data = "\r\n".join(payload_lines)
         
-        data = "\r\n".join(payload_parts)
-        # Ensure service_url starts with / if not absolute
+        # 3. Execution
         if not service_url.startswith('http') and not service_url.startswith('/'):
             service_url = f"/{service_url}"
-            
         full_url = f"{service_url}?sap-client=100" if "$batch" in service_url else f"{service_url}/$batch?sap-client=100"
         
-        return self.post(full_url, headers=headers, data=data)
+        res = self.post(full_url, headers=headers, data=data)
+        return res
+
+    def _parse_sap_batch_response(self, res):
+        """
+        Parses a multipart SAP OData $batch response.
+        Identifies boundaries, handles changesets, and extracts JSON payloads.
+        Returns a list of dictionaries (the parsed JSON content).
+        """
+        import re
+        import json
+
+        content_type = res.headers.get('Content-Type', '')
+        boundary_match = re.search(r'boundary=([\w-]+)', content_type)
+        if not boundary_match:
+            self.logger.warning("No boundary found in batch response Content-Type.")
+            return []
+
+        boundary = f"--{boundary_match.group(1)}"
+        # Split body by boundary
+        parts = res.text.split(boundary)
+        
+        results = []
+
+        for part in parts:
+            part = part.strip()
+            if not part or part == '--':
+                continue
+
+            # Check for inner multipart (changeset)
+            if 'multipart/mixed; boundary=' in part:
+                inner_boundary_match = re.search(r'boundary=([\w-]+)', part)
+                if inner_boundary_match:
+                    inner_boundary = f"--{inner_boundary_match.group(1)}"
+                    inner_parts = part.split(inner_boundary)
+                    for ip in inner_parts:
+                        ip = ip.strip()
+                        if not ip or ip == '--': continue
+                        json_data = self._extract_json_from_part(ip)
+                        if json_data: results.append(json_data)
+                continue
+
+            # Direct application/http part
+            json_data = self._extract_json_from_part(part)
+            if json_data: results.append(json_data)
+
+        return results
+
+    def _extract_json_from_part(self, part_text):
+        """Helper to find and parse JSON within a multipart segment"""
+        import json
+        # SAP JSON usually starts after an empty line (end of HTTP headers)
+        # and starts with {"
+        json_start = part_text.find('{"')
+        if json_start != -1:
+            try:
+                # Find the end - usually indicated by boundary (which we already split on)
+                # but might have trailing whitespace
+                return json.loads(part_text[json_start:].strip())
+            except Exception as e:
+                self.logger.debug(f"Failed to parse JSON from part: {e}")
+        return None
 
     def is_logged_in(self) -> bool:
         try:
-            service = "/sap/opu/odata/sap/YNGW_GET_ORDERS_PNTR_SRV"
-            inner = "UserInfo?sap-client=100"
-            
-            res = self._sap_batch_post(service, inner)
+            # Simplified check using direct GET instead of batch POST
+            url = "/sap/opu/odata/sap/YNGW_GET_ORDERS_PNTR_SRV/UserInfo?sap-client=100"
+            res = self.get(url)
             
             self.logger.debug(f"SAP Login Check Response: {res.status_code}")
-            if res.status_code == 202 and self.username.upper() in res.text.upper():
+            if res.status_code == 200 and self.username.upper() in res.text.upper():
                 self.logger.info("SAP Login Check: Passed")
                 return True
             else:
@@ -1373,45 +1483,55 @@ class Unilever(Session):
             self.logger.error(f"SAP Login Check: Failed with Exception ({e})")
             return False
 
-    def ledger(self, from_date, to_date):
+    def _get_csrf_token(self, service_url):
+        """
+        Fetches a CSRF token from the specified SAP service.
+        """
+        headers = {
+            "x-csrf-token": "fetch",
+            "Referer": "https://web3.inpartner.unilever.com/sap/bc/ui5_ui5/sap/zpmodel/index.html?sap-client=100&sap-language=EN",
+        }
+        # Use GET to fetch the token
+        full_url = f"{service_url}?sap-client=100" if service_url.startswith('http') else f"{service_url}?sap-client=100"
+        res = self.get(full_url, headers=headers)
+        token = res.headers.get("x-csrf-token")
+        if not token:
+            self.logger.error(f"Failed to fetch CSRF token for {service_url}")
+        return token
+
+    def ledger(self, from_date: datetime.date, to_date: datetime.date):
         """
         Fetches the customer ledger from SAP for a given date range.
-        Dates should be in format DD.MM.YYYY
+        Args:
+            from_date: datetime.date object
+            to_date: datetime.date object
         """
         import urllib.parse
         import pandas as pd
-        from io import StringIO
 
-        self.logger.info(f"Fetching SAP Ledger: {from_date} to {to_date}")
+        # Format dates as DD.MM.YYYY for SAP OData filter
+        from_str = from_date.strftime("%d.%m.%Y")
+        to_str = to_date.strftime("%d.%m.%Y")
+
+        self.logger.info(f"Fetching SAP Ledger: {from_str} to {to_str}")
         
-        filter_str = f"CompanyCode eq 'H' and Clerk eq '' and GLInd eq '' and (Date ge '{from_date}' and Date le '{to_date}') and Background eq ''"
+        filter_str = f"CompanyCode eq 'H' and Clerk eq '' and GLInd eq '' and (Date ge '{from_str}' and Date le '{to_str}') and Background eq ''"
         encoded_filter = urllib.parse.quote(filter_str)
         
         service = "/sap/opu/odata/sap/YNWG_CUSTOMER_LEDGER_SRV"
-        inner = f"LedgerSet?sap-client=100&$filter={encoded_filter}"
+        inner_url = f"LedgerSet?sap-client=100&$filter={encoded_filter}"
         
-        res = self._sap_batch_post(service, inner)
+        batch_res = self._sap_odata_batch(service, [{'method': 'GET', 'url': inner_url}])
+        parsed_data = self._parse_sap_batch_response(batch_res)
         
-        # Parse multipart OData response
-        raw_text = res.text
-        json_start = raw_text.find('{"d":')
-        
-        if json_start == -1:
-            self.logger.error("Could not find JSON payload in SAP Ledger response.")
+        if not parsed_data:
+            self.logger.error("Could not parse data from SAP Ledger response.")
             return pd.DataFrame()
 
-        # Find the end of JSON by looking for the next boundary or end of string
-        # SAP batch response usually ends the JSON line with \r\n--boundary
-        json_end = raw_text.find('\r\n--', json_start)
-        if json_end == -1:
-            json_end = len(raw_text)
-            
-        json_str = raw_text[json_start:json_end].strip()
-        data = json.loads(json_str)
-        
+        # Ledger usually has one response part
+        data = parsed_data[0]
         results = data.get('d', {}).get('results', [])
         if not results:
-            # Maybe it's a single object
             results = data.get('d', {})
             if isinstance(results, dict):
                 results = [results] if results else []
@@ -1422,4 +1542,78 @@ class Unilever(Session):
             
         self.logger.info(f"Retrieved {len(df)} ledger records.")
         return df
+
+    def ilm_pdf(self, month: int, year: int):
+        """
+        Fetches ILM documents for a given month and year.
+        Returns a list of dicts: {"doc_no": str, "date": datetime.date, "pdf": BytesIO}
+        """
+        from io import BytesIO
+
+        last_day = calendar.monthrange(year, month)[1]
+        from_date = f"{year}{month:02d}01"
+        to_date = f"{year}{month:02d}{last_day:02d}"
+
+        self.logger.info(f"Starting ILM PDF fetch for {month}/{year} ({from_date} to {to_date})")
+        
+        service = "/sap/opu/odata/sap/YNGW_NEW_ORDER_PAGE_SRV"
+        
+        payload = {
+            "Fromdate": from_date,
+            "ToDate": to_date,
+            "Nav_ILMinput_to_display": [],
+            "Nav_ILMinput_to_message": []
+        }
+
+        # Use unified batch helper
+        batch_res = self._sap_odata_batch(service, [{
+            'method': 'POST',
+            'url': 'ILMInputSet?sap-client=100',
+            'body': payload
+        }])
+        
+        parsed_data = self._parse_sap_batch_response(batch_res)
+        if not parsed_data:
+            self.logger.error("No data parsed from ILM batch response.")
+            return []
+
+        # ILM usually has the display items in the first parsed part
+        result_data = parsed_data[0]
+        documents_metadata = result_data.get('d', {}).get('Nav_ILMinput_to_display', {}).get('results', [])
+        self.logger.info(f"Found {len(documents_metadata)} ILM documents.")
+
+        # 4. Download PDFs to Memory
+        results = []
+        for doc in documents_metadata:
+            doc_id = doc.get('Document')
+            doc_year = doc.get('Year')
+            indicator = doc.get('indicator')
+            doc_date_str = doc.get('Date') # Expected YYYYMMDD
+            
+            if not doc_id: continue
+            
+            # Parse date
+            try:
+                doc_date = datetime.date(int(doc_date_str[:4]), int(doc_date_str[4:6]), int(doc_date_str[6:8]))
+            except:
+                doc_date = None
+
+            pdf_url = f"{service}/ILMPDFSet(year='{doc_year}',document='{doc_id}',indicator='{indicator}')/$value"
+            self.logger.info(f"Downloading PDF for document {doc_id}...")
+            
+            try:
+                pdf_res = self.get(pdf_url)
+                if pdf_res.status_code == 200:
+                    results.append({
+                        "doc_no": doc_id,
+                        "date": doc_date,
+                        "pdf": BytesIO(pdf_res.content)
+                    })
+                else:
+                    self.logger.error(f"Failed to download PDF for {doc_id}. Status: {pdf_res.status_code}")
+            except Exception as e:
+                self.logger.error(f"Exception downloading PDF for {doc_id}: {e}")
+
+        self.logger.info(f"ILM PDF Fetch completed. Successfully downloaded {len(results)} PDFs to memory.")
+        return results
   
