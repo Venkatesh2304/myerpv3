@@ -65,8 +65,10 @@ class SalesScan(CompanyModel):
         elif blh_status == 4:
             #Bill is cancelled
             self.bill_products = {}
-            if len(self.scanned_qty_map) == 0 : 
+            if len(self.scanned_qty_map) == 0 :
+                print("Calling delete on SalesScan : ", self.id)
                 self.delete()
+                print("Done delete on SalesScan : ", self.id)
                 return
         self.save()
 
