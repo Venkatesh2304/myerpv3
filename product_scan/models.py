@@ -32,7 +32,7 @@ class SalesScan(CompanyModel):
         bill_hd = bill_data.get('billHdVO', {})
         blh_status = bill_hd.get('blhStatus', 0)
         eInvBillEditMsg = bill_hd.get('eInvBillEditMsg', '')
-        self.is_posted = (blh_status in [0]) or (eInvBillEditMsg != "")
+        self.is_posted = (blh_status != 0) or (eInvBillEditMsg != "")
 
         # Extract bill date
         billDtStr = bill_hd.get("billDtStr")
