@@ -33,9 +33,9 @@ from rest_framework.test import APIRequestFactory
 from custom.classes import get_curl
 
 
-i = IkeaBank("lakme_rural")
-# print(i.is_logged_in())
-# exit(0)
+i = Ikea("lakme_urban")
+print(i.is_logged_in())
+exit(0)
 
 
 
