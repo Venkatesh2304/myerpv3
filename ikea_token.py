@@ -11,6 +11,7 @@ def get_enterprise_token():
     print("Virtual display started...")
 
     try:
+        print(123)
         # 2. Configure Undetected Chromedriver
         options = uc.ChromeOptions()
         options.add_argument("--no-sandbox")
