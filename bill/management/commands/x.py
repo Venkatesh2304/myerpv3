@@ -33,7 +33,7 @@ from rest_framework.test import APIRequestFactory
 from custom.classes import get_curl
 
 
-i = Ikea("devaki_hul")
+i = Ikea("lakme_rural")
 print(i.is_logged_in())
 exit(0)
 

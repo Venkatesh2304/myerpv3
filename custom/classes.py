@@ -70,6 +70,7 @@ class BaseIkea(Session):
         self.base_url = self.config["home"]
         retry_count = 1
         self.user_id = None
+        return
         while not self.is_logged_in() : 
             self.login()
             retry_count += 1
