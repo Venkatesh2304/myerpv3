@@ -28,7 +28,7 @@ def get_enterprise_token():
         driver.get(url)
         
         # 4. Human Simulation (Warming up the reCAPTCHA engine)
-        time.sleep(random.uniform(4, 6))
+        time.sleep(random.uniform(15, 20))
         # Small random scroll
         driver.execute_script(f"window.scrollBy(0, {random.randint(300, 700)});")
         time.sleep(2)
