@@ -19,7 +19,7 @@ def get_enterprise_token():
         
         # We DO NOT use --headless because Xvfb handles the display.
         # This makes Google think we are a real desktop user.
-        
+        print("Launch Browser")
         driver = uc.Chrome(options=options,version_main=145)
         print("Browser launched in virtual display.")
 
