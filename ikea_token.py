@@ -24,7 +24,7 @@ def get_enterprise_token():
         print("Browser launched in virtual display.")
 
         # 3. Navigate to the page
-        url = "https://leveredge18.hulcd.com/rsunify/"
+        url = "https://leveredge57.hulcd.com/rsunify/"
         driver.get(url)
         
         # 4. Human Simulation (Warming up the reCAPTCHA engine)
