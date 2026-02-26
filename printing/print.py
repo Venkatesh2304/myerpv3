@@ -79,7 +79,7 @@ class BillPrintingService:
         einvoice_enabled = self.company.einvoice_enabled
         
 
-        if einvoice_enabled:
+        if einvoice_enabled and (full_print_type not in [PrintType.PICKING_LOADING_SHEET]):
             einv_qs = qs.filter(ctin__isnull=False, irn__isnull=True)
             if einv_qs.exists():
                 einvoice_result:EinvoiceResult = self.einvoice_handler.handle_upload(einv_qs)
