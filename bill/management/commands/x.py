@@ -35,7 +35,7 @@ from custom.classes import get_curl
 
 
 i = IkeaBank("devaki_hul")
-i.login()
+# i.login()
 print(i.is_logged_in())
 exit(0)
 
