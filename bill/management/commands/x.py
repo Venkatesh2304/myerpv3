@@ -1,3 +1,4 @@
+from custom.classes import Unilever
 from custom.classes import IkeaBank
 from printing.printers import PickingLoadingSheetPrinter,LoadingSheetPrinter
 from collections import defaultdict
@@ -36,6 +37,59 @@ from custom.classes import get_curl
 i = IkeaBank("devaki_hul")
 i.login()
 print(i.is_logged_in())
+exit(0)
+
+i = Unilever("lakme_urban")
+x = i.get("/sap/opu/odata/sap/YNGW_GET_ORDERS_PNTR_SRV/OrderTableSet?$filter=ImPrestine%20eq%20%27%27%20and%20PdpOrders%20eq%20%27X%27%20and%20Direct%20eq%20%27%27&sap-client=100&$format=json")
+items = x.json()["d"]["results"]
+
+with open("a.json","w+") as f : 
+    f.write(json.dumps(items))
+
+target_keys = [
+    "Vkorg", "Vtweg", "Spart", "Werks", "Matkl", "Sno", "Matnr", "Maktx",
+    "Wgbez", "Norm", "Meins", "Meinh", "Umrez", "Umren", "Stock", "Vbeln",
+    "Posnr", "Netpr", "Kwmeng", "Caseconfig", "OpnQty", "CalQty", "Cal1Qty",
+    "ConQty", "ConRange", "Units", "Uprice", "Value", "Area", "Qlockllimit",
+    "Qlockulimit", "Mseht", "Cs", "DocDate", "ReqDate", "NormStock",
+    "StockVal", "SugStock", "TotWeight", "Lrange", "Urange", "NormVal",
+    "Matwa", "Chqstab", "Chqsfm", "Lifsk", "Yygroup", "Yysmatn3", "Yypsdsp",
+    "ConQtyClds", "MatdescChange", "SourceMatnr", "Yyumvknum", "Yyumvkden",
+    "MtposMara", "Yysrccluster", "Ytypeserv", "MatnrLdz", "BasePackCode",
+    "BasePackText", "Color", "CBUClassif", "MarketOrder", "BaseNorms"
+]
+
+filtered_items = []
+for item in items:
+    filtered_item = {k: item.get(k) for k in target_keys if k in item}
+    # Modify ConQty for specific item in the first request
+    if filtered_item.get("Matnr") == "LPRB1R3":
+        filtered_item["ConQty"] = "1"
+    filtered_items.append(filtered_item)
+
+# First Request
+print("Sending first post request...")
+res1 = i.post_orders(filtered_items)
+
+with open("post_response_1.json", "w+") as f:
+    f.write(json.dumps(res1))
+
+# Extract NpTonnageVolume from the first response
+# Response is a list of parsed JSON parts. We need to find the one with NpTonnageVolume.
+tonnage_volume = []
+for part in res1:
+    if "d" in part and "NpTonnageVolume" in part["d"]:
+        tonnage_volume = part["d"]["NpTonnageVolume"].get("results", [])
+        break
+
+# Second Request
+print("Sending second post request with extracted tonnage volume...")
+res2 = i.post_orders(filtered_items, tonnage_volume=tonnage_volume)
+
+with open("post_response_2.json", "w+") as f:
+    f.write(json.dumps(res2))
+
+print(f"Double post completed. Responses saved to post_response_1.json and post_response_2.json")
 exit(0)
 
 

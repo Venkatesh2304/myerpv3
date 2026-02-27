@@ -3,7 +3,7 @@ set -euo pipefail
 
 
 # Remote SSH config
-REMOTE_HOST="ubuntu@ec2-65-1-147-8.ap-south-1.compute.amazonaws.com"
+REMOTE_HOST="ubuntu@ec2-13-235-142-203.ap-south-1.compute.amazonaws.com"
 SSH_KEY="/home/venkatesh/Downloads/billingv2.pem"
 REMOTE_BACKEND_DIR="/home/ubuntu/myerpv3"
 
