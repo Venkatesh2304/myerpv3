@@ -33,7 +33,7 @@ class UnileverLogin:
         print(f"Using Chrome profile at: {profile_path}")
         options.add_argument(f"--user-data-dir={profile_path}")
 
-        self.driver = uc.Chrome(options=options)
+        self.driver = uc.Chrome(options=options,version_main=145)
         print("Browser launched.")
         
         self.wait = WebDriverWait(self.driver, 15)

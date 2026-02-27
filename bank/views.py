@@ -557,8 +557,6 @@ def push_collection(request) :
     #     bank_entry = BankStatement.objects.get(statement_id = chq_no,company_id = company_id)
     #     BankCollection.objects.filter(Q(bank_entry = bank_entry) | Q(cheque_entry__bank_entry = bank_entry)).filter(
     #                                             bill = bill_no).update(pushed = True)
-    z = ikea.is_logged_in()
-    print(z,datetime.date.today())
     CollectionReport.update_db(ikea,company,DateRangeArgs(fromd = datetime.date.today() , tod = datetime.date.today()))
     OutstandingReport.update_db(ikea,company,EmptyArgs())
 

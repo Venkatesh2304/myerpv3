@@ -3,15 +3,65 @@ from xvfbwrapper import Xvfb
 import time
 import random
 import os
+from datetime import datetime, timedelta
+
+# Global list to track timestamps of recent token requests
+_REQUEST_HISTORY = []
+
+# Multi-tiered rate limits: (max_requests, window_minutes)
+RATE_LIMITS = [
+    (10, 20),      # Tier 1: 10 requests / 20 minutes
+    (15, 60),      # Tier 2: 15 requests / 1 hour
+    (20, 360)      # Tier 3: 20 requests / 6 hours
+]
 
 def get_enterprise_token():
+    """
+    Generates a reCAPTCHA Enterprise token for IKEA.
+    Implements a multi-tiered rate limit for robustness.
+    """
+    global _REQUEST_HISTORY
+    
+    # 0. Rate Limit Check
+    now = datetime.now()
+    
+    # Prune history: keep only timestamps within the longest window (6 hours)
+    max_window_minutes = max(limit[1] for limit in RATE_LIMITS)
+    cutoff = now - timedelta(minutes=max_window_minutes)
+    _REQUEST_HISTORY = [t for t in _REQUEST_HISTORY if t > cutoff]
+    
+    # Check each tier
+    for max_reqs, window_mins in RATE_LIMITS:
+        window_start = now - timedelta(minutes=window_mins)
+        # Count requests in this specific window
+        count = sum(1 for t in _REQUEST_HISTORY if t > window_start)
+        
+        if count >= max_reqs:
+            # We hit this limit. Find the oldest request in this window to calculate wait time.
+            requests_in_window = [t for t in _REQUEST_HISTORY if t > window_start]
+            requests_in_window.sort()
+            first_in_window = requests_in_window[0]
+            
+            wait_time = (first_in_window + timedelta(minutes=window_mins)) - now
+            seconds_to_wait = int(wait_time.total_seconds())
+            
+            # Use units that make sense (mins if >= 60s, else secs)
+            if seconds_to_wait >= 60:
+                wait_desc = f"{seconds_to_wait // 60} minutes"
+            else:
+                wait_desc = f"{seconds_to_wait} seconds"
+                
+            return f"Error: Rate limit exceeded ({max_reqs} reqs / {window_mins} mins). Please wait {wait_desc}."
+
+    # Record the current request
+    _REQUEST_HISTORY.append(now)
+
     # 1. Start Virtual Display (This is the 'magic' for Linux servers)
     vdisplay = Xvfb(width=1920, height=1080, colordepth=24)
     vdisplay.start()
     print("Virtual display started...")
 
     try:
-        print(123)
         # 2. Configure Undetected Chromedriver
         options = uc.ChromeOptions()
         options.add_argument("--no-sandbox")
