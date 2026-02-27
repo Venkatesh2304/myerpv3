@@ -35,9 +35,8 @@ from custom.classes import get_curl
 
 
 i = IkeaBank("devaki_hul")
-# i.login()
+i.login()
 print(i.is_logged_in())
-CollectionReport.update_db(i,Company.objects.get(name="devaki_hul"),DateRangeArgs(fromd = datetime.date.today() , tod = datetime.date.today())) 
 exit(0)
 
 i = Unilever("lakme_urban")
