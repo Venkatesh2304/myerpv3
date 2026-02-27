@@ -116,7 +116,8 @@ class BaseIkea(Session):
         self.cookies.clear()
         time_epochs = self._date_epochs()
         token = self._get_token_from_redis()  #Need to get token 
-        print(token)
+        # token = "0cAFcWeA4S_1zMSueNvpkfg3wsaHTUuWMWCZoYY2vACSKgpAyesimlf-9Msm-ypR0cQEw4plD0C2xn6Pbs-2CgLlTpjCryZTjKmacul-0oosirI1PX2j6ACaLX3KjQFHNe3MtVOc4eZNjouYD17xI9W7tBZuFZsG90wb-3NzEK_V4ZLYZLc7S5eIG4PC8JRlx1mfi3Irk458-Tnw-JBs86980FkwPiC9pRQyZrMfSQF7N2TjJvneeVWh6HXcqy0N2NECuFLjze4PykEZ2l19BQLfH1kT8c8dpmJpSIuF8uzmmjtIdiOGBvaXk0qjEKZHMsOd61WB2GeJakyCwv9co-nkh4NPi9D3DOfFpguGCRUUgx5R2ITNRg93wkK1zFXvDpFLmjyPEyJ7V_hTxauKjpus3gdNCZs5wHmzHvJV-c2CyUwGFc8zT0TKo1U5EszQVGgYiM8hROvFRcAquaXfdaZ32kYkGg-m6wtik_DorTCnDtRZVQyE_-TdvR081gIAOmgBmm1RUTIBhVhZUx_feTRs1u9aRgmGUtCkHKmkYKC69HjK4ZsOcQ5oaAokTk4MAhIQavx-v2ujM1hWDQ8H1pRfuw19tDevPhsx-BY2CVilJ-Cs1_LoPGepzE6gJSrc8EYY7G-4dITpZjBKDQesb6cGhP0ebkRbU4CGH3gYUwRIc_WApssDdOxmG-rHR8uOpYO3doVwAvKAdb5zjuNNiRTQ41y0K-OwKb-5l7POCTu7nBQyeRdN-0j2AELs3ZENfFPsvLdI-suOgbDtma5zxJZFxzSk0uhcr1fmU513lhG2sdOnsUK0zW16AsGwyWqaEhT6Dkug30LQAgUEjUp-Jm8TQ4s-NHLy46tv19vcbNGpLjIFo4s9VIU34s9hsSXhkOFu_mr5Uq7f1rt9k6CU7mmYAChovhUQVBpvVTqMtSLOIvHq4T_Jl0X965vMvT0YRQ2eJWj1Cm92rE5wdI21bbpxIfkNseBNcLDYxf9nNz0HY9lFuorllVvrauZrSr7WhBhqPgrm0EetM3x2fM-Qa1O7AzSSGH0sCtSXi25s93P2O9TfSDF_5Giy7-ziU2O0P9incI0tgDueTRbsUnZ_oM_7DXUs6B9VYr9uDi3if6Bhql-UkDqxmx8ZtZGdFQFEyMCez_hpn9ABSmJtetAElOaWuaHJjz4XXUsHmIoqFbHBkdWJuENvasiVN5GsKKPyjf_mKHBd5i1kkKeVCEqs8gIKErXVZrKPFAYnwaj5ANI2mwkzoS34Cb3qlpPSjHLOh6YHocUEJcG2EZF8EWteEj_8s4oyetZBPdAGNfG1udaRQieIFYbd2Rs0-uJSaaHii75x3hDw-x-iH9OVwHRz5YuY2hUAtGo62iz9tt2sNsHtKw8LBquDRlmydZNLJbNmR2877F5gAJSyOvBPmnUSTLphVibOhXgiCzZe71VmsYiFV5VSQNZrmsJulC9MGZAdXvCMbjH5Ao1-NnzTd5s3Gey5O0F3ZcRmrD3e7w37QKD6uhgGVU3LATxIt-QlkHqTTSMudlj0IfI_FibEcTrf8J79BxQf8S34NUdNjyvw6YsTFkIimchP64NlB8IV930XCuMut8IALfu6WPFaGaoXvoEU5U4PYg03kw1bRXvIcLkX28jTFgKpc7dKK2PUJMZakJ2n6PwmtnJQNOYBJcjiV_TRFLeZCntdbrYinuyPDtej5FbA2X5czasXLz1HIiC2q_6WhBvUQdqQnT-b77qOew5NHMEfwKUO37NV86OM9JBA9QOXk5oDnigoK7Ju0QqBGGafQ7UjXgw3ZtftuvSkMvNeOEZ0C27-1ahnWMBZgr9VYYJkE_gyzduilqPOymD8-miJkMacS342oKrHOkxJ88guU95FwC2d5e7mfVzwrcSQlyXxyxOBWb4brTiMluo9A_8o0TKGxShuFiiMkxZIWEyrrSn0rhqO8VWqhlExZcio4SGBnGss2uawud1lpoyNnKwKSXrGyizNJ7QIcQm_lIkJS_NJZawPgBmQ6eqLV5CKHd3GnNjrduZxkxYnpIUxqiDrz8MT0ImjbzlHrW2A7gtcH1zffrSJGiMOyMem_mPBaKi2xVrnSZyGjYoO9K8Ysg3F_8zbC7m02ZKvYIswW6bGRugBw3sHUMSg"
+        # print(token)
         #Example:token = "0cAFcWeA7NTbAekCLlLHrXkrBFYP7pe0NOiwQHj1CTKAtyWPSaszXPmgxMGbnwUmTwt3sR27ih7pQcfw05IRMXwNaX_QZPX4LIGPVKNPakvAjjcTJzoLZ1jRy4N1czV6u6HhkJe8SwQOz_51qDBek_86LC1MbutZiac05fQkMRn7OkcLA3ThWtNN1F0wKu9Vr2WV3rEOv4CQdCD9X23z5LGM57RzN9Uq4UYKLFoGurYC-XLtSBOJtg_zhX9Plje4otoCs6AyJnqn_oWE2emvWD1fOjtvq062etu34jmByGpr4ZjHpbYZUp5f7UsGzcbCQOf9T3kpphm8FXAtQKRYrEdIn8oRORrYiaSzEaEBndQeQKHjs_dCinwNkoHgEp69eyTN_Cgg811-C2--A27SqrU7MFv_OI2fN4MelJcvb5WJQVG6oAdsmToRQBbaiQALTgTU7w0rSCMQYFQ3IftYg_zs8cvYm4t9BeWfbgFYvOjU7unfOmraINgMpHoAqqwYeSs-r-kue899mSDU3286Bk6hRmZVtFGxpoSk2f6dOc7CIu3CJxRFl7mQqSYa0QdhVVTGhtGm-LwOVHeQ94U8VJVps0BKeAUHeRIrUIcuN1qMspzgldbV8dDVGST5MVVPpnorf08MY4GGd85uXXA4X9zRsVAPG3Ck0QKtn8iBj3go9nd-B-j2zBlqLTwrpWMKnQeVEcxJoxkfXXVagKnqydvtc-MAlgkBZF5zYDDYGnudiRBht6O58F3D7Zz9HK94ppEKHpwzlZL94q6xfKgyoRXTXtne9GQwSPmo3ESVf7gnMj7dVV3uMyStNeWs0GeLEINGS0bKniFk69G41IrlEFApqV6tq-MobRB574wvN68MEberJSpRkZp5BSGc-O3nJakOzxvDjYoQ0jKKHYLUR3jBYntTLjqUUmi2yTtREhaodU86BNFJKX9EKFjQhktepRtqrlre01tkc6sNjm-Pdj2lJ04Yy7ujN8GAjngrSVRPL0phLEDQ_YlOqjxrdAounvoKYgrNhaXYPrK4vlJZ6bOe1VShV6JkYVbjj4_tqoFtp9FOln4iJdbPvEjogXg-qxk2WdBl8QX684mVGyuR-q1w_jD98jDencUlfGkuPBi9ZoFDQ24cCzsBNCTmusTrUnMrBcctvGIbqyHJSZOL99bkVKkoVCG_Jz_ak0yNE05vm0GR8zbe7eBg4LtWoPDin3TXsu2BS5utC_KCiZKRkDXFXjUQRcBfRkqjLOeLx1HxTmglUjELaeUqwzxVJMdMTqEZpRGS7d7XUJEBdVyJCiZKcvspZ8iy0FLW3uR1d6gagjDtFP-Ups7R7yzFrM24IpSIRZ5VrmTRcfX7nMatb6ML6IsAVHwXZNnlvg1WdRWiSzYwnVencJdmG59pmmpT15dBCwsvdiSKjI4Kefy8VZ9-g3wSEk-LMREWoJSKg07Da37H4v_BbHt1xaLZRREf_xrCxS4RJPu8Rh2KEmxpumZfPACStAYZQ_6gbOoVkJN7SIzE6MLPPWZogKn8PI6k80HKC6rohkc7ldgrRVu5w8O9JB0NYupYAV_8FDJWa5PcfwUKmsahQ1GQNU_Q3tCFTeSi44SlSN-D5uDqqp6vqeBVG_jnhAXuIU7bW-AOaT_0UgLIbQQABmmknvn5vMISFJH-jP9meKhSYAqHYmBbcQ3p03CybNhEd0gpjanWSFiHHdPa_J72za5AOj7Dv1xvtXt6C9njvfZGXu7j-5aHprRen_ZL-Y-QLyBVaduEQbYCASZ0zKPZZ4Y6bK0BOS6i8kiLnvqGqxDw2vnia9f91GTWXO1lOnPkJ7-NWvlcVD9WEnsRYSq07N0DdCv7PIOSI3SfRtN0CwFk70nlExvPTp6hHrsOgzyEdLbF9W0jhlqVZF123tfl4oydnCxD9Qopt6UYsFsbJK-rkFuVJDTocxoLBS8-ApM9uVHxv0CQoPLAUgyD0bnHUEbk-h_yFrlonEQeogPYuD-nqi"
         preauth_res_text = self.post("/rsunify/app/user/authentication",data={'userId': self.username , "g-recaptcha-response" : token,
                         'password': self.password, 'dbName': self.config["dbName"], 'datetime': time_epochs , 'diff': -330},headers={"dbName": self.config["dbName"]}).text
@@ -1364,6 +1365,7 @@ class Unilever(Session):
                     "Content-Transfer-Encoding: binary",
                     "",
                     f"POST {inner_url} HTTP/1.1",
+                    "sap-contextid-accept: header",
                     "Content-Type: application/json",
                     "Accept: application/json",
                     "DataServiceVersion: 2.0",
@@ -1619,4 +1621,29 @@ class Unilever(Session):
 
         self.logger.info(f"ILM PDF Fetch completed. Successfully downloaded {len(results)} PDFs to memory.")
         return results
+
+    def post_orders(self, items, tonnage_volume=None):
+        """
+        Sends a batch POST request to OrderSet with the provided items.
+        Returns the parsed JSON response parts.
+        """
+        service = "/sap/opu/odata/sap/YNGW_GET_ORDERS_PNTR_SRV"
+        payload = {
+            "imprestine": "",
+            "ImPdp": "X",
+            "ImSave": "X",
+            "ImTonnage": "",
+            "header_Item": items,
+            "NpTonnageVolume": tonnage_volume if tonnage_volume is not None else [],
+            "NpLog": []
+        }
+        
+        self.logger.info(f"Posting {len(items)} orders to SAP...")
+        res = self._sap_odata_batch(service, [{
+            'method': 'POST',
+            'url': 'OrderSet?sap-client=100',
+            'body': payload
+        }])
+        
+        return self._parse_sap_batch_response(res)
   
