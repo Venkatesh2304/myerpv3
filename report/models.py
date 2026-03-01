@@ -533,7 +533,7 @@ class PartyReport(EmptyReportModel):
     name = models.CharField(max_length=100, verbose_name="Party Name", null=True)
     addr = models.CharField(max_length=150, verbose_name="Address", null=True)
     # pincode = models.CharField(max_length=10, verbose_name="Pincode", null=True)
-    beat = models.CharField(max_length=80, verbose_name="Beat", null=True)
+    beat = models.CharField(max_length=150, verbose_name="Beat", null=True)
     ctin = models.CharField(max_length=20, verbose_name="GSTIN Number", null=True)
     phone = models.CharField(max_length=20, verbose_name="Phone", null=True)
     pk = models.CompositePrimaryKey("company","code")

@@ -1,3 +1,4 @@
+from report.models import PartyReport
 from custom.classes import Unilever
 from custom.classes import IkeaBank
 from printing.printers import PickingLoadingSheetPrinter,LoadingSheetPrinter
@@ -33,18 +34,72 @@ from rest_framework.test import force_authenticate
 from rest_framework.test import APIRequestFactory
 from custom.classes import get_curl
 
-
-i = IkeaBank("devaki_hul")
-i.login()
-print(i.is_logged_in())
+i = Ikea("devaki_hul")
+PartyReport.update_db(i,Company.objects.get(code="devaki_hul"),EmptyArgs())
 exit(0)
 
-i = Unilever("lakme_urban")
+i = Billing("lakme_rural")
+order_products = i.get_market_order(None,"all",allow_partial_bills=True)
+basepack_order_products = defaultdict(int)
+for order_product in order_products : 
+    basepack_order_products[order_product["bc"]] += order_product["cq"]
+
+print(basepack_order_products)
+# i.login()
+# print(i.is_logged_in())
+# exit(0)
+
+df = pd.read_excel("~/Documents/LeverEDGE_41B862_productwisesales_2026022805422242224222.xlsx",dtype={"BasePack Code":str})
+df = df[(df["Bill Date"].dt.date <= datetime.date(2026,2,20)) & (df["Bill Date"].dt.date >= datetime.date(2026,1,21))]
+df["Units"] = df["Units"] * 0.5
+basepack_to_units = df.groupby("BasePack Code")["Units"].sum().to_dict()
+basepack_to_name = df.groupby("BasePack Code")["Product Description"].first().to_dict()
+with open("a.json") as f : 
+    items = json.load(f)
+
+
+min_order_qtys = defaultdict(list)
+available_qtys = defaultdict(list)
+confirmed_qtys = defaultdict(list)
+stock_qtys = defaultdict(list)
+basepack_to_uom = {}
+for item in items : 
+    min_order_qtys[item["BasePackCode"]].append(int(item["Lrange"]))
+    available_qtys[item["BasePackCode"]].append(int(item["Urange"]))
+    confirmed_qtys[item["BasePackCode"]].append(int(float(item["ConQty"])))
+    stock_qtys[item["BasePackCode"]].append(int(float(item["Stock"])))
+    basepack_to_uom[item["BasePackCode"]] = int(item["Caseconfig"])
+
+for basepack,qtys in min_order_qtys.items() : 
+    lrange = sum(min_order_qtys[basepack])
+    urange = sum(available_qtys[basepack])
+    confirmed_qty = sum(confirmed_qtys[basepack])
+    stock_qty = sum(stock_qtys[basepack])
+    if basepack not in basepack_to_units : 
+        continue
+    suggested_qty = basepack_to_units[basepack] if basepack in basepack_to_units else 0
+    suggested_qty = round(suggested_qty / basepack_to_uom[basepack])
+    real_suggested_qty = suggested_qty
+    suggested_qty = max(suggested_qty - stock_qty,0)
+    if suggested_qty < lrange : 
+        suggested_qty = lrange
+    elif suggested_qty > urange : 
+        suggested_qty = urange
+    if suggested_qty != confirmed_qty : 
+        print(basepack,basepack_to_name.get(basepack,"No Name"))
+        print("Suggested: ",suggested_qty,", Confirmed: ",confirmed_qty , " Real Suggested: ",real_suggested_qty, " stock:",stock_qty, " uom: ",basepack_to_uom[basepack])
+    # basepack_to_units[basepack] = suggested_qty
+
+exit(0)
+
+i = Unilever("lakme_rural")
 x = i.get("/sap/opu/odata/sap/YNGW_GET_ORDERS_PNTR_SRV/OrderTableSet?$filter=ImPrestine%20eq%20%27%27%20and%20PdpOrders%20eq%20%27X%27%20and%20Direct%20eq%20%27%27&sap-client=100&$format=json")
 items = x.json()["d"]["results"]
 
 with open("a.json","w+") as f : 
     f.write(json.dumps(items))
+
+# exit(0)
 
 target_keys = [
     "Vkorg", "Vtweg", "Spart", "Werks", "Matkl", "Sno", "Matnr", "Maktx",
@@ -63,9 +118,12 @@ filtered_items = []
 for item in items:
     filtered_item = {k: item.get(k) for k in target_keys if k in item}
     # Modify ConQty for specific item in the first request
-    if filtered_item.get("Matnr") == "LPRB1R3":
+    if filtered_item.get("Matnr") == "EMQQ100":
         filtered_item["ConQty"] = "1"
     filtered_items.append(filtered_item)
+
+with open("filtered_items.json", "w+") as f:
+    f.write(json.dumps(filtered_items))
 
 # First Request
 print("Sending first post request...")
@@ -91,6 +149,9 @@ with open("post_response_2.json", "w+") as f:
 
 print(f"Double post completed. Responses saved to post_response_1.json and post_response_2.json")
 exit(0)
+
+# "Lrange": "0",
+# "Urange": "5",
 
 
 
