@@ -35,7 +35,7 @@ from rest_framework.test import APIRequestFactory
 from custom.classes import get_curl
 
 i = Ikea("devaki_hul")
-PartyReport.update_db(i,Company.objects.get(code="devaki_hul"),EmptyArgs())
+PartyReport.update_db(i,Company.objects.get(name="devaki_hul"),EmptyArgs())
 exit(0)
 
 i = Billing("lakme_rural")
