@@ -25,6 +25,7 @@ from typing import TypeVar, Generic
 from core.models import Company, User
 from core.fields import decimal_field
 from django.utils import timezone
+import json
 
 class ReportSyncLog(models.Model):
     report_name = models.CharField(max_length=100)
@@ -468,6 +469,40 @@ class OutstandingReport(EmptyReportModel):
       class Meta: # type: ignore
         db_table = "outstanding_report"
         unique_together = ("inum", "party_id")
+
+      @classmethod
+      def update_db(cls, fetcher_obj: object, company: Company, args: EmptyArgs) -> int | None:
+          df = cls.Report.get_dataframe(fetcher_obj, args)
+          df["company_id"] = company.pk
+
+          if company.pk == "devaki_hul":
+              mapping_path = os.path.join(settings.BASE_DIR, "bill_beat_mapping.json")
+              if os.path.exists(mapping_path):
+                  try:
+                      with open(mapping_path, "r") as f:
+                          mapping = json.load(f)
+                      
+                      # Apply mapping: bill_no -> {"beat": "...", "salesman": "..."}
+                      def apply_mapping(row):
+                          bill_no = row['inum']
+                          if bill_no in mapping:
+                              m = mapping[bill_no]
+                              if isinstance(m, dict):
+                                  row['beat'] = m.get('beat', row['beat'])
+                                  row['salesman'] = m.get('salesman', row['salesman'])
+                              else:
+                                  # For backward compatibility if it's just a string (though unlikely now)
+                                  row['beat'] = m
+                          return row
+                      
+                      df = df.apply(apply_mapping, axis=1)
+                  except Exception as e:
+                      print(f"Error applying beat mapping for devaki_hul: {e}")
+
+          cls.delete_before_insert(company, args)
+          inserted_rows = cls.save_to_db(df)
+          ReportSyncLog.update_log(cls, identifier=company.pk)
+          return inserted_rows
         
 class BillAgeingReport(EmptyReportModel):
     inum = models.CharField(max_length=20)
@@ -553,6 +588,7 @@ class PartyReport(EmptyReportModel):
         def custom_preprocessing(cls, df: pd.DataFrame) -> pd.DataFrame:
             df.drop_duplicates(subset="code",inplace=True)
             df["phone"] = 1
+            df["beat"] = df["beat"].str.replace("&amp;","&")
             strips = lambda df,val : df.str.split(val).str[0].str.strip(" \t,")
             df["phone"] = df["addr"].str.split("PH :").str[1].str.strip()
             df["addr"] = strips( strips( strips( df["addr"] , "TRICHY" )  , "PH :" ) , "N.A" )

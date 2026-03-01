@@ -1,3 +1,5 @@
+from report.models import OutstandingReport
+from report.models import BeatReport
 from report.models import PartyReport
 from custom.classes import Unilever
 from custom.classes import IkeaBank
@@ -35,7 +37,9 @@ from rest_framework.test import APIRequestFactory
 from custom.classes import get_curl
 
 i = Ikea("devaki_hul")
+BeatReport.update_db(i,Company.objects.get(name="devaki_hul"),EmptyArgs())
 PartyReport.update_db(i,Company.objects.get(name="devaki_hul"),EmptyArgs())
+OutstandingReport.update_db(i,Company.objects.get(name="devaki_hul"),EmptyArgs())
 exit(0)
 
 i = Billing("lakme_rural")

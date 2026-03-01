@@ -30,3 +30,4 @@ bill_scan/management/commands/impact_analysis.py
 chrome_profile/
 ilm/
 *\.md*
+!bill_beat_mapping.json
