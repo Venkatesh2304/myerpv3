@@ -36,6 +36,28 @@ from rest_framework.test import force_authenticate
 from rest_framework.test import APIRequestFactory
 from custom.classes import get_curl
 
+# i = Ikea("lakme_rural")
+# for bill in ["CB01028","CB01029","CB01030","CB01031","CB01035","CB01036"]:
+#     with open(f"temp/{bill}.json","w+") as f : 
+#         f.write(json.dumps(i.retrive_bill(bill)))
+
+# rows = []
+# for bill in ["CB01028","CB01029","CB01030","CB01031","CB01035","CB01036"]:
+#     data = json.load(open(f"temp/{bill}.json"))
+#     products = data["billingProductMasterVOList"]
+#     for product in products :
+#         row = {"bill":bill,"Product":product["prodName"], "Quantity" : product["totalQtyUnits"] , "Basic Rate" : product["basicRate"],
+#         "Gross Amount":product["productGrossAmt"] ,
+#         "Scheme Discount":product["schDiscAmt"], "taxable": product["productGrossAmt"] - product["schDiscAmt"], 
+#         "tax_rate" : round(product["cgstTaxPer"]*2),
+#         "tax":product["prodTaxAmt"]}
+#         rows.append(row)
+# df = pd.DataFrame(rows)
+# df.to_excel("bills.xlsx",index=False)
+
+
+# exit(0)
+
 i = Ikea("devaki_hul")
 BeatReport.update_db(i,Company.objects.get(name="devaki_hul"),EmptyArgs())
 PartyReport.update_db(i,Company.objects.get(name="devaki_hul"),EmptyArgs())
