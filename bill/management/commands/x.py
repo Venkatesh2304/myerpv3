@@ -59,9 +59,10 @@ from custom.classes import get_curl
 # exit(0)
 
 i = Ikea("devaki_hul")
-BeatReport.update_db(i,Company.objects.get(name="devaki_hul"),EmptyArgs())
-PartyReport.update_db(i,Company.objects.get(name="devaki_hul"),EmptyArgs())
-OutstandingReport.update_db(i,Company.objects.get(name="devaki_hul"),EmptyArgs())
+print(i.is_logged_in())
+# BeatReport.update_db(i,Company.objects.get(name="devaki_hul"),EmptyArgs())
+# PartyReport.update_db(i,Company.objects.get(name="devaki_hul"),EmptyArgs())
+# OutstandingReport.update_db(i,Company.objects.get(name="devaki_hul"),EmptyArgs())
 exit(0)
 
 i = Billing("lakme_rural")
