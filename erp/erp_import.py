@@ -85,8 +85,8 @@ class SalesImport(DateImport):
         )
         inums = inums_qs.values_list("inum", flat=True)
         batch_delete(inums_qs, 100)
-        af
-        # models.Inventory.objects.filter(inum__in=inums).delete()
+        inventories_qs = models.Inventory.objects.filter(inum__in=inums,company_id=company.pk)
+        batch_delete(inventories_qs,1000)
 
     @classmethod
     @transaction.atomic
