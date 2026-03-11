@@ -83,7 +83,10 @@ class SalesImport(DateImport):
         inums_qs = cls.model.objects.filter(company=company).filter(
             date__gte=args.fromd, date__lte=args.tod, type__in=types
         )
+        inums = inums_qs.values_list("inum", flat=True)
         batch_delete(inums_qs, 100)
+        af
+        # models.Inventory.objects.filter(inum__in=inums).delete()
 
     @classmethod
     @transaction.atomic
@@ -153,10 +156,6 @@ class SalesImport(DateImport):
                     salesreturn_objs.append(new_obj)
                     balance -= amt
                 obj.amt = round(balance, 2)
-
-
-                
-
 
         # ClaimService
         claimservice_inventory_objs = inventory_qs.filter(type="claimservice")
