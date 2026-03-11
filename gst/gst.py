@@ -159,6 +159,7 @@ def generate(organization:Organization,period:str,gst:Gst) -> dict[str,pd.DataFr
         "irn"
     )
     invs = pd.DataFrame(invs_qs.iterator())
+    invs.to_excel("gst.xlsx",index=False)
     items_qs = (
         models.Inventory.objects.filter(company__organization=organization, sales__gst_period=period)
         .exclude(txval=0)
