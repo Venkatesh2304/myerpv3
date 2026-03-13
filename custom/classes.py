@@ -247,6 +247,9 @@ class IkeaReports(BaseIkea):
     def product_wise_purchase(self, fromd: datetime.date, tod: datetime.date) -> pd.DataFrame:
         return self.fetch_report_dataframe("ikea/product_wise_purchase", r'(":val1":").{10}(",":val2":").{10}', (fromd.strftime("%d/%m/%Y"), tod.strftime("%d/%m/%Y")))
     
+    def product_wise_sales(self, fromd: datetime.date, tod: datetime.date) -> pd.DataFrame:
+        return self.fetch_report_dataframe("ikea/product_wise_sales", r'(":val1":").{10}(",":val2":").{10}', (fromd.strftime("%d/%m/%Y"), tod.strftime("%d/%m/%Y")))
+    
     def stock_ledger(self, fromd: datetime.date, tod: datetime.date) -> pd.DataFrame:
         return self.fetch_report_dataframe("ikea/stock_ledger", r'(":val3":").{10}(",":val4":").{10}', (fromd.strftime("%d/%m/%Y"), tod.strftime("%d/%m/%Y")))
     
@@ -473,17 +476,6 @@ class Ikea(IkeaReports):
         self.post("/rsunify/app/api/callikeatocommoutletcreationallapimethods")
         self.post("/rsunify/app/fileUploadId/upload")
 
-        
-
-
-
-
-
-
-
-
-
-
 
 class Billing(Ikea) :
 
@@ -526,10 +518,10 @@ class Billing(Ikea) :
                  base=36).lower()[:11]
 
     def _get_import_dates(self, order_date):
-        return {
-            "importDate": (self.today - datetime.timedelta(days=1)).strftime("%Y-%m-%d") + "T18:30:00.000Z",
-            "orderDate": (order_date - datetime.timedelta(days=1)).strftime("%Y-%m-%d") + "T18:30:00.000Z"
-        }
+        dates = {"importDate": (self.today - datetime.timedelta(days=1)).strftime("%Y-%m-%d") + "T18:30:00.000Z", "orderDate": None}
+        if order_date :
+            dates["orderDate"] = (order_date - datetime.timedelta(days=1)).strftime("%Y-%m-%d") + "T18:30:00.000Z"
+        return dates
       
     def get_creditlock(self,party_data) : 
         params = {
@@ -606,8 +598,8 @@ class Billing(Ikea) :
         postcollection = self.post("/rsunify/app/quantumImport/importSelectedCollection", json=coll_payload).json()
         self.logger.info(f"Post Collection Response: {postcollection}")
         
-    def get_market_order(self, order_date: datetime.date, beat_type: Literal['retail', 'wholesale']) -> list:
-        is_beat_allowed =  lambda beat_name : ("WHOLESALE" in beat_name) == (beat_type == "wholesale")
+    def get_market_order(self, order_date: datetime.date|None, beat_type: Literal['retail', 'wholesale','all'],allow_partial_bills = False) -> list:
+        is_beat_allowed =  lambda beat_name : (("WHOLESALE" in beat_name) == (beat_type == "wholesale")) or (beat_type == "all")
         self.logger.info(f"Processing Order for Date: {order_date}")
         #Get beats
         beats = self.post("/rsunify/app/quantumImport/beatlist", json={"uniqueId":0,"menu":"orderimport"}).json()
@@ -623,6 +615,10 @@ class Billing(Ikea) :
 
         get_order_req = get_curl("ikea/billing/getmarketorder")
         get_order_req.json |= (self.import_dates | {"qtmShikharList" : shikhar_ids, "qtmBeatList" : beat_ids})
+        if allow_partial_bills:
+            get_order_req.json |= {"isRaPartialBilled": 1,
+                                    "isShikharAssistedPartialBilled": 1,
+                                    "isShikharSelfPartialBilled": 1}
         self.market_order = get_order_req.send(self).json()
         
         # Return full raw response as requested
@@ -756,6 +752,7 @@ class Billing(Ikea) :
                 for page_no in range(len(reader2)) :
                     if reader2[page_no].extract_text() != reader1[page_no].extract_text() :
                         self.logger.error(f"PDF Content Mismatch for group {group}. Saving debug files.")
+                        self.logger.debug(f"Page {page_no} content mismatch \n First Copy: {reader1[page_no].extract_text()} \n Second Copy: {reader2[page_no].extract_text()}")
                         pdf1.seek(0)
                         pdf2.seek(0) 
                         with open("first_copy_first_download.pdf","wb+") as f : 
