@@ -752,7 +752,7 @@ class Billing(Ikea) :
                 for page_no in range(len(reader2)) :
                     if reader2[page_no].extract_text() != reader1[page_no].extract_text() :
                         self.logger.error(f"PDF Content Mismatch for group {group}. Saving debug files.")
-                        self.logger.debug(f"Page {page_no} content mismatch \n First Copy: {reader1[page_no].extract_text()} \n Second Copy: {reader2[page_no].extract_text()}")
+                        self.logger.error(f"Page {page_no} content mismatch \n First Copy: {reader1[page_no].extract_text()} \n Second Copy: {reader2[page_no].extract_text()}")
                         pdf1.seek(0)
                         pdf2.seek(0) 
                         with open("first_copy_first_download.pdf","wb+") as f : 
