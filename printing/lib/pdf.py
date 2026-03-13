@@ -202,6 +202,11 @@ class PickingLoadingSheetPDF:
                 cols_to_print = ["S.No", "Product Name", "MRP", "Case", "Units"]
                 data = [cols_to_print] + df[cols_to_print].values.tolist()
                 
+                # Add Totals Row
+                total_cases = pd.to_numeric(df["Case"], errors='coerce').sum()
+                total_units = pd.to_numeric(df["Units"], errors='coerce').sum()
+                data.append(["", "Total", "", str(int(total_cases)) if total_cases > 0 else "0", str(int(total_units)) if total_units > 0 else "0"])
+
                 table = Table(data, repeatRows=1, colWidths=[30, 250, 60, 50, 50])
                 table.setStyle(TableStyle([
                     ('BACKGROUND', (0, 0), (-1, 0), colors.white),
@@ -209,6 +214,7 @@ class PickingLoadingSheetPDF:
                     ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
                     ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
                     ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                    ('FONTNAME', (0, -1), (-1, -1), 'Helvetica-Bold'), # Bold last row
                     ('GRID', (0, 0), (-1, -1), 1, colors.black),
                     ('FONTSIZE', (0, 0), (-1, -1), 9),
                 ]))
