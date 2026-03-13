@@ -743,7 +743,7 @@ class Billing(Ikea) :
         for group in self.__group_consecutive_bills(bills):
              self.logger.debug(f"Fetching PDF for group: {group[0]} to {group[-1]}")
              pdf1 = self.get_bill_pdf(group[0],group[-1])
-             if not ignore_checks :
+             if (not ignore_checks) and old_pdf :
                 pdf2 = self.get_bill_pdf(group[0],group[min(1,len(group)-1)])
                 #PDF2 has only one bill and verifies if the pages of pdf2 and pdf1 are same (pdf2 is a subset of pdf1)
                 
