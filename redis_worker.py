@@ -37,7 +37,7 @@ def process_unilever_cookies(req_id, username, password):
         return {"error": str(e), "traceback": traceback.format_exc()}
 
 def start_worker():
-    print("Starting Unified Redis Worker...")
+    print("Starting Unified Redis Worker...",flush=True)
     r = redis.Redis(host='localhost', port=6379, db=0)
     
     # We listen to two queues using blocking pop (blpop)
