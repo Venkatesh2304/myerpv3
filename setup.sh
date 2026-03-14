@@ -180,7 +180,7 @@ Type=simple
 User=$(whoami)
 Group=$(id -gn)
 WorkingDirectory=$PROJECT_DIR
-Environment=PATH=$VENV_DIR/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin
+Environment="PATH=$VENV_DIR/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin" "PYTHONUNBUFFERED=1"
 ExecStart=$VENV_DIR/bin/python3 redis_worker.py
 Restart=always
 RestartSec=3
