@@ -1,3 +1,6 @@
+from requests.adapters import HTTPAdapter
+from urllib3 import Retry
+from requests import session
 import calendar
 from requests import get
 from collections import defaultdict
@@ -38,6 +41,7 @@ from urllib.parse import urlencode
 import requests 
 from PyPDF2 import PdfReader
 import os
+from requests.exceptions import ConnectionError
 
 warnings.filterwarnings("ignore", category=UserWarning, module=re.escape('openpyxl.styles.stylesheet'))
 
@@ -68,12 +72,12 @@ class BaseIkea(Session):
         super().__init__(user)
         self.headers.update({'accept': 'application/json, text/javascript, */*; q=0.01'})
         self.base_url = self.config["home"]
-        retry_count = 1
         self.user_id = None
         if not self.is_logged_in() : 
-            self.login()
-            if not self.is_logged_in() : 
-                raise Exception("Login Failed")
+            raise Exception("Ikea is Not Logged In")
+            # self.login()
+            # if not self.is_logged_in() : 
+            #     raise Exception("Ikea Login Failed")
 
     def is_logged_in(self) -> bool:
         try : 
@@ -133,7 +137,7 @@ class BaseIkea(Session):
             self.user.update_cookies(self.cookies)
         else : 
             self.logger.error(f"Login Failed with status code: {response.status_code}")
-            raise Exception("Login Failed")
+            raise Exception("Ikea Login Failed")
 
     def _date_epochs(self) :
         return int((datetime.datetime.now() - datetime.datetime(1970, 1, 1)
@@ -259,6 +263,17 @@ class IkeaReports(BaseIkea):
     def sales_reg(self, fromd: datetime.date, tod: datetime.date) -> pd.DataFrame:
         df = self.fetch_report_dataframe("ikea/sales_reg", r'(":val1":").{10}(",":val2":").{10}',
                                                         (fromd.strftime("%d/%m/%Y"), tod.strftime("%d/%m/%Y")))
+        try:
+            df["date"] = pd.to_datetime(df["date"], format="%Y-%m-%d").dt.date
+        except:
+            try: 
+                df["date"] = pd.to_datetime(df["date"], format="%d/%m/%Y").dt.date
+            except Exception as e: 
+                raise Exception(f"Sales Register Date Format Not Supported : {e}")
+        #Check if all the dates are within the fromd and tod
+        wrong_dates_df = df[((df["date"] < fromd) | (df["date"] > tod)) & df["date"].notna()]
+        if not wrong_dates_df.empty:
+            raise Exception(f"Sales Register Date are not within the fromd and tod : {fromd} to {tod} , but we found dates {set(wrong_dates_df['date'].tolist())}")
         return df
     
     def raw_damage_proposal(self, fromd: datetime.date, tod: datetime.date, sheet_name: str) -> pd.DataFrame:
@@ -832,6 +847,19 @@ class Gst(Session) :
           super().__init__(user)
           base_path = Path(__file__).parent
           self.dir = str( (base_path / ("data/gst/" + self.user.user)).resolve() )
+          connection_retry = Retry(
+              total=3,                  # Max 3 retries
+              connect=3,                # Specifically retry on connection errors
+              read=3,                   # Retry if the server stops responding mid-download
+              other=5,
+              backoff_factor=1,         # Wait 2s, 4s, 8s (crucial for "Connection Reset")
+              raise_on_status=False,    # Don't raise error if it's a 404/500, only on network fail
+              status_forcelist=[]       # Empty list means don't retry on HTTP codes, only network
+          )
+  
+          adapter = HTTPAdapter(max_retries=connection_retry)  
+          self.mount('https://', adapter)
+
 
      def captcha(self) : 
           self.cookies.clear()
@@ -1063,7 +1091,15 @@ class Gst(Session) :
                 return data
             else : 
                 raise Exception("GST Get Summary Failed Json data is None")
-            
+    
+     def gstin_details(self,gstin):
+        res = self.post("https://publicservices.gst.gov.in/publicservices/auth/api/search/tp",
+                                        headers={"Referer": "https://services.gst.gov.in/",
+                                        "Host":"publicservices.gst.gov.in",
+                                        "Origin":"https://services.gst.gov.in"}, json = {"gstin":gstin})
+        data = res.json()
+        is_active = (data["sts"] == "Active")
+        return { "is_active" : is_active }
           
 def myHash(str) : 
   hash_object = hashlib.md5(str.encode())
