@@ -1,3 +1,4 @@
+from custom.classes import IkeaBank
 from custom.classes import Ikea
 from collections import defaultdict
 from django.http.response import JsonResponse
@@ -11,19 +12,23 @@ def ikea_login(request):
     if request.method == "GET":
         #Get method gets the username,password,dbName(config) and url (config) from coreusersession
         company = request.GET.get("company")
-        usersession = UserSession.objects.get(user=company, key="ikea")
+        key = request.GET.get("key")
+        usersession = UserSession.objects.get(user=company, key=key)
         config:dict = usersession.config #type: ignore
         return JsonResponse({"username": usersession.username, "password": usersession.password, 
                               "dbName": config["dbName"], "url": config["home"]})
     if request.method == "POST":
         #POST Method Updates the cookies
         company = request.data.get("company")
+        key = request.data.get("key")
         cookies = request.data.get("cookies")
-        usersession = UserSession.objects.get(user=company, key="ikea")
+        print("For company", company, ", key", key, ", Got cookies:", cookies)
+        usersession = UserSession.objects.get(user=company, key=key)
         usersession.cookies = cookies
         usersession.save(update_fields=["cookies"])
         try :
-            i = Ikea(company)
+
+            i = Ikea(company) if key == "ikea" else IkeaBank(company)
             is_logged_in = i.is_logged_in()
             return JsonResponse({"status": "success", "is_logged_in": is_logged_in})
         except Exception as e :
