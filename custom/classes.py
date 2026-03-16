@@ -269,6 +269,7 @@ class IkeaReports(BaseIkea):
             try: 
                 df["date"] = pd.to_datetime(df["date"], format="%d/%m/%Y").dt.date
             except Exception as e: 
+                print(df["date"])
                 raise Exception(f"Sales Register Date Format Not Supported : {e}")
         #Check if all the dates are within the fromd and tod
         wrong_dates_df = df[((df["date"] < fromd) | (df["date"] > tod)) & df["date"].notna()]
