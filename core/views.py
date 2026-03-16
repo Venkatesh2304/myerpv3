@@ -69,31 +69,21 @@ def trigger_ikea_login(request):
         ],
         networkConfiguration = {
             'awsvpcConfiguration': {
-                # These are the 3 subnets from your screenshot
                 'subnets': [
                     'subnet-045ce52845b1f856f', 
                     'subnet-06a27107a14f8d3d7', 
                     'subnet-0561f493ff9eaf27e'
                 ],
-                # This is your default security group from the screenshot
                 'securityGroups': ['sg-0d842ab2d4c70684c'],
-                # This matches the "Turned on" setting in your screenshot
                 'assignPublicIp': 'ENABLED' 
             }
         },
-        # networkConfiguration={
-        #     'awsvpcConfiguration': {
-        #         'subnets': ['subnet-12345678'], # Use private subnets if possible
-        #         'securityGroups': ['sg-12345678'],
-        #         'assignPublicIp': 'ENABLED' # Required if in a public subnet to pull the image
-        #     }
-        # },
         overrides={
             'containerOverrides': [
                 {
                     'name': 'IkeaToken',
                     'environment': [
-                        {'name': 'EVENT_PAYLOAD', 'value': '{"ikea":"murugan_hul}'},
+                        {'name': 'EVENT_PAYLOAD', 'value': '{"ikea":"murugan_hul"}'},
                     ]
                 }
             ]
