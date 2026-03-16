@@ -263,19 +263,19 @@ class IkeaReports(BaseIkea):
     def sales_reg(self, fromd: datetime.date, tod: datetime.date) -> pd.DataFrame:
         df = self.fetch_report_dataframe("ikea/sales_reg", r'(":val1":").{10}(",":val2":").{10}',
                                                         (fromd.strftime("%d/%m/%Y"), tod.strftime("%d/%m/%Y")))
-        print(df.columns)
-        print(df)
+        DATE_COLUMN = "BillDate/Sales Return Date"
         try:
-            df["date"] = pd.to_datetime(df["date"], format="%Y-%m-%d").dt.date
+            df[DATE_COLUMN] = pd.to_datetime(df[DATE_COLUMN], format="%Y-%m-%d").dt.date
         except:
             try: 
-                df["date"] = pd.to_datetime(df["date"], format="%d/%m/%Y").dt.date
+                df[DATE_COLUMN] = pd.to_datetime(df[DATE_COLUMN], format="%d/%m/%Y").dt.date
             except Exception as e: 
+                print(df[DATE_COLUMN])
                 raise Exception(f"Sales Register Date Format Not Supported : {e}")
         #Check if all the dates are within the fromd and tod
-        wrong_dates_df = df[((df["date"] < fromd) | (df["date"] > tod)) & df["date"].notna()]
+        wrong_dates_df = df[((df[DATE_COLUMN] < fromd) | (df[DATE_COLUMN] > tod)) & df[DATE_COLUMN].notna()]
         if not wrong_dates_df.empty:
-            raise Exception(f"Sales Register Date are not within the fromd and tod : {fromd} to {tod} , but we found dates {set(wrong_dates_df['date'].tolist())}")
+            raise Exception(f"Sales Register Date are not within the fromd and tod : {fromd} to {tod} , but we found dates {set(wrong_dates_df[DATE_COLUMN].tolist())}")
         return df
     
     def raw_damage_proposal(self, fromd: datetime.date, tod: datetime.date, sheet_name: str) -> pd.DataFrame:
