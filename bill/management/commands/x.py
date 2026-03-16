@@ -38,26 +38,29 @@ from rest_framework.test import APIRequestFactory
 from custom.classes import get_curl
 
 
-i = Ikea("lakme_rural")
-i.login()
+i = Ikea("murugan_hul")
 print(i.is_logged_in())
 exit(0)
+# i.login()
+# print(i.is_logged_in())
+# exit(0)
 
-g = Gst("devaki")
-while not g.is_logged_in() :
-    with open("captcha.png","wb+") as f :
-        f.write(g.captcha())
-    captcha_input = input("Enter Captcha : ")
-    status = g.login(captcha_input)
-    print("Login status : ",status)
-print("Gst Logged in successfully")
-print(g.gstin_details("33ABFFR9478P1Z8"))
+# g = Gst("devaki")
+# while not g.is_logged_in() :
+#     with open("captcha.png","wb+") as f :
+#         f.write(g.captcha())
+#     captcha_input = input("Enter Captcha : ")
+#     status = g.login(captcha_input)
+#     print("Login status : ",status)
+# print("Gst Logged in successfully")
+# print(g.gstin_details("33ABFFR9478P1Z8"))
+# exit(0)
+
+i = Ikea("lakme_rural")
+for bill in ["CB01099"]:
+    with open(f"temp/{bill}.json","w+") as f : 
+        f.write(json.dumps(i.retrive_bill(bill)))
 exit(0)
-
-# i = Ikea("lakme_rural")
-# for bill in ["CB01028","CB01029","CB01030","CB01031","CB01035","CB01036"]:
-#     with open(f"temp/{bill}.json","w+") as f : 
-#         f.write(json.dumps(i.retrive_bill(bill)))
 
 # rows = []
 # for bill in ["CB01028","CB01029","CB01030","CB01031","CB01035","CB01036"]:
@@ -76,13 +79,12 @@ exit(0)
 
 # exit(0)
 
-i = Ikea("lakme_urban")
-StockReport.update_db(i,Company.objects.get(name="lakme_urban"),EmptyArgs())
-# print(i.is_logged_in())
+# i = Ikea("lakme_rural")
+# StockReport.update_db(i,Company.objects.get(name="lakme_rural"),EmptyArgs())
 # BeatReport.update_db(i,Company.objects.get(name="devaki_hul"),EmptyArgs())
 # PartyReport.update_db(i,Company.objects.get(name="devaki_hul"),EmptyArgs())
 # OutstandingReport.update_db(i,Company.objects.get(name="devaki_hul"),EmptyArgs())
-exit(0)
+# exit(0)
 
 # i = Billing("lakme_rural")
 # order_products = i.get_market_order(None,"all",allow_partial_bills=True)
