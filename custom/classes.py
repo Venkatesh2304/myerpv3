@@ -263,13 +263,14 @@ class IkeaReports(BaseIkea):
     def sales_reg(self, fromd: datetime.date, tod: datetime.date) -> pd.DataFrame:
         df = self.fetch_report_dataframe("ikea/sales_reg", r'(":val1":").{10}(",":val2":").{10}',
                                                         (fromd.strftime("%d/%m/%Y"), tod.strftime("%d/%m/%Y")))
+        print(df.columns)
+        print(df)
         try:
             df["date"] = pd.to_datetime(df["date"], format="%Y-%m-%d").dt.date
         except:
             try: 
                 df["date"] = pd.to_datetime(df["date"], format="%d/%m/%Y").dt.date
             except Exception as e: 
-                print(df["date"])
                 raise Exception(f"Sales Register Date Format Not Supported : {e}")
         #Check if all the dates are within the fromd and tod
         wrong_dates_df = df[((df["date"] < fromd) | (df["date"] > tod)) & df["date"].notna()]
