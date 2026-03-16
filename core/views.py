@@ -1,3 +1,4 @@
+import json
 from custom.classes import IkeaBank
 from custom.classes import Ikea
 from collections import defaultdict
@@ -43,19 +44,24 @@ def ikea_login(request):
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def trigger_ikea_login(request):
-    keys = ["ikea","ikea_bank"]
-    not_logged_in = defaultdict(list)
-    for key in keys:
-        users = UserSession.objects.filter(key=key,user="murugan_hul").values_list("user",flat=True)
-        for user in users:
-            try:
-                i = IKEA_CLASS_MAP[key](user)
-                is_logged_in = i.is_logged_in()
-                if not is_logged_in :
-                    not_logged_in[key].append(user)
-            except Exception as e :
-                not_logged_in[key].append(user)
 
+    def get_not_logged_in_users():
+        keys = ["ikea","ikea_bank"]
+        not_logged_in = defaultdict(list)
+        for key in keys:
+            users = UserSession.objects.filter(key=key).values_list("user",flat=True)
+            for user in users:
+                try:
+                    i = IKEA_CLASS_MAP[key](user)
+                    is_logged_in = i.is_logged_in()
+                    if not is_logged_in :
+                        not_logged_in[key].append(user)
+                except Exception as e :
+                    not_logged_in[key].append(user)
+        return not_logged_in
+        
+    trigger_login_users:dict[str,list[str]] = get_not_logged_in_users()
+    print("Triggering login for users:", trigger_login_users)
     client = boto3.client('ecs', region_name='ap-south-1')
     response = client.run_task(
         cluster='ikeatoken',
@@ -83,7 +89,7 @@ def trigger_ikea_login(request):
                 {
                     'name': 'IkeaToken',
                     'environment': [
-                        {'name': 'EVENT_PAYLOAD', 'value': '{"ikea":"murugan_hul"}'},
+                        {'name': 'EVENT_PAYLOAD', 'value': json.dumps(trigger_login_users)},
                     ]
                 }
             ]
@@ -92,10 +98,23 @@ def trigger_ikea_login(request):
 
     task_arn = response['tasks'][0]['taskArn']
     print(f"Task started! ARN: {task_arn}")
-    
-    return JsonResponse({"status": "success", "not_logged_in": not_logged_in})
-    
+    print("Waiting for task to stop...")
+    waiter = client.get_waiter('tasks_stopped')
+    waiter.wait(
+        cluster='ikeatoken',
+        tasks=[task_arn],
+        WaiterConfig={
+            'Delay': 10,      # Check every 10 seconds
+            'MaxAttempts': 20 # Stop waiting after 200 seconds
+        }
+    )
+    print("Task stopped!")
 
+    #Final check if the users are logged in
+    failed_users = get_not_logged_in_users()
+    print("Failed Login users:", failed_users)
+    return JsonResponse({"status": "success", "failed_users": failed_users})
+    
 @api_view(["GET","POST"])
 def usersession_update(request):
     if request.method == "GET":
