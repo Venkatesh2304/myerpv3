@@ -5,6 +5,12 @@ from django.http.response import JsonResponse
 from core.models import UserSession
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
+import boto3
+
+IKEA_CLASS_MAP = { 
+    "ikea": Ikea,
+    "ikea_bank": IkeaBank
+}
 
 @api_view(["GET","POST"])
 @permission_classes([AllowAny])
@@ -28,11 +34,76 @@ def ikea_login(request):
         usersession.save(update_fields=["cookies"])
         try :
 
-            i = Ikea(company) if key == "ikea" else IkeaBank(company)
+            i = IKEA_CLASS_MAP[key](company)
             is_logged_in = i.is_logged_in()
             return JsonResponse({"status": "success", "is_logged_in": is_logged_in})
         except Exception as e :
             return JsonResponse({"status": "error", "is_logged_in": False, "error": str(e)})
+    
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def trigger_ikea_login(request):
+    keys = ["ikea","ikea_bank"]
+    not_logged_in = defaultdict(list)
+    for key in keys:
+        users = UserSession.objects.filter(key=key,user="murugan_hul").values_list("user",flat=True)
+        for user in users:
+            try:
+                i = IKEA_CLASS_MAP[key](user)
+                is_logged_in = i.is_logged_in()
+                if not is_logged_in :
+                    not_logged_in[key].append(user)
+            except Exception as e :
+                not_logged_in[key].append(user)
+
+    client = boto3.client('ecs', region_name='ap-south-1')
+    response = client.run_task(
+        cluster='ikeatoken',
+        taskDefinition='IkeaToken',
+        count=1,
+        capacityProviderStrategy=[
+            {
+                'capacityProvider': 'FARGATE_SPOT',
+                'weight': 1
+            }
+        ],
+        networkConfiguration = {
+            'awsvpcConfiguration': {
+                # These are the 3 subnets from your screenshot
+                'subnets': [
+                    'subnet-045ce52845b1f856f', 
+                    'subnet-06a27107a14f8d3d7', 
+                    'subnet-0561f493ff9eaf27e'
+                ],
+                # This is your default security group from the screenshot
+                'securityGroups': ['sg-0d842ab2d4c70684c'],
+                # This matches the "Turned on" setting in your screenshot
+                'assignPublicIp': 'ENABLED' 
+            }
+        },
+        # networkConfiguration={
+        #     'awsvpcConfiguration': {
+        #         'subnets': ['subnet-12345678'], # Use private subnets if possible
+        #         'securityGroups': ['sg-12345678'],
+        #         'assignPublicIp': 'ENABLED' # Required if in a public subnet to pull the image
+        #     }
+        # },
+        overrides={
+            'containerOverrides': [
+                {
+                    'name': 'IkeaToken',
+                    'environment': [
+                        {'name': 'EVENT_PAYLOAD', 'value': '{"ikea":"murugan_hul}'},
+                    ]
+                }
+            ]
+        }
+    )
+
+    task_arn = response['tasks'][0]['taskArn']
+    print(f"Task started! ARN: {task_arn}")
+    
+    return JsonResponse({"status": "success", "not_logged_in": not_logged_in})
     
 
 @api_view(["GET","POST"])

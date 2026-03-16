@@ -1,3 +1,4 @@
+from core.views import trigger_ikea_login
 from core.views import ikea_login
 from django.urls import include
 from core.auth_api import get_companies
@@ -16,5 +17,6 @@ urlpatterns = [
     path("usersession", usersession_update, name="usersession"),
     path("companies", get_companies, name="companies"),
     path("ikea_login", ikea_login, name="ikea_login"),
+    path("trigger_ikea_login", trigger_ikea_login, name="trigger_ikea_login"),
     path("", include(router.urls)),
 ]
