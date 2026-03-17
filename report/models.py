@@ -322,14 +322,6 @@ class SalesRegisterReport(DateReportModel):
 
         @classmethod
         def custom_preprocessing(cls, df: pd.DataFrame) -> pd.DataFrame:
-            try:
-                df["date"] = pd.to_datetime(df["date"], format="%Y-%m-%d").dt.date
-            except:
-                try: 
-                    df["date"] = pd.to_datetime(df["date"], format="%d/%m/%Y").dt.date
-                except Exception as e: 
-                    raise Exception(f"Sales Register Date Format Not Supported : {e}")
-
             df["tax"] = df["Tax Amt"] - df["SRT Tax"]
             df["amt"] = df["BillValue"] + df["CR Adj"]
             df["other_discount"] = df["DisFin Adj"] + df["Reversed Payouts"]
@@ -494,8 +486,12 @@ class OutstandingReport(EmptyReportModel):
                                   # For backward compatibility if it's just a string (though unlikely now)
                                   row['beat'] = m
                           return row
-                      
+                      df1 = df.copy().rename(columns={"beat":"old_beat","salesman":"old_salesman"})
                       df = df.apply(apply_mapping, axis=1)
+                      df1["new_beat"] = df["beat"]
+                      df1["new_salesman"] = df["salesman"]
+                      df1 = df1[["inum","bill_date","party_name","old_beat","old_salesman","new_beat","new_salesman","balance"]]
+                      df1.to_excel("outstanding.xlsx",index=False)
                   except Exception as e:
                       print(f"Error applying beat mapping for devaki_hul: {e}")
 
