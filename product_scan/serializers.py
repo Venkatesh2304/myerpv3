@@ -24,11 +24,13 @@ def get_cbu_data():
                 t.id DESC
         ) AS latest_rows;
     """
-    
+    row = {}
     with connection.cursor() as cursor:
         cursor.execute(query)
-        row = cursor.fetchone()        
-    return row[0] if row else {}
+        row = cursor.fetchone()[0]
+        if isinstance(row,str) :
+            row = json.loads(row) 
+    return row
     #Old Json Method
     global CBU_DATA
     if CBU_DATA is None:
