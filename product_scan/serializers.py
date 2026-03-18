@@ -7,8 +7,15 @@ from django.conf import settings
 from django.db import connection
 
 CBU_DATA = None
-
 def get_cbu_data():
+    global CBU_DATA
+    if CBU_DATA is None:
+        try:
+            with open(os.path.join(settings.BASE_DIR, 'cbu.json'), 'r') as f:
+                CBU_DATA = json.load(f)
+        except Exception as e:
+            print(f"Error loading cbu.json: {e}")
+
     query = """
         SELECT 
             jsonb_object_agg(sku_key, latest_value)
@@ -30,17 +37,10 @@ def get_cbu_data():
         row = cursor.fetchone()[0]
         if isinstance(row,str) :
             row = json.loads(row) 
-    return row
-    #Old Json Method
-    global CBU_DATA
+    
     if CBU_DATA is None:
-        try:
-            with open(os.path.join(settings.BASE_DIR, 'cbu.json'), 'r') as f:
-                CBU_DATA = json.load(f)
-        except Exception as e:
-            print(f"Error loading cbu.json: {e}")
-            return {}
-    return CBU_DATA
+        return row
+    return CBU_DATA | row
 
 class SalesScanSummarySerializer(serializers.ModelSerializer):
     box_count = serializers.SerializerMethodField()
