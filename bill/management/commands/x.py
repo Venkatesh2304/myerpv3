@@ -1,3 +1,8 @@
+import calendar
+from report.models import IkeaGSTR1Report
+from report.models import MonthArgs
+from core.models import Organization
+from report.models import GSTR1Portal
 from custom.classes import Gst
 from report.models import OutstandingReport
 from report.models import BeatReport
@@ -38,28 +43,80 @@ from rest_framework.test import APIRequestFactory
 from custom.classes import get_curl
 
 
-i = Ikea("murugan_hul")
-print(i.is_logged_in())
-exit(0)
+i = Ikea("devaki_hul")
+OutstandingReport.update_db(i,Company.objects.get(name="devaki_hul"),EmptyArgs())
+BeatReport.update_db(i,Company.objects.get(name="devaki_hul"),EmptyArgs())
+PartyReport.update_db(i,Company.objects.get(name="devaki_hul"),EmptyArgs())
 # i.login()
 # print(i.is_logged_in())
-# exit(0)
+exit(0)
 
-# g = Gst("devaki")
-# while not g.is_logged_in() :
-#     with open("captcha.png","wb+") as f :
-#         f.write(g.captcha())
-#     captcha_input = input("Enter Captcha : ")
-#     status = g.login(captcha_input)
-#     print("Login status : ",status)
-# print("Gst Logged in successfully")
+
+def get_financial_year_list(start_year):
+    """Generates (month, year) tuples for an April-March cycle."""
+    first_half = [(m, start_year) for m in range(4, 13)]
+    second_half = [(m, start_year + 1) for m in range(1, 4)]
+    return first_half + second_half
+
+
+i = Ikea("devaki_hul")
+
+for month,year in get_financial_year_list(2022) :
+    fromd = datetime.date(year,month,1)
+    last_day = calendar.monthrange(year, month)[1]
+    tod = datetime.date(year, month, last_day)
+    IkeaGSTR1Report.update_db(i,Company.objects.get(name="devaki_hul"),DateRangeArgs(fromd=fromd,tod=tod))
+    inums = IkeaGSTR1Report.objects.filter(company="devaki_hul",type="salesreturn",ctin__isnull=True,
+                                        date__range=(fromd,tod)).values("inum","credit_note_no")
+    df = pd.DataFrame(inums)
+    if df.empty :
+        print(f"No sales returns found for {fromd.strftime('%b%Y')}")
+        continue
+    df = df.drop_duplicates(subset=["credit_note_no"]).set_index("credit_note_no")
+    credit_note_to_inums = df["inum"].to_dict()
+    print(credit_note_to_inums)
+    dir = f"temp/salesreturn/devaki/{fromd.strftime('%b%Y')}"
+    os.makedirs(dir,exist_ok=True)
+    for credit_note,inum in credit_note_to_inums.items() :
+        print(credit_note)
+        data = {
+            'srhRefr': inum,
+            'reportType': 'pdf',
+            'printerName': 'TVS MSP 250 Star',
+        }
+        res = i.post("/rsunify/app/salesreturn/salesreturnPrint",data=data)
+        durl = res.json()["reportPath"]
+        with open(f"{dir}/{credit_note}.pdf","wb+") as f : 
+            f.write(i.fetch_durl_content(durl).getvalue())
+
+exit(0)
+
+g = Gst("devaki")
+while not g.is_logged_in() :
+    with open("captcha.png","wb+") as f :
+        f.write(g.captcha())
+    captcha_input = input("Enter Captcha : ")
+    status = g.login(captcha_input)
+    print("Login status : ",status)
+print("Gst Logged in successfully")
+
+#Imports
+for month,year in get_financial_year_list(2023) :
+    print(month,year)
+    # GSTR1Portal.update_db(g,Organization.objects.get(name="devaki"),MonthArgs(month=month,year=year))
+    fromd = datetime.date(year,month,1)
+    last_day = calendar.monthrange(year, month)[1]
+    to_date = datetime.date(year, month, last_day)
+    IkeaGSTR1Report.update_db(i,Company.objects.get(name="devaki_hul"),DateRangeArgs(fromd=fromd,tod=to_date))
+
 # print(g.gstin_details("33ABFFR9478P1Z8"))
-# exit(0)
+exit(0)
 
 i = Ikea("lakme_rural")
 for bill in ["CB01099"]:
     with open(f"temp/{bill}.json","w+") as f : 
         f.write(json.dumps(i.retrive_bill(bill)))
+
 exit(0)
 
 # rows = []
