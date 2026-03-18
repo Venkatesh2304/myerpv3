@@ -4,10 +4,32 @@ from collections import defaultdict
 import json
 import os
 from django.conf import settings
+from django.db import connection
 
 CBU_DATA = None
 
 def get_cbu_data():
+    query = """
+        SELECT 
+            jsonb_object_agg(sku_key, latest_value)
+        FROM (
+            SELECT DISTINCT ON (kv.key)
+                kv.key AS sku_key, 
+                kv.value AS latest_value
+            FROM 
+                load_truckload t,
+                jsonb_each(t.sku_map) AS kv
+            ORDER BY 
+                kv.key, 
+                t.id DESC
+        ) AS latest_rows;
+    """
+    
+    with connection.cursor() as cursor:
+        cursor.execute(query)
+        row = cursor.fetchone()        
+    return row[0] if row else {}
+    #Old Json Method
     global CBU_DATA
     if CBU_DATA is None:
         try:
