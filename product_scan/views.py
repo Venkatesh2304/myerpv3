@@ -332,68 +332,60 @@ def anomaly_analysis(request):
                 return ""
             return " / ".join(sorted([str(m) for m in mrps]))
 
-        # 1. Fake Scans
-        prod_logs = defaultdict(list)
+        # Simple grouping and anomaly detection
+        sku_data = defaultdict(lambda: {'first_time': float('inf'), 'fake_count': 0, 'manual_count': 0, 'logs': []})
+        
         for log in all_logs:
             sku = log.get('sku')
-            if sku:
-                prod_logs[sku].append(log)
-        
-        for sku, logs in prod_logs.items():
-            # Sort logs by timestamp
-            logs.sort(key=lambda x: x.get('timestamp', 0))
-            
-            fake_count = 0
-            total_fake_diff = 0
-            for i in range(1, len(logs)):
-                t1 = logs[i-1].get('timestamp')
-                t2 = logs[i].get('timestamp')
-                if t1 is not None and t2 is not None:
-                    diff = t2 - t1
-                    if diff < 1000: # Less than 1 second
-                        fake_count += 1
-                        total_fake_diff += diff
-            
-            if fake_count > 0:
-                avg_time = (total_fake_diff / fake_count) / 1000.0 # Convert to seconds
+            if not sku:
+                continue
+            d = sku_data[sku]
+            ts = log.get('timestamp', float('inf'))
+            if ts < d['first_time']:
+                d['first_time'] = ts
+            d['logs'].append(log)
+            if log.get('type', '').startswith('manual_'):
+                d['manual_count'] += 1
+
+        for sku, d in sku_data.items():
+            # Sort logs for fake scan detection
+            d['logs'].sort(key=lambda x: x.get('timestamp', 0))
+            for i in range(1, len(d['logs'])):
+                t1 = d['logs'][i-1].get('timestamp')
+                t2 = d['logs'][i].get('timestamp')
+                if t1 and t2 and (t2 - t1) < 1000:
+                    d['fake_count'] += 1
+
+            if d['fake_count'] > 0:
                 fake_scans.append({
                     'product': sku_name_map.get(sku, sku),
                     'mrp': get_mrp_display(sku),
+                    'time': d['first_time'] if d['first_time'] != float('inf') else None,
                     'party': scan.party_name,
                     'bill_no': scan.bill_no,
-                    'desc': f"{fake_count + 1} items / {avg_time:.1f} sec"
+                    'desc': f"{d['fake_count'] + 1} items / {d['fake_count']} Fakes"
                 })
 
-        # 2. Manual Entries
-        manual_counts = defaultdict(int)
-        for log in all_logs:
-            log_type = log.get('type', '')
-            if log_type.startswith('manual_'):
-                sku = log.get('sku')
-                if sku:
-                    manual_counts[sku] += 1
-        
-        for sku, count in manual_counts.items():
-            manual_entries.append({
-                'product': sku_name_map.get(sku, sku),
-                'mrp': get_mrp_display(sku),
-                'party': scan.party_name,
-                'bill_no': scan.bill_no,
-                'desc': f"{count} Manual Entries"
-            })
+            if d['manual_count'] > 0:
+                manual_entries.append({
+                    'product': sku_name_map.get(sku, sku),
+                    'mrp': get_mrp_display(sku),
+                    'time': d['first_time'] if d['first_time'] != float('inf') else None,
+                    'party': scan.party_name,
+                    'bill_no': scan.bill_no,
+                    'desc': f"{d['manual_count']} Manual Entries"
+                })
 
         # 3. Mismatches
-        bill_mismatches = scan.mismatches
-        for m in bill_mismatches:
+        for m in scan.mismatches:
+            sku = m['sku']
             diff = m['scanned'] - m['billed']
-            if diff > 0:
-                desc = f"{diff} Excess"
-            else:
-                desc = f"{abs(diff)} Shortage"
+            desc = f"{diff} Excess" if diff > 0 else f"{abs(diff)} Shortage"
             
             mismatches.append({
                 'product': m['name'],
-                'mrp': get_mrp_display(m['sku']),
+                'mrp': get_mrp_display(sku),
+                'time': sku_data[sku]['first_time'] if sku in sku_data and sku_data[sku]['first_time'] != float('inf') else None,
                 'party': scan.party_name,
                 'bill_no': scan.bill_no,
                 'desc': desc
