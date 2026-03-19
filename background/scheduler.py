@@ -256,7 +256,7 @@ def main():
         start_date=datetime.datetime.now(),
         name="ikea_health_check"
     )
-    print("Next ikea_health_check at ", job.trigger)
+    logger.info(f"Next ikea_health_check at {job.trigger}")
     
     logger.info("Starting scheduler...")
     try:
