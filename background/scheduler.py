@@ -188,6 +188,7 @@ def monthly_gst_import_job():
             logger.error(f"Error in monthly gst import for {company}: {e}")
 
 def ikea_health_job():
+    print("IKEA health check job")
     logger.info("Running IKEA health check job")
     try:
         s = BaseSession()
@@ -248,13 +249,14 @@ def main():
         name="mail_monthly_bills"
     )
 
-    scheduler.add_job(
+    job = scheduler.add_job(
         ikea_health_job,
         trigger='interval',
         minutes=30,
         start_date=datetime.datetime.now(),
         name="ikea_health_check"
     )
+    print("Next ikea_health_check at ", job.next_run_time)
     
     logger.info("Starting scheduler...")
     try:
