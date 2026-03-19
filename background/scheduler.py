@@ -249,14 +249,14 @@ def main():
         name="mail_monthly_bills"
     )
 
-    scheduler.add_job(
+    job = scheduler.add_job(
         ikea_health_job,
         trigger='interval',
-        misfire_grace_time=60,
+        start_date=datetime.datetime.now() + datetime.timedelta(seconds=30),
         minutes=30,
         name="ikea_health_check"
     )
-    
+    logger.info(f"Ikea health check scheduled at {job.trigger}")
     logger.info("Starting scheduler...")
     try:
         scheduler.start()
