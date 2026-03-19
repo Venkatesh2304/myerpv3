@@ -350,20 +350,26 @@ def anomaly_analysis(request):
         for sku, d in sku_data.items():
             # Sort logs for fake scan detection
             d['logs'].sort(key=lambda x: x.get('timestamp', 0))
+            total_fake_diff = 0
             for i in range(1, len(d['logs'])):
                 t1 = d['logs'][i-1].get('timestamp')
                 t2 = d['logs'][i].get('timestamp')
-                if t1 and t2 and (t2 - t1) < 1000:
-                    d['fake_count'] += 1
+                if t1 and t2:
+                    diff = t2 - t1
+                    if diff < 1000:
+                        d['fake_count'] += 1
+                        total_fake_diff += diff
 
-            if d['fake_count'] > 0:
+            total_items = len(d['logs'])
+            if total_items > 0 and (d['fake_count'] / total_items) >= 0.5:
+                avg_time = (total_fake_diff / d['fake_count']) / 1000.0 if d['fake_count'] > 0 else 0
                 fake_scans.append({
                     'product': sku_name_map.get(sku, sku),
                     'mrp': get_mrp_display(sku),
                     'time': d['first_time'] if d['first_time'] != float('inf') else None,
                     'party': scan.party_name,
                     'bill_no': scan.bill_no,
-                    'desc': f"{d['fake_count'] + 1} items / {d['fake_count']} Fakes"
+                    'desc': f"{total_items} items / {avg_time:.1f} sec"
                 })
 
             if d['manual_count'] > 0:
