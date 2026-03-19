@@ -3,7 +3,7 @@ from core.views import ikea_login
 from django.urls import include
 from core.auth_api import get_companies
 from django.urls import path
-from .views import usersession_update
+from .views import usersession_update, ikea_health
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework.routers import DefaultRouter
 from . import modelviews
@@ -18,5 +18,6 @@ urlpatterns = [
     path("companies", get_companies, name="companies"),
     path("ikea_login", ikea_login, name="ikea_login"),
     path("trigger_ikea_login", trigger_ikea_login, name="trigger_ikea_login"),
+    path("ikea_health", ikea_health, name="ikea_health"),
     path("", include(router.urls)),
 ]

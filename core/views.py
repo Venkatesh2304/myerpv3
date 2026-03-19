@@ -1,3 +1,4 @@
+from django.core.mail import send_mail
 import json
 from custom.classes import IkeaBank
 from custom.classes import Ikea
@@ -34,7 +35,6 @@ def ikea_login(request):
         usersession.cookies = cookies
         usersession.save(update_fields=["cookies"])
         try :
-
             i = IKEA_CLASS_MAP[key](company)
             is_logged_in = i.is_logged_in()
             return JsonResponse({"status": "success", "is_logged_in": is_logged_in})
@@ -61,6 +61,9 @@ def trigger_ikea_login(request):
         return not_logged_in
         
     trigger_login_users:dict[str,list[str]] = get_not_logged_in_users()
+    if not trigger_login_users:
+        return JsonResponse({"status": "success", "message": "All users are logged in"})
+    
     print("Triggering login for users:", trigger_login_users)
     client = boto3.client('ecs', region_name='ap-south-1')
     response = client.run_task(
@@ -113,6 +116,15 @@ def trigger_ikea_login(request):
     #Final check if the users are logged in
     failed_users = get_not_logged_in_users()
     print("Failed Login users:", failed_users)
+    mail_body = "Failed Login users: " + str(failed_users) if failed_users else "All users are logged in"
+    mail_subject = "Ikea Login Failed" if failed_users else "Ikea Login Success"
+    send_mail(
+        subject=mail_subject,
+        message=mail_body,
+        from_email="noreply@devaki.shop",
+        recipient_list=["venkateshks2304@gmail.com"],
+        fail_silently=False,
+    )
     return JsonResponse({"status": "success", "failed_users": failed_users})
     
 @api_view(["GET","POST"])
@@ -143,3 +155,71 @@ def usersession_update(request):
     session.save(update_fields=["username", "password","cookies"])
 
     return JsonResponse({"status": "updated", "id": session.pk, "user": session.user})
+
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def ikea_health(request):
+    keys = ["ikea", "ikea_bank"]
+    health_status = {
+        "logged_in": [],
+        "not_logged_in": []
+    }
+    
+    for key in keys:
+        sessions = UserSession.objects.filter(key=key)
+        for session in sessions:
+            try:
+                i = IKEA_CLASS_MAP[key](session.user)
+                if i.is_logged_in():
+                    health_status["logged_in"].append(f"{key}: {session.user}")
+                else:
+                    health_status["not_logged_in"].append(f"{key}: {session.user}")
+            except Exception as e:
+                health_status["not_logged_in"].append(f"{key}: {session.user} (Error: {str(e)})")
+    
+    mail_body = f"IKEA Health Check Report:\n\n"
+    mail_body += "Logged In:\n" + ("\n".join(health_status["logged_in"]) if health_status["logged_in"] else "None") + "\n\n"
+    mail_body += "Not Logged In:\n" + ("\n".join(health_status["not_logged_in"]) if health_status["not_logged_in"] else "None")
+    
+    send_mail(
+        subject="IKEA Health Check Report",
+        message=mail_body,
+        from_email="noreply@devaki.shop",
+        recipient_list=["venkateshks2304@gmail.com"],
+        fail_silently=False,
+    )
+    
+    return JsonResponse({"status": "success", "health_status": health_status})
+@permission_classes([AllowAny])
+def ikea_health(request):
+    keys = ["ikea", "ikea_bank"]
+    health_status = {
+        "logged_in": [],
+        "not_logged_in": []
+    }
+    
+    for key in keys:
+        sessions = UserSession.objects.filter(key=key)
+        for session in sessions:
+            try:
+                i = IKEA_CLASS_MAP[key](session.user)
+                if i.is_logged_in():
+                    health_status["logged_in"].append(f"{key}: {session.user}")
+                else:
+                    health_status["not_logged_in"].append(f"{key}: {session.user}")
+            except Exception as e:
+                health_status["not_logged_in"].append(f"{key}: {session.user} (Error: {str(e)})")
+    
+    mail_body = f"IKEA Health Check Report:\n\n"
+    mail_body += "Logged In:\n" + ("\n".join(health_status["logged_in"]) if health_status["logged_in"] else "None") + "\n\n"
+    mail_body += "Not Logged In:\n" + ("\n".join(health_status["not_logged_in"]) if health_status["not_logged_in"] else "None")
+    
+    send_mail(
+        subject="IKEA Health Check Report",
+        message=mail_body,
+        from_email="noreply@devaki.shop",
+        recipient_list=["venkateshks2304@gmail.com"],
+        fail_silently=False,
+    )
+    
+    return JsonResponse({"status": "success", "health_status": health_status})

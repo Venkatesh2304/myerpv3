@@ -149,7 +149,6 @@ def mail_monthly_bills():
     logger.info(f"Starting Monthly Bill Mailer for {month}/{year}")
     
     for company in COMPANIES:
-
         logger.info(f"Mailing monthly bills for {company}")
         try:
             s = BaseSession()
@@ -187,6 +186,16 @@ def monthly_gst_import_job():
             logger.info(f"Monthly gst import result for {company}: {response.json()}")
         except Exception as e:
             logger.error(f"Error in monthly gst import for {company}: {e}")
+
+def ikea_health_job():
+    logger.info("Running IKEA health check job")
+    try:
+        s = BaseSession()
+        # Ensure the trailing slash or no slash matches the url definition
+        response = s.get("/ikea_health")
+        logger.info(f"IKEA health check result: {response.json()}")
+    except Exception as e:
+        logger.error(f"Error in IKEA health check job: {e}")
 
 def main():
     scheduler = BlockingScheduler()
@@ -237,6 +246,13 @@ def main():
         mail_monthly_bills,
         trigger=CronTrigger(day=3, hour=5, minute=0, second=0),
         name="mail_monthly_bills"
+    )
+
+    scheduler.add_job(
+        ikea_health_job,
+        trigger='interval',
+        minutes=30,
+        name="ikea_health_check"
     )
     
     logger.info("Starting scheduler...")
