@@ -248,10 +248,11 @@ def main():
         trigger=CronTrigger(day=3, hour=5, minute=0, second=0),
         name="mail_monthly_bills"
     )
-    
+
     scheduler.add_job(
         ikea_health_job,
         trigger='interval',
+        misfire_grace_time=60,
         minutes=30,
         name="ikea_health_check"
     )
