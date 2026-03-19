@@ -248,15 +248,13 @@ def main():
         trigger=CronTrigger(day=3, hour=5, minute=0, second=0),
         name="mail_monthly_bills"
     )
-
-    job = scheduler.add_job(
+    
+    scheduler.add_job(
         ikea_health_job,
         trigger='interval',
         minutes=30,
-        start_date=datetime.datetime.now(),
         name="ikea_health_check"
     )
-    logger.info(f"Next ikea_health_check at {job.trigger}")
     
     logger.info("Starting scheduler...")
     try:
