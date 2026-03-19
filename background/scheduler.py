@@ -252,6 +252,7 @@ def main():
         ikea_health_job,
         trigger='interval',
         minutes=30,
+        start_date=datetime.datetime.now(),
         name="ikea_health_check"
     )
     
