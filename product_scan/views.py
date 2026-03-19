@@ -295,3 +295,112 @@ def sales_scan_mismatch(request):
         return JsonResponse({'error': 'Scan not found'}, status=404)
 
     return JsonResponse({'mismatches': sales_scan.mismatches})
+
+@api_view(['GET'])
+def anomaly_analysis(request):
+    date_str = request.query_params.get('date')
+    
+    if not date_str:
+        return JsonResponse({'error': 'date is required (YYYY-MM-DD)'}, status=400)
+    
+    try:
+        target_date = datetime.datetime.strptime(date_str, '%Y-%m-%d').date()
+    except ValueError:
+        return JsonResponse({'error': 'Invalid date format. Use YYYY-MM-DD.'}, status=400)
+
+    user_companies = request.user.companies.all()
+    scans = SalesScan.objects.filter(scanned_time__date=target_date, company__in=user_companies)
+
+    fake_scans = []
+    manual_entries = []
+    mismatches = []
+
+    for scan in scans:
+        all_logs = []
+        for box_logs in scan.logs:
+            if isinstance(box_logs, list):
+                for log in box_logs:
+                    if isinstance(log, dict):
+                        all_logs.append(log)
+        
+        bill_products = scan.bill_products
+        sku_name_map = scan.sku_name_map
+
+        def get_mrp_display(sku):
+            mrps = list(bill_products.get(sku, {}).keys())
+            if not mrps:
+                return ""
+            return " / ".join(sorted([str(m) for m in mrps]))
+
+        # 1. Fake Scans
+        prod_logs = defaultdict(list)
+        for log in all_logs:
+            sku = log.get('sku')
+            if sku:
+                prod_logs[sku].append(log)
+        
+        for sku, logs in prod_logs.items():
+            # Sort logs by timestamp
+            logs.sort(key=lambda x: x.get('timestamp', 0))
+            
+            fake_count = 0
+            total_fake_diff = 0
+            for i in range(1, len(logs)):
+                t1 = logs[i-1].get('timestamp')
+                t2 = logs[i].get('timestamp')
+                if t1 is not None and t2 is not None:
+                    diff = t2 - t1
+                    if diff < 1000: # Less than 1 second
+                        fake_count += 1
+                        total_fake_diff += diff
+            
+            if fake_count > 0:
+                avg_time = (total_fake_diff / fake_count) / 1000.0 # Convert to seconds
+                fake_scans.append({
+                    'product': sku_name_map.get(sku, sku),
+                    'mrp': get_mrp_display(sku),
+                    'party': scan.party_name,
+                    'bill_no': scan.bill_no,
+                    'desc': f"{fake_count + 1} items / {avg_time:.1f} sec"
+                })
+
+        # 2. Manual Entries
+        manual_counts = defaultdict(int)
+        for log in all_logs:
+            log_type = log.get('type', '')
+            if log_type.startswith('manual_'):
+                sku = log.get('sku')
+                if sku:
+                    manual_counts[sku] += 1
+        
+        for sku, count in manual_counts.items():
+            manual_entries.append({
+                'product': sku_name_map.get(sku, sku),
+                'mrp': get_mrp_display(sku),
+                'party': scan.party_name,
+                'bill_no': scan.bill_no,
+                'desc': f"{count} Manual Entries"
+            })
+
+        # 3. Mismatches
+        bill_mismatches = scan.mismatches
+        for m in bill_mismatches:
+            diff = m['scanned'] - m['billed']
+            if diff > 0:
+                desc = f"{diff} Excess"
+            else:
+                desc = f"{abs(diff)} Shortage"
+            
+            mismatches.append({
+                'product': m['name'],
+                'mrp': get_mrp_display(m['sku']),
+                'party': scan.party_name,
+                'bill_no': scan.bill_no,
+                'desc': desc
+            })
+
+    return JsonResponse({
+        'fake_scans': fake_scans,
+        'manual_entries': manual_entries,
+        'mismatches': mismatches
+    })

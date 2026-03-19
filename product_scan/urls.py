@@ -11,6 +11,7 @@ urlpatterns = [
     path('sales_box/', views.scan_sales_box),
     path('sales_scan_summary/', views.sales_scan_summary),
     path('sales_scan_mismatch/', views.sales_scan_mismatch),
+    path('anomaly_analysis/', views.anomaly_analysis),
     path('barcode/', views.barcode_view),
     path('', include(router.urls)),
 ]
