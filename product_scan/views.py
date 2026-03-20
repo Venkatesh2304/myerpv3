@@ -16,6 +16,11 @@ from .models import Barcode
 from datetime import timedelta
 from report.models import StockReport
 import time
+import subprocess
+import tempfile
+from django.core.files import File
+from reportlab.platypus import Paragraph
+from reportlab.lib.styles import getSampleStyleSheet
 
 @api_view(['GET', 'POST'])
 def barcode_view(request):
@@ -172,8 +177,6 @@ def generate_sales_scan_pdf(sales_scan, output_path):
     sku_name_map = sales_scan.sku_name_map
     
     # 0. Header (Bill No & Time)
-    from reportlab.platypus import Paragraph
-    from reportlab.lib.styles import getSampleStyleSheet
     styles = getSampleStyleSheet()
     
     current_time = datetime.datetime.now().strftime("%d-%b-%Y %H:%M")
@@ -239,8 +242,6 @@ def generate_sales_scan_pdf(sales_scan, output_path):
 
     # Add Box Summary Table
     if len(box_totals) > 0:
-        from reportlab.platypus import Paragraph
-        from reportlab.lib.styles import getSampleStyleSheet
         styles = getSampleStyleSheet()
         
         summary_table = Table(summary_data, colWidths=[100, 100, 100])
@@ -253,8 +254,6 @@ def generate_sales_scan_pdf(sales_scan, output_path):
         detailed_table.setStyle(bw_style)
         elements.append(detailed_table)
     else:
-        from reportlab.platypus import Paragraph
-        from reportlab.lib.styles import getSampleStyleSheet
         styles = getSampleStyleSheet()
         elements.append(Paragraph("No Scanned Data Found", styles['Normal']))
 
@@ -440,6 +439,41 @@ def get_video_tasks(request):
     
     return JsonResponse({'tasks': result})
 
+def _get_video_filters(scan, rel_start_offset=0):
+    """
+    Returns the FFmpeg vf chain for product name overlays.
+    rel_start_offset: used for clips to adjust text timing (log_ts - min_ts - offset).
+    """
+    all_logs = []
+    for box_logs in scan.logs:
+        if isinstance(box_logs, list):
+            for log in box_logs:
+                if isinstance(log, dict) and 'timestamp' in log:
+                    all_logs.append(log)
+    
+    if not all_logs:
+        return "null"
+        
+    all_logs.sort(key=lambda x: x['timestamp'])
+    min_ts = min(log['timestamp'] for log in all_logs)
+    sku_name_map = scan.sku_name_map
+    filters = []
+    
+    for log in all_logs:
+        sku = log.get('sku')
+        if not sku: continue
+        name = sku_name_map.get(sku, sku) or sku
+        safe_name = str(name).replace("'", "").replace(":", "-")
+        # Timing relative to the start of the video/clip
+        rel_ts = (log['timestamp'] - min_ts) / 1000.0 - rel_start_offset
+        rel_end = rel_ts + 2.0
+        
+        # Only include if it falls within the clip (or just let FFmpeg handle it, 
+        # but enable='between(t, ...)' handles it anyway)
+        filters.append(f"drawtext=text='{safe_name}':x=w-tw-10:y=10:fontcolor=red:fontsize=24:enable='between(t,{rel_ts:.2f},{rel_end:.2f})'")
+    
+    return ",".join(filters)
+
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def upload_scan_video(request):
@@ -454,12 +488,8 @@ def upload_scan_video(request):
     except SalesScan.DoesNotExist:
         return JsonResponse({'error': 'Scan not found'}, status=404)
         
+    # Compression disabled temporarily as per user request
     """
-    import tempfile
-    import subprocess
-    import os
-    from django.core.files import File
-
     # Save uploaded file to a temporary location
     with tempfile.NamedTemporaryFile(suffix='.mp4', delete=False) as temp_in:
         for chunk in video_file.chunks():
@@ -469,7 +499,6 @@ def upload_scan_video(request):
     # Create temporary path for compressed output
     temp_out_path = temp_in_path + "_compressed.mp4"
 
-    # FFmpeg command: ffmpeg -i video1.mp4 -vcodec libx265 -crf 35 -vf "scale=1280:-2,fps=8" -preset faster -acodec copy compressed_ultra.mp4
     cmd = [
         "ffmpeg", "-i", temp_in_path,
         "-vcodec", "libx265",
@@ -487,19 +516,16 @@ def upload_scan_video(request):
              print(f"Compression failed: {result.stderr}")
              return JsonResponse({'error': 'Video compression failed', 'details': result.stderr, 'code': result.returncode}, status=500)
              
-        # Save compressed file back to SalesScan
         with open(temp_out_path, 'rb') as f:
             sales_scan.video_file.save(f"{sales_scan.bill_no}_compressed.mp4", File(f), save=False)
-            
         sales_scan.video_status = 'completed'
     except Exception as e:
-        print(f"An error occurred: {e}")
         return JsonResponse({'error': str(e)}, status=500)
     finally:
-        # Cleanup temporary files
         if os.path.exists(temp_in_path): os.remove(temp_in_path)
         if os.path.exists(temp_out_path): os.remove(temp_out_path)
     """
+    
     sales_scan.video_file = video_file
     sales_scan.video_status = 'completed'
     
@@ -530,11 +556,9 @@ def fail_video_task(request):
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def get_processed_video(request):
-    import subprocess
-    import tempfile
-    import os
-    
     scan_id = request.data.get('scan_id')
+    target_ts = request.data.get('timestamp')
+    
     if not scan_id:
         return JsonResponse({'error': 'scan_id is required'}, status=400)
         
@@ -550,26 +574,18 @@ def get_processed_video(request):
     if not os.path.exists(input_path):
         return JsonResponse({'error': f'Video file not found on disk at {input_path}'}, status=404)
 
-    target_ts = request.data.get('timestamp')
-    
     if target_ts:
-        # 1-minute clip logic
+        # Clipping with Overlay logic
         try:
             target_ts = int(target_ts)
         except ValueError:
             return JsonResponse({'error': 'Invalid timestamp format'}, status=400)
             
-        # Get min_ts to calculate relative start
-        all_logs_ts = []
-        for box_logs in scan.logs:
-            if isinstance(box_logs, list):
-                for log in box_logs:
-                    if isinstance(log, dict) and 'timestamp' in log:
-                        all_logs_ts.append(log['timestamp'])
-        
+        # Get min_ts to calculate relative start for clipping and offset for overlays
+        all_logs_ts = [log['timestamp'] for box in scan.logs for log in box if isinstance(log, dict) and 'timestamp' in log]
         if not all_logs_ts:
             return JsonResponse({'error': 'No logs found to calculate relative time'}, status=400)
-            
+        
         min_ts = min(all_logs_ts)
         rel_start = (target_ts - min_ts) / 1000.0 - 10.0
         if rel_start < 0: rel_start = 0
@@ -580,46 +596,23 @@ def get_processed_video(request):
         if os.path.exists(output_path):
             return JsonResponse({'filepath': get_media_url(output_path)})
             
-        # Cut video (-ss before -i for fast seeking)
+        # For clipping with text, we MUST re-encode.
+        vf_chain = _get_video_filters(scan, rel_start_offset=rel_start)
         cmd = [
             "ffmpeg", "-ss", str(rel_start), "-i", input_path,
             "-t", "60",
-            "-vcodec", "copy",
-            "-an",
-            "-y",
+            "-vf", vf_chain,
+            "-vcodec", "libx264",
+            "-an", "-y",
             output_path
         ]
     else:
-        # Existing Full Video with Text Overlay logic
-        # Build FFmpeg Drawtext Filters from logs
-        all_logs = []
-        for box_logs in scan.logs:
-            if isinstance(box_logs, list):
-                for log in box_logs:
-                    if isinstance(log, dict) and 'timestamp' in log:
-                        all_logs.append(log)
-        
-        if not all_logs:
-            vf_chain = "null" 
-        else:
-            all_logs.sort(key=lambda x: x['timestamp'])
-            min_ts = min(log['timestamp'] for log in all_logs)
-            sku_name_map = scan.sku_name_map
-            filters = []
-            for log in all_logs:
-                sku = log.get('sku')
-                if not sku: continue
-                name = sku_name_map.get(sku, sku) or sku
-                safe_name = str(name).replace("'", "").replace(":", "-")
-                rel_start_text = (log['timestamp'] - min_ts) / 1000.0
-                rel_end_text = rel_start_text + 2.0
-                filters.append(f"drawtext=text='{safe_name}':x=w-tw-10:y=10:fontcolor=red:fontsize=24:enable='between(t,{rel_start_text:.2f},{rel_end_text:.2f})'")
-            vf_chain = ",".join(filters)
-
+        # Full Video with Text Overlay logic
         output_path = os.path.join(os.path.dirname(input_path), f"{scan.bill_no}.mp4")
         if os.path.exists(output_path):
             return JsonResponse({'filepath': get_media_url(output_path)})
 
+        vf_chain = _get_video_filters(scan)
         cmd = [
             "ffmpeg", "-i", input_path,
             "-vf", vf_chain,
@@ -629,7 +622,6 @@ def get_processed_video(request):
         ]
     
     try:
-        import subprocess
         subprocess.run(cmd, check=True)
         return JsonResponse({'filepath': get_media_url(output_path)})
     except subprocess.CalledProcessError as e:
