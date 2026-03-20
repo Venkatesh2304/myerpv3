@@ -482,18 +482,19 @@ def upload_scan_video(request):
     ]
 
     try:
-        subprocess.run(cmd, check=True)
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        if result.returncode != 0:
+             print(f"Compression failed: {result.stderr}")
+             return JsonResponse({'error': 'Video compression failed', 'details': result.stderr, 'code': result.returncode}, status=500)
+             
         # Save compressed file back to SalesScan
         with open(temp_out_path, 'rb') as f:
             sales_scan.video_file.save(f"{sales_scan.bill_no}_compressed.mp4", File(f), save=False)
             
         sales_scan.video_status = 'completed'
-    except subprocess.CalledProcessError as e:
-        # Fallback to saving original if compression fails, or mark as failed
-        # sales_scan.video_file = video_file
-        # sales_scan.video_status = 'failed'
-        print(f"Compression failed: {e}")
-        return JsonResponse({'error': 'Video compression failed', 'details': str(e)}, status=500)
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        return JsonResponse({'error': str(e)}, status=500)
     finally:
         # Cleanup temporary files
         if os.path.exists(temp_in_path): os.remove(temp_in_path)
