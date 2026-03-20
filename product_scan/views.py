@@ -455,8 +455,49 @@ def upload_scan_video(request):
     except SalesScan.DoesNotExist:
         return JsonResponse({'error': 'Scan not found'}, status=404)
         
-    sales_scan.video_file = video_file
-    sales_scan.video_status = 'completed'
+    import tempfile
+    import subprocess
+    import os
+    from django.core.files import File
+
+    # Save uploaded file to a temporary location
+    with tempfile.NamedTemporaryFile(suffix='.mp4', delete=False) as temp_in:
+        for chunk in video_file.chunks():
+            temp_in.write(chunk)
+        temp_in_path = temp_in.name
+
+    # Create temporary path for compressed output
+    temp_out_path = temp_in_path + "_compressed.mp4"
+
+    # FFmpeg command: ffmpeg -i video1.mp4 -vcodec libx265 -crf 35 -vf "scale=1280:-2,fps=8" -preset faster -acodec copy compressed_ultra.mp4
+    cmd = [
+        "ffmpeg", "-i", temp_in_path,
+        "-vcodec", "libx265",
+        "-crf", "35",
+        "-vf", "scale=1280:-2,fps=8",
+        "-preset", "faster",
+        "-acodec", "copy",
+        "-y",
+        temp_out_path
+    ]
+
+    try:
+        subprocess.run(cmd, check=True)
+        # Save compressed file back to SalesScan
+        with open(temp_out_path, 'rb') as f:
+            sales_scan.video_file.save(f"{sales_scan.bill_no}_compressed.mp4", File(f), save=False)
+            
+        sales_scan.video_status = 'completed'
+    except subprocess.CalledProcessError as e:
+        # Fallback to saving original if compression fails, or mark as failed
+        # sales_scan.video_file = video_file
+        # sales_scan.video_status = 'failed'
+        print(f"Compression failed: {e}")
+        return JsonResponse({'error': 'Video compression failed', 'details': str(e)}, status=500)
+    finally:
+        # Cleanup temporary files
+        if os.path.exists(temp_in_path): os.remove(temp_in_path)
+        if os.path.exists(temp_out_path): os.remove(temp_out_path)
     
     # Record the calculated times used
     start_dt, end_dt = sales_scan.video_range
