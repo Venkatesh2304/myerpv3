@@ -476,7 +476,7 @@ def upload_scan_video(request):
         "-crf", "35",
         "-vf", "scale=1280:-2,fps=8",
         "-preset", "faster",
-        "-acodec", "copy",
+        "-an",
         "-y",
         temp_out_path
     ]
