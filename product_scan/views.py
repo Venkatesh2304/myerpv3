@@ -80,6 +80,7 @@ def sales_scan_id(request):
 
     ikea = Ikea(company_id)
     bill_data = ikea.retrive_bill(bill_no)
+    print(bill_data)
     if not bill_data or 'billingProductMasterVOList' not in bill_data:
         return JsonResponse({'error': 'Bill not found in Ikea API, Check Company'}, status=404)
 
