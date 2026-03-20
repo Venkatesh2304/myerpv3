@@ -425,7 +425,6 @@ def get_video_tasks(request):
         scanned_time__lt=threshold,
         scanned_time__gte=days_ago
     ).exclude(logs=[])
-    print(tasks)
     result = []
     for task in tasks:
         start_dt, end_dt = task.video_range
@@ -455,6 +454,7 @@ def upload_scan_video(request):
     except SalesScan.DoesNotExist:
         return JsonResponse({'error': 'Scan not found'}, status=404)
         
+    """
     import tempfile
     import subprocess
     import os
@@ -499,6 +499,9 @@ def upload_scan_video(request):
         # Cleanup temporary files
         if os.path.exists(temp_in_path): os.remove(temp_in_path)
         if os.path.exists(temp_out_path): os.remove(temp_out_path)
+    """
+    sales_scan.video_file = video_file
+    sales_scan.video_status = 'completed'
     
     # Record the calculated times used
     start_dt, end_dt = sales_scan.video_range
@@ -547,46 +550,85 @@ def get_processed_video(request):
     if not os.path.exists(input_path):
         return JsonResponse({'error': f'Video file not found on disk at {input_path}'}, status=404)
 
-    # Build FFmpeg Drawtext Filters from logs
-    all_logs = []
-    for box_logs in scan.logs:
-        if isinstance(box_logs, list):
-            for log in box_logs:
-                if isinstance(log, dict) and 'timestamp' in log:
-                    all_logs.append(log)
+    target_ts = request.data.get('timestamp')
     
-    if not all_logs:
-        vf_chain = "null" 
+    if target_ts:
+        # 1-minute clip logic
+        try:
+            target_ts = int(target_ts)
+        except ValueError:
+            return JsonResponse({'error': 'Invalid timestamp format'}, status=400)
+            
+        # Get min_ts to calculate relative start
+        all_logs_ts = []
+        for box_logs in scan.logs:
+            if isinstance(box_logs, list):
+                for log in box_logs:
+                    if isinstance(log, dict) and 'timestamp' in log:
+                        all_logs_ts.append(log['timestamp'])
+        
+        if not all_logs_ts:
+            return JsonResponse({'error': 'No logs found to calculate relative time'}, status=400)
+            
+        min_ts = min(all_logs_ts)
+        rel_start = (target_ts - min_ts) / 1000.0 - 10.0
+        if rel_start < 0: rel_start = 0
+        
+        output_name = f"{scan.bill_no}_{target_ts}.mp4"
+        output_path = os.path.join(os.path.dirname(input_path), output_name)
+        
+        if os.path.exists(output_path):
+            return JsonResponse({'filepath': get_media_url(output_path)})
+            
+        # Cut video (-ss before -i for fast seeking)
+        cmd = [
+            "ffmpeg", "-ss", str(rel_start), "-i", input_path,
+            "-t", "60",
+            "-c", "copy",
+            "-y",
+            output_path
+        ]
     else:
-        all_logs.sort(key=lambda x: x['timestamp'])
-        min_ts = min(log['timestamp'] for log in all_logs)
-        sku_name_map = scan.sku_name_map
-        filters = []
-        for log in all_logs:
-            sku = log.get('sku')
-            if not sku: continue
-            name = sku_name_map.get(sku, sku) or sku
-            safe_name = str(name).replace("'", "").replace(":", "-")
-            rel_start = (log['timestamp'] - min_ts) / 1000.0
-            rel_end = rel_start + 2.0
-            filters.append(f"drawtext=text='{safe_name}':x=w-tw-10:y=10:fontcolor=red:fontsize=24:enable='between(t,{rel_start:.2f},{rel_end:.2f})'")
-        vf_chain = ",".join(filters)
+        # Existing Full Video with Text Overlay logic
+        # Build FFmpeg Drawtext Filters from logs
+        all_logs = []
+        for box_logs in scan.logs:
+            if isinstance(box_logs, list):
+                for log in box_logs:
+                    if isinstance(log, dict) and 'timestamp' in log:
+                        all_logs.append(log)
+        
+        if not all_logs:
+            vf_chain = "null" 
+        else:
+            all_logs.sort(key=lambda x: x['timestamp'])
+            min_ts = min(log['timestamp'] for log in all_logs)
+            sku_name_map = scan.sku_name_map
+            filters = []
+            for log in all_logs:
+                sku = log.get('sku')
+                if not sku: continue
+                name = sku_name_map.get(sku, sku) or sku
+                safe_name = str(name).replace("'", "").replace(":", "-")
+                rel_start_text = (log['timestamp'] - min_ts) / 1000.0
+                rel_end_text = rel_start_text + 2.0
+                filters.append(f"drawtext=text='{safe_name}':x=w-tw-10:y=10:fontcolor=red:fontsize=24:enable='between(t,{rel_start_text:.2f},{rel_end_text:.2f})'")
+            vf_chain = ",".join(filters)
 
-    # Determine output path (same folder as input, with scan id)
-    output_path = os.path.join(os.path.dirname(input_path), f"{scan.bill_no}.mp4")
-    
-    if os.path.exists(output_path):
-        return JsonResponse({'filepath': get_media_url(output_path)})
+        output_path = os.path.join(os.path.dirname(input_path), f"{scan.bill_no}.mp4")
+        if os.path.exists(output_path):
+            return JsonResponse({'filepath': get_media_url(output_path)})
 
-    cmd = [
-        "ffmpeg", "-i", input_path,
-        "-vf", vf_chain,
-        "-vcodec", "libx264",
-        "-an", "-y",
-        output_path
-    ]
+        cmd = [
+            "ffmpeg", "-i", input_path,
+            "-vf", vf_chain,
+            "-vcodec", "libx264",
+            "-an", "-y",
+            output_path
+        ]
     
     try:
+        import subprocess
         subprocess.run(cmd, check=True)
         return JsonResponse({'filepath': get_media_url(output_path)})
     except subprocess.CalledProcessError as e:
