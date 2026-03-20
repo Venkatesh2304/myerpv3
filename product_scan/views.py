@@ -475,7 +475,7 @@ def upload_scan_video(request):
         "-vcodec", "libx265",
         "-crf", "35",
         "-vf", "scale=1280:-2,fps=8",
-        "-preset", "faster",
+        "-preset", "ultrafast",
         "-an",
         "-y",
         temp_out_path
