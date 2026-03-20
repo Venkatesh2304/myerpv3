@@ -13,5 +13,9 @@ urlpatterns = [
     path('sales_scan_mismatch/', views.sales_scan_mismatch),
     path('anomaly_analysis/', views.anomaly_analysis),
     path('barcode/', views.barcode_view),
+    path('video_tasks/', views.get_video_tasks),
+    path('video_upload/', views.upload_scan_video),
+    path('video_fail/', views.fail_video_task),
+    path('video_process/', views.get_processed_video),
     path('', include(router.urls)),
 ]

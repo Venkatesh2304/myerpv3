@@ -22,6 +22,43 @@ class SalesScan(CompanyModel):
     # Stores the time when scanned_products was last updated
     scanned_time = models.DateTimeField(null=True, blank=True)
 
+    # Video related fields
+    video_file = models.FileField(upload_to='scan_videos/', null=True, blank=True)
+    video_status = models.CharField(max_length=20, default='none') # none, pending, completed, failed
+    video_start_time = models.DateTimeField(null=True, blank=True)
+    video_end_time = models.DateTimeField(null=True, blank=True)
+
+    @property
+    def video_range(self):
+        import datetime
+        timestamps = []
+        if not self.logs:
+            return None, None
+            
+        for box_logs in self.logs:
+            if not isinstance(box_logs, list): continue
+            for log in box_logs:
+                if not isinstance(log, dict): continue
+                ts = log.get('timestamp')
+                if ts:
+                    timestamps.append(ts)
+        
+        if not timestamps:
+            return None, None
+            
+        min_ts = min(timestamps)
+        max_ts = max(timestamps)
+        
+        # Convert ms to datetime (naive)
+        start_dt = datetime.datetime.fromtimestamp(min_ts / 1000.0)
+        
+        # Cap at 25 minutes
+        end_dt = datetime.datetime.fromtimestamp(max_ts / 1000.0)
+        if (end_dt - start_dt).total_seconds() > 25 * 60:
+            end_dt = start_dt + datetime.timedelta(minutes=25)
+            
+        return start_dt, end_dt
+
     def update_from_bill_data(self, bill_data):
         from collections import defaultdict
         

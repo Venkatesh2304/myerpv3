@@ -65,8 +65,8 @@ class SalesScanDetailSerializer(SalesScanSummarySerializer):
         model = SalesScan
         fields = [
             'id', 'status', 'bill_date', 'scanned_time', 'bill_no', 'party_name', 'is_posted', 
-            'bill_qty_map', 'case_config', 'box_count', 
-            'barcode_map', 'cbu_map', 'sku_name_map', 'mismatches'
+            'bill_qty_map', 'case_config', 'box_count', 'logs',
+            'barcode_map', 'cbu_map', 'sku_name_map', 'mismatches' 
         ]
 
     def get_barcode_map(self, obj):

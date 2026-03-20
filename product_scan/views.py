@@ -1,5 +1,7 @@
+from rest_framework.permissions import AllowAny
+from rest_framework.decorators import permission_classes
 from rest_framework.decorators import api_view
-from django.http import JsonResponse
+from django.http import JsonResponse, FileResponse
 from .models import SalesScan
 from custom.classes import Ikea
 from collections import defaultdict
@@ -11,6 +13,7 @@ import os
 import datetime
 from core.utils import get_media_url
 from .models import Barcode
+from datetime import timedelta
 from report.models import StockReport
 import time
 
@@ -133,8 +136,7 @@ def scan_sales_box(request):
             sales_scan.scanned_products.append({})
             sales_scan.logs.append([])
         
-        from django.utils import timezone
-        sales_scan.scanned_time = timezone.now()
+        sales_scan.scanned_time = datetime.datetime.now()
         sales_scan.save()
         return JsonResponse({'box_no': len(sales_scan.scanned_products)})
 
@@ -402,3 +404,150 @@ def anomaly_analysis(request):
         'manual_entries': manual_entries,
         'mismatches': mismatches
     })
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def get_video_tasks(request):
+    
+    company_id = request.query_params.get('company_id')
+    if not company_id:
+        return JsonResponse({'error': 'company_id is required'}, status=400)
+    
+    # Filter for scans with no video, have logs, no activity for 30 minutes, and within last 5 days
+    days_ago = datetime.datetime.now() - timedelta(days=1)
+    threshold = datetime.datetime.now() - timedelta(minutes=30)
+    
+    # We use updated_at to check for inactivity
+    tasks = SalesScan.objects.filter(
+        company_id=company_id,
+        video_status__in=['none', 'failed','pending'],
+        scanned_time__isnull=False,
+        scanned_time__lt=threshold,
+        scanned_time__gte=days_ago
+    ).exclude(logs=[])
+    print(tasks)
+    result = []
+    for task in tasks:
+        start_dt, end_dt = task.video_range
+        if not start_dt or not end_dt:
+            continue
+            
+        result.append({
+            'id': task.id,
+            'bill_no': task.bill_no,
+            'start': start_dt.strftime('%Y-%m-%d %H:%M:%SZ'), # Hikvision format
+            'end': end_dt.strftime('%Y-%m-%d %H:%M:%SZ'),
+        })
+    
+    return JsonResponse({'tasks': result})
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def upload_scan_video(request):
+    scan_id = request.data.get('scan_id')
+    video_file = request.FILES.get('video')
+    
+    if not scan_id or not video_file:
+        return JsonResponse({'error': 'scan_id and video file are required'}, status=400)
+        
+    try:
+        sales_scan = SalesScan.objects.get(id=scan_id)
+    except SalesScan.DoesNotExist:
+        return JsonResponse({'error': 'Scan not found'}, status=404)
+        
+    sales_scan.video_file = video_file
+    sales_scan.video_status = 'completed'
+    
+    # Record the calculated times used
+    start_dt, end_dt = sales_scan.video_range
+    sales_scan.video_start_time = start_dt
+    sales_scan.video_end_time = end_dt
+    
+    sales_scan.save()
+    return JsonResponse({'status': 'success'})
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def fail_video_task(request):
+    scan_id = request.data.get('scan_id')
+    if not scan_id:
+        return JsonResponse({'error': 'scan_id is required'}, status=400)
+        
+    try:
+        sales_scan = SalesScan.objects.get(id=scan_id)
+    except SalesScan.DoesNotExist:
+        return JsonResponse({'error': 'Scan not found'}, status=404)
+        
+    sales_scan.video_status = 'failed'
+    sales_scan.save()
+    return JsonResponse({'status': 'success'})
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def get_processed_video(request):
+    import subprocess
+    import tempfile
+    import os
+    
+    scan_id = request.data.get('scan_id')
+    if not scan_id:
+        return JsonResponse({'error': 'scan_id is required'}, status=400)
+        
+    try:
+        scan = SalesScan.objects.get(id=scan_id)
+    except SalesScan.DoesNotExist:
+        return JsonResponse({'error': 'Scan not found'}, status=404)
+        
+    if not scan.video_file:
+        return JsonResponse({'error': 'Raw video file not found'}, status=404)
+    
+    input_path = scan.video_file.path
+    if not os.path.exists(input_path):
+        return JsonResponse({'error': f'Video file not found on disk at {input_path}'}, status=404)
+
+    # Build FFmpeg Drawtext Filters from logs
+    all_logs = []
+    for box_logs in scan.logs:
+        if isinstance(box_logs, list):
+            for log in box_logs:
+                if isinstance(log, dict) and 'timestamp' in log:
+                    all_logs.append(log)
+    
+    if not all_logs:
+        vf_chain = "null" 
+    else:
+        all_logs.sort(key=lambda x: x['timestamp'])
+        min_ts = min(log['timestamp'] for log in all_logs)
+        sku_name_map = scan.sku_name_map
+        filters = []
+        for log in all_logs:
+            sku = log.get('sku')
+            if not sku: continue
+            name = sku_name_map.get(sku, sku) or sku
+            safe_name = str(name).replace("'", "").replace(":", "-")
+            rel_start = (log['timestamp'] - min_ts) / 1000.0
+            rel_end = rel_start + 2.0
+            filters.append(f"drawtext=text='{safe_name}':x=w-tw-10:y=10:fontcolor=red:fontsize=24:enable='between(t,{rel_start:.2f},{rel_end:.2f})'")
+        vf_chain = ",".join(filters)
+
+    # Determine output path (same folder as input, with scan id)
+    output_path = os.path.join(os.path.dirname(input_path), f"{scan.bill_no}.mp4")
+    
+    if os.path.exists(output_path):
+        return JsonResponse({'filepath': get_media_url(output_path)})
+
+    cmd = [
+        "ffmpeg", "-i", input_path,
+        "-vf", vf_chain,
+        "-vcodec", "libx264",
+        "-an", "-y",
+        output_path
+    ]
+    
+    try:
+        subprocess.run(cmd, check=True)
+        return JsonResponse({'filepath': get_media_url(output_path)})
+    except subprocess.CalledProcessError as e:
+        return JsonResponse({'error': 'Video processing failed', 'details': str(e)}, status=500)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
