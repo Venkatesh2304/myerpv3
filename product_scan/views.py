@@ -468,7 +468,7 @@ def _get_video_filters(scan, rel_start_offset=0):
         rel_ts = (log['timestamp'] - min_ts) / 1000.0 - rel_start_offset
         
         # Calculate duration: 4 seconds, but capped by next log to avoid overlap
-        duration = 2.0
+        duration = 4.0
         rel_end = rel_ts + duration
         if i < len(all_logs) - 1:
             next_rel_ts = (all_logs[i+1]['timestamp'] - min_ts) / 1000.0 - rel_start_offset
@@ -477,7 +477,7 @@ def _get_video_filters(scan, rel_start_offset=0):
         
         # Only include if it falls within the clip (or just let FFmpeg handle it,
         # but enable='between(t, ...)' handles it anyway)
-        filters.append(f"drawtext=text='{safe_name}':x=w-tw-10:y=10:fontcolor=red:fontsize=32:enable='between(t,{rel_ts:.2f},{rel_end:.2f})'")
+        filters.append(f"drawtext=text='{safe_name}':x=w-tw-10:y=10:fontcolor=red:fontsize=64:enable='between(t,{rel_ts:.2f},{rel_end:.2f})'")
     
     return ",".join(filters)
 
@@ -608,7 +608,7 @@ def get_processed_video(request):
         cmd = [
             "ffmpeg", "-ss", str(rel_start), "-i", input_path,
             "-t", "30",
-            # "-vf", vf_chain,
+            "-vf", vf_chain,
             # "-vcodec", "libx264",
             "-c:v", "copy",
             "-preset", "ultrafast",
