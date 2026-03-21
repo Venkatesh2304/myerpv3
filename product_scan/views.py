@@ -599,10 +599,9 @@ def get_processed_video(request):
         
         output_name = f"{scan.bill_no}_{target_ts}.mp4"
         output_path = os.path.join(os.path.dirname(input_path), output_name)
-        
         if os.path.exists(output_path):
-            return JsonResponse({'filepath': get_media_url(output_path)})
-            
+            os.remove(output_path)
+                    
         # For clipping with text, we MUST re-encode.
         vf_chain = _get_video_filters(scan, rel_start_offset=rel_start)
         cmd = [
@@ -619,7 +618,7 @@ def get_processed_video(request):
         # Full Video with Text Overlay logic
         output_path = os.path.join(os.path.dirname(input_path), f"{scan.bill_no}.mp4")
         if os.path.exists(output_path):
-            return JsonResponse({'filepath': get_media_url(output_path)})
+            os.remove(output_path)
 
         vf_chain = _get_video_filters(scan)
         cmd = [
