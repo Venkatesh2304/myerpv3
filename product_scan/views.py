@@ -477,7 +477,7 @@ def _get_video_filters(scan, rel_start_offset=0):
         
         # Only include if it falls within the clip (or just let FFmpeg handle it,
         # but enable='between(t, ...)' handles it anyway)
-        filters.append(f"drawtext=text='{safe_name}':x=w-tw-10:y=10:fontcolor=red:fontsize=64:enable='between(t,{rel_ts:.2f},{rel_end:.2f})'")
+        filters.append(f"drawtext=text='{safe_name}':x=w-tw-10:y=10:fontcolor=red:fontsize=32:enable='between(t,{rel_ts:.2f},{rel_end:.2f})'")
     
     return ",".join(filters)
 
