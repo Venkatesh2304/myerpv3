@@ -459,18 +459,25 @@ def _get_video_filters(scan, rel_start_offset=0):
     sku_name_map = scan.sku_name_map
     filters = []
     
-    for log in all_logs:
+    for i, log in enumerate(all_logs):
         sku = log.get('sku')
         if not sku: continue
         name = sku_name_map.get(sku, sku) or sku
         safe_name = str(name).replace("'", "").replace(":", "-")
         # Timing relative to the start of the video/clip
         rel_ts = (log['timestamp'] - min_ts) / 1000.0 - rel_start_offset
-        rel_end = rel_ts + 2.0
         
-        # Only include if it falls within the clip (or just let FFmpeg handle it, 
+        # Calculate duration: 4 seconds, but capped by next log to avoid overlap
+        duration = 4.0
+        rel_end = rel_ts + duration
+        if i < len(all_logs) - 1:
+            next_rel_ts = (all_logs[i+1]['timestamp'] - min_ts) / 1000.0 - rel_start_offset
+            if next_rel_ts > rel_ts:
+                rel_end = min(rel_end, next_rel_ts)
+        
+        # Only include if it falls within the clip (or just let FFmpeg handle it,
         # but enable='between(t, ...)' handles it anyway)
-        filters.append(f"drawtext=text='{safe_name}':x=w-tw-10:y=10:fontcolor=red:fontsize=24:enable='between(t,{rel_ts:.2f},{rel_end:.2f})'")
+        filters.append(f"drawtext=text='{safe_name}':x=w-tw-10:y=10:fontcolor=red:fontsize=64:enable='between(t,{rel_ts:.2f},{rel_end:.2f})'")
     
     return ",".join(filters)
 
