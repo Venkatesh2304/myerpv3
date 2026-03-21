@@ -594,7 +594,7 @@ def get_processed_video(request):
             return JsonResponse({'error': 'No logs found to calculate relative time'}, status=400)
         
         min_ts = min(all_logs_ts)
-        rel_start = (target_ts - min_ts) / 1000.0 - 10.0
+        rel_start = (target_ts - min_ts) / 1000.0 - 2.0
         if rel_start < 0: rel_start = 0
         
         output_name = f"{scan.bill_no}_{target_ts}.mp4"
@@ -608,7 +608,7 @@ def get_processed_video(request):
         cmd = [
             "ffmpeg", "-ss", str(rel_start), "-i", input_path,
             "-t", "30",
-            "-vf", vf_chain,
+            # "-vf", vf_chain,
             "-vcodec", "libx264",
             "-an", "-y",
             output_path
