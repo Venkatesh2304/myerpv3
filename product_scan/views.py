@@ -607,7 +607,7 @@ def get_processed_video(request):
         cmd = [
             "ffmpeg", "-ss", str(rel_start), "-i", input_path,
             "-t", "30",
-            "-vf", vf_chain,
+            # "-vf", vf_chain,
             # "-vcodec", "libx264",
             "-c:v", "copy",
             "-preset", "ultrafast",
