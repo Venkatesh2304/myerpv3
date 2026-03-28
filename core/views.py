@@ -23,8 +23,15 @@ def ikea_login(request):
         key = request.GET.get("key")
         usersession = UserSession.objects.get(user=company, key=key)
         config:dict = usersession.config #type: ignore
+        is_logged_in = False
+        try :
+            i = IKEA_CLASS_MAP[key](company)
+            is_logged_in = i.is_logged_in()
+        except Exception as e :
+            pass
         return JsonResponse({"username": usersession.username, "password": usersession.password, 
-                              "dbName": config["dbName"], "url": config["home"]})
+                              "dbName": config["dbName"], "url": config["home"], "is_logged_in": is_logged_in})
+
     if request.method == "POST":
         #POST Method Updates the cookies
         company = request.data.get("company")
@@ -190,36 +197,4 @@ def ikea_health(request):
     )
     
     return JsonResponse({"status": "success", "health_status": health_status})
-@permission_classes([AllowAny])
-def ikea_health(request):
-    keys = ["ikea", "ikea_bank"]
-    health_status = {
-        "logged_in": [],
-        "not_logged_in": []
-    }
-    
-    for key in keys:
-        sessions = UserSession.objects.filter(key=key)
-        for session in sessions:
-            try:
-                i = IKEA_CLASS_MAP[key](session.user)
-                if i.is_logged_in():
-                    health_status["logged_in"].append(f"{key}: {session.user}")
-                else:
-                    health_status["not_logged_in"].append(f"{key}: {session.user}")
-            except Exception as e:
-                health_status["not_logged_in"].append(f"{key}: {session.user} (Error: {str(e)})")
-    
-    mail_body = f"IKEA Health Check Report:\n\n"
-    mail_body += "Logged In:\n" + ("\n".join(health_status["logged_in"]) if health_status["logged_in"] else "None") + "\n\n"
-    mail_body += "Not Logged In:\n" + ("\n".join(health_status["not_logged_in"]) if health_status["not_logged_in"] else "None")
-    
-    send_mail(
-        subject="IKEA Health Check Report",
-        message=mail_body,
-        from_email="noreply@devaki.shop",
-        recipient_list=["venkateshks2304@gmail.com"],
-        fail_silently=False,
-    )
-    
-    return JsonResponse({"status": "success", "health_status": health_status})
+
