@@ -73,8 +73,6 @@ class BaseIkea(Session):
         self.headers.update({'accept': 'application/json, text/javascript, */*; q=0.01'})
         self.base_url = self.config["home"]
         self.user_id = None
-        if self.key == "ikea_bank":
-            self.login()
         if not self.is_logged_in() : 
             raise Exception("Ikea is Not Logged In")
             # self.login()
