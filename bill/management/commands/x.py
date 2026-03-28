@@ -42,14 +42,17 @@ from rest_framework.test import force_authenticate
 from rest_framework.test import APIRequestFactory
 from custom.classes import get_curl
 
+# i = Ikea("lakme_rural")
+# StockReport.update_db(i,Company.objects.get(name="lakme_rural"),EmptyArgs())
+# exit(0)
 
-i = Ikea("devaki_hul")
-OutstandingReport.update_db(i,Company.objects.get(name="devaki_hul"),EmptyArgs())
-BeatReport.update_db(i,Company.objects.get(name="devaki_hul"),EmptyArgs())
-PartyReport.update_db(i,Company.objects.get(name="devaki_hul"),EmptyArgs())
-# i.login()
-# print(i.is_logged_in())
-exit(0)
+# i = Ikea("devaki_hul")
+# OutstandingReport.update_db(i,Company.objects.get(name="devaki_hul"),EmptyArgs())
+# BeatReport.update_db(i,Company.objects.get(name="devaki_hul"),EmptyArgs())
+# PartyReport.update_db(i,Company.objects.get(name="devaki_hul"),EmptyArgs())
+# # i.login()
+# # print(i.is_logged_in())
+# exit(0)
 
 
 def get_financial_year_list(start_year):
@@ -59,7 +62,8 @@ def get_financial_year_list(start_year):
     return first_half + second_half
 
 
-i = Ikea("devaki_hul")
+i = IkeaBank("devaki_hul")
+exit(0)
 
 for month,year in get_financial_year_list(2022) :
     fromd = datetime.date(year,month,1)
