@@ -827,7 +827,7 @@ class Billing(Ikea) :
             return False
 
 class IkeaBank(Ikea):
-    key = "ikea_bank"
+    key = "ikea"
 
 ## Needs to checked 
 class GstWrongCredentails(WrongCredentials) :
