@@ -199,7 +199,7 @@ def generate_sales_scan_pdf(sales_scan, output_path):
     detailed_data = [["Box", "Product Name", "MRP", "Cases", "Pcs"]]
     
     bill_products = sales_scan.bill_products
-
+    
     for box_idx, box_data in enumerate(sales_scan.scanned_products):
         box_num = box_idx + 1
         box_total_cases = 0
@@ -218,10 +218,10 @@ def generate_sales_scan_pdf(sales_scan, output_path):
                     
                     cases = qty // units_per_case
                     pcs = qty % units_per_case
-
+                    
                     box_total_cases += cases
                     box_total_pcs += pcs
-
+                    
                     product_name = sku_name_map.get(sku, sku)
                     detailed_data.append([str(box_num), str(product_name), str(mrp), str(cases), str(pcs)])
                     box_has_content = True
@@ -229,7 +229,7 @@ def generate_sales_scan_pdf(sales_scan, output_path):
         if box_has_content:
             summary_data.append([str(box_num), str(box_total_cases), str(box_total_pcs)])
             box_totals.append(box_total_cases + box_total_pcs)
-
+            
     # Styling for B&W Printer (No backgrounds, simple borders, minimal padding)
     bw_style = TableStyle([
         ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
@@ -248,7 +248,7 @@ def generate_sales_scan_pdf(sales_scan, output_path):
         summary_table.setStyle(bw_style)
         elements.append(summary_table)
         elements.append(Spacer(1, 8)) # Reduced gap
-
+        
         # Add Detailed Break-up Table
         detailed_table = Table(detailed_data, repeatRows=1)
         detailed_table.setStyle(bw_style)
@@ -256,7 +256,7 @@ def generate_sales_scan_pdf(sales_scan, output_path):
     else:
         styles = getSampleStyleSheet()
         elements.append(Paragraph("No Scanned Data Found", styles['Normal']))
-
+        
     doc.build(elements)
 
 @api_view(['POST'])
@@ -357,7 +357,7 @@ def anomaly_analysis(request):
                 t2 = d['logs'][i].get('timestamp')
                 if t1 and t2:
                     diff = t2 - t1
-                    if diff < 1000:
+                    if diff < 500:
                         d['fake_count'] += 1
                         total_fake_diff += diff
 
@@ -565,6 +565,7 @@ def fail_video_task(request):
 def get_processed_video(request):
     scan_id = request.data.get('scan_id')
     target_ts = request.data.get('timestamp')
+    req_type = request.data.get('type', 'video')
     
     if not scan_id:
         return JsonResponse({'error': 'scan_id is required'}, status=400)
@@ -581,14 +582,41 @@ def get_processed_video(request):
     if not os.path.exists(input_path):
         return JsonResponse({'error': f'Video file not found on disk at {input_path}'}, status=404)
 
-    if target_ts:
-        # Clipping with Overlay logic
+    if req_type == 'photo':
+        if not target_ts:
+            return JsonResponse({'error': 'timestamp is required for photo type'}, status=400)
         try:
             target_ts = int(target_ts)
         except ValueError:
             return JsonResponse({'error': 'Invalid timestamp format'}, status=400)
             
-        # Get min_ts to calculate relative start for clipping and offset for overlays
+        all_logs_ts = [log['timestamp'] for box in scan.logs for log in box if isinstance(log, dict) and 'timestamp' in log]
+        if not all_logs_ts:
+            return JsonResponse({'error': 'No logs found to calculate relative time'}, status=400)
+        
+        min_ts = min(all_logs_ts)
+        rel_ts = (target_ts - min_ts) / 1000.0
+        if rel_ts < 0: rel_ts = 0
+        
+        output_name = f"{scan.bill_no}_{target_ts}.jpg"
+        output_path = os.path.join(os.path.dirname(input_path), output_name)
+        
+        if os.path.exists(output_path):
+             os.remove(output_path)
+             
+        cmd = [
+            "ffmpeg", "-ss", str(rel_ts), "-i", input_path,
+            "-frames:v", "1",
+            "-q:v", "2",
+            "-y",
+            output_path
+        ]
+    elif target_ts:
+        try:
+            target_ts = int(target_ts)
+        except ValueError:
+            return JsonResponse({'error': 'Invalid timestamp format'}, status=400)
+            
         all_logs_ts = [log['timestamp'] for box in scan.logs for log in box if isinstance(log, dict) and 'timestamp' in log]
         if not all_logs_ts:
             return JsonResponse({'error': 'No logs found to calculate relative time'}, status=400)
@@ -599,16 +627,13 @@ def get_processed_video(request):
         
         output_name = f"{scan.bill_no}_{target_ts}.mp4"
         output_path = os.path.join(os.path.dirname(input_path), output_name)
+        
         if os.path.exists(output_path):
             os.remove(output_path)
                     
-        # For clipping with text, we MUST re-encode.
-        vf_chain = _get_video_filters(scan, rel_start_offset=rel_start)
         cmd = [
             "ffmpeg", "-ss", str(rel_start), "-i", input_path,
             "-t", "30",
-            # "-vf", vf_chain,
-            # "-vcodec", "libx264",
             "-c:v", "copy",
             "-preset", "ultrafast",
             "-an", "-y",
@@ -633,6 +658,6 @@ def get_processed_video(request):
         subprocess.run(cmd, check=True)
         return JsonResponse({'filepath': get_media_url(output_path)})
     except subprocess.CalledProcessError as e:
-        return JsonResponse({'error': 'Video processing failed', 'details': str(e)}, status=500)
+        return JsonResponse({'error': 'FFmpeg processing failed', 'details': str(e)}, status=500)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
