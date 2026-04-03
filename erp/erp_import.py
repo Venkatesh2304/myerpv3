@@ -45,7 +45,7 @@ class BaseImport(Generic[ArgsT]):
 
     @classmethod
     @abstractmethod
-    def run_atomic(cls, company: Company, args: ArgsT):
+    def run_atomic(cls, company: Company, args: ArgsT) -> None:
         raise NotImplementedError("Run Atomic method not implemented")
 
     @classmethod
@@ -72,14 +72,13 @@ class SimpleImport(abc.ABC, BaseImport[EmptyArgs]):
     arg_type = EmptyArgs
     delete_all = False
 
-class SalesImport(DateImport):
-    reports = [SalesRegisterReport, IkeaGSTR1Report]
+class GenericSalesImport(DateImport):
+    sales_types  = []
     model = models.Sales
-    TDS_PERCENT = 2
 
     @classmethod
     def delete_before_insert(cls, company: Company, args: DateRangeArgs):
-        types = ["sales", "salesreturn", "claimservice"]
+        types = cls.sales_types
         inums_qs = cls.model.objects.filter(company=company).filter(
             date__gte=args.fromd, date__lte=args.tod, type__in=types
         )
@@ -87,6 +86,11 @@ class SalesImport(DateImport):
         batch_delete(inums_qs, 100)
         inventories_qs = models.Inventory.objects.filter(bill_id__in=inums,company_id=company.pk)
         batch_delete(inventories_qs,1000)
+
+class SalesImport(GenericSalesImport):
+    reports = [SalesRegisterReport, IkeaGSTR1Report]
+    TDS_PERCENT = 2
+    sales_types = ["sales", "salesreturn", "claimservice"]
 
     @classmethod
     @transaction.atomic
@@ -275,17 +279,9 @@ class SalesImport(DateImport):
         )
         models.Inventory.objects.bulk_create(model_inventory_objs, batch_size=1000)
 
-class MarketReturnImport(DateImport):
+class MarketReturnImport(GenericSalesImport):
     reports = [DmgShtReport]
-    model = models.Sales
-
-    @classmethod
-    def delete_before_insert(cls, company: Company, args: DateRangeArgs):
-        types = ["damage", "shortage"]
-        inums_qs = cls.model.objects.filter(company=company).filter(
-            date__gte=args.fromd, date__lte=args.tod, type__in=types
-        )
-        inums_qs.delete()
+    sales_types = ["damage", "shortage"]
 
     @classmethod
     @transaction.atomic
@@ -444,7 +440,6 @@ class GstFilingImport:
         i = Ikea(company.pk)
         for import_class in cls.imports:
             reports_to_update.extend(import_class.reports)  # type: ignore
-        reports_to_update = []
         with ThreadPoolExecutor(max_workers=10) as executor:
             futures = []
             for report_model in reports_to_update:
