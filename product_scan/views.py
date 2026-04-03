@@ -357,7 +357,7 @@ def anomaly_analysis(request):
                 t2 = d['logs'][i].get('timestamp')
                 if t1 and t2:
                     diff = t2 - t1
-                    if diff < 500:
+                    if diff < 700: #0.7 sec
                         d['fake_count'] += 1
                         total_fake_diff += diff
 
