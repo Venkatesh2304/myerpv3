@@ -866,16 +866,22 @@ class Gst(Session) :
 
      def captcha(self) : 
           self.cookies.clear()
-          self.get('https://services.gst.gov.in/services/login')
-          login = self.get('https://services.gst.gov.in/pages/services/userlogin.html')
-          captcha = self.get('https://services.gst.gov.in/services/captcha?rnd=0.7395713643528166').content
+          res = self.get('https://services.gst.gov.in/services/login',
+                        headers = {'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7'})
+          login = self.get('https://services.gst.gov.in/pages/services/userlogin.html',
+                        headers={'Accept':'application/json, text/plain, */*'})
+          captcha = self.get('https://services.gst.gov.in/services/captcha?rnd=0.7395713643528188').content
           self.user.update_cookies(self.cookies)
           return captcha
           
      def login(self,captcha) :
-          data =  { "captcha": captcha , "deviceID": None ,"mFP": "{\"VERSION\":\"2.1\",\"MFP\":{\"Browser\":{\"UserAgent\":\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/102.0.5005.115 Safari/537.36\",\"Vendor\":\"Google Inc.\",\"VendorSubID\":\"\",\"BuildID\":\"20030107\",\"CookieEnabled\":true},\"IEPlugins\":{},\"NetscapePlugins\":{\"PDF Viewer\":\"\",\"Chrome PDF Viewer\":\"\",\"Chromium PDF Viewer\":\"\",\"Microsoft Edge PDF Viewer\":\"\",\"WebKit built-in PDF\":\"\"},\"Screen\":{\"FullHeight\":864,\"AvlHeight\":816,\"FullWidth\":1536,\"AvlWidth\":1536,\"ColorDepth\":24,\"PixelDepth\":24},\"System\":{\"Platform\":\"Win32\",\"systemLanguage\":\"en-US\",\"Timezone\":-330}},\"ExternalIP\":\"\",\"MESC\":{\"mesc\":\"mi=2;cd=150;id=30;mesc=739342;mesc=770243\"}}" ,
+          data =  { "captcha": captcha , "deviceID": None ,"mFP": "{\"VERSION\":\"2.1\",\"MFP\":{\"Browser\":{\"UserAgent\":\"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36\",\"Vendor\":\"Google Inc.\",\"VendorSubID\":\"\",\"BuildID\":\"20030107\",\"CookieEnabled\":true},\"IEPlugins\":{},\"NetscapePlugins\":{\"PDF Viewer\":\"\",\"Chrome PDF Viewer\":\"\",\"Chromium PDF Viewer\":\"\",\"Microsoft Edge PDF Viewer\":\"\",\"WebKit built-in PDF\":\"\"},\"Screen\":{\"FullHeight\":1080,\"AvlHeight\":1080,\"FullWidth\":1920,\"AvlWidth\":1920,\"ColorDepth\":24,\"PixelDepth\":24},\"System\":{\"Platform\":\"Linux x86_64\",\"systemLanguage\":\"en-US\",\"Timezone\":-330}},\"ExternalIP\":\"\",\"MESC\":{\"mesc\":\"mi=2;cd=150;id=30;mesc=1555497;mesc=1560133\"}}" ,
                     "password": self.password , "type": "username" , "username": self.username }
-          res = self.post("https://services.gst.gov.in/services/authenticate" ,headers = {'Content-type': 'application/json'},json = data).json()
+          res = self.post("https://services.gst.gov.in/services/authenticate" ,
+                                json = data)
+          with open("a.html","wb+") as f : 
+              f.write(res.content)
+          res = res.json()
           if "errorCode" in res.keys() : 
               if res["errorCode"] == "SWEB_9000" : 
                  return False 
