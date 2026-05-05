@@ -10,8 +10,13 @@ import sys
 from django.db.models import Q
 
 GST_PERIOD_FILTER = {
-    "devaki_urban" : lambda qs : qs.exclude(type = "damage", party_id  = "P150") #NAIDU HALL DAMAGE EXCLUDE
+    "lakme_urban" : lambda qs : qs.exclude(type = "damage", party_id  = "P150") #NAIDU HALL DAMAGE EXCLUDE
 }
+
+skip_download = False
+if "--skip-download" in sys.argv:
+    skip_download = True
+    sys.argv.remove("--skip-download")
 
 organization_or_companies = sys.argv[2:]
 companies = Company.objects.filter(Q(organization_id__in = organization_or_companies) | Q(name__in = organization_or_companies)).distinct()
@@ -30,7 +35,7 @@ args_dict = {
 for company in companies :
     print(f"Processing GST for Company: {company.name} for Period: {period}")
     i = Ikea(company.pk)    
-    GstFilingImport.run(company=company,args_dict=args_dict)
+    GstFilingImport.run(company=company,args_dict=args_dict, skip_download=skip_download)
     qs = models.Sales.objects.filter(type__in = company.gst_types,date__gte = fromd,date__lte = tod)
     if company.name in GST_PERIOD_FILTER :
         qs = GST_PERIOD_FILTER[company.name](qs)

@@ -434,26 +434,27 @@ class GstFilingImport:
         return inserted_count
 
     @classmethod
-    def run(cls, company: Company, args_dict: dict[Type[ReportArgs], ReportArgs]):
-        reports_to_update = []
-        start_time = time.time()
-        i = Ikea(company.pk)
-        for import_class in cls.imports:
-            reports_to_update.extend(import_class.reports)  # type: ignore
-        with ThreadPoolExecutor(max_workers=10) as executor:
-            futures = []
-            for report_model in reports_to_update:
-                arg = args_dict[report_model.arg_type]  # type: ignore
-                futures.append(executor.submit(cls.report_update_thread, report_model, company, arg))  # type: ignore
+    def run(cls, company: Company, args_dict: dict[Type[ReportArgs], ReportArgs], skip_download: bool = False):
+        if not skip_download:
+            reports_to_update = []
+            start_time = time.time()
+            i = Ikea(company.pk)
+            for import_class in cls.imports:
+                reports_to_update.extend(import_class.reports)  # type: ignore
+            with ThreadPoolExecutor(max_workers=10) as executor:
+                futures = []
+                for report_model in reports_to_update:
+                    arg = args_dict[report_model.arg_type]  # type: ignore
+                    futures.append(executor.submit(cls.report_update_thread, report_model, company, arg))  # type: ignore
 
-            for future in as_completed(futures):
-                try:
-                    result = future.result()  # This re-raises any exception
-                except Exception as e:
-                    traceback.print_exc()
-                    print("Error : ",e)
-        time_taken = round(time.time() - start_time,2)
-        print("Reports Completed in :", time_taken)
+                for future in as_completed(futures):
+                    try:
+                        result = future.result()  # This re-raises any exception
+                    except Exception as e:
+                        traceback.print_exc()
+                        print("Error : ",e)
+            time_taken = round(time.time() - start_time,2)
+            print("Reports Completed in :", time_taken)
         print("Reports Imported. Starting Data Import..")
         for import_class in cls.imports:
             arg = args_dict[import_class.arg_type]  # type: ignore
