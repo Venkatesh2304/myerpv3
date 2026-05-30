@@ -22,6 +22,9 @@ from django.db.models.aggregates import Min
 from django.db.models.query_utils import Q
 import os
 from bank.parsers import KVBParser
+import json
+import random
+import string
 from bank.parsers import SBIParser
 import datetime
 from django.http.response import HttpResponse
@@ -378,7 +381,6 @@ def auto_match_outstanding(request) :
     else : 
         return JsonResponse({"error" : "Multiple matches found."},status=500)
 
-
 @api_view(["POST"])
 def cheque_matches(request) : 
     bank_id = request.data.get("bank_id")
@@ -405,61 +407,267 @@ def bounce_cheques(ikea,cheque_numbers):
         f.seek(0)
         res = ikea.upload_settle_cheque(f)
 
+def process_excel_collection(ikea, manual_rows: list, files_dir: str, errors: dict) -> pd.DataFrame:
+    """
+    Process manual collections via Excel file upload and return the status DataFrame.
+    Updates the errors dict in-place with any failure reasons returned from the server.
+    """
+    if len(manual_rows) == 0:
+        return pd.DataFrame()
+        
+    manual_coll = pd.concat(manual_rows) # type: ignore
+    manual_coll["Collection Date"] = datetime.date.today()
+    manual_coll.to_excel(f"{files_dir}/manual_collection.xlsx")
+    
+    f = BytesIO()
+    manual_coll.to_excel(f, index=False)
+    f.seek(0)
+    res = ikea.upload_manual_collection(f)
+    cheque_upload_status = pd.read_excel(ikea.fetch_durl_content(res["ul"]))
+    
+    error_coll = cheque_upload_status[cheque_upload_status["Status"] != "Success"]
+    for _, row in error_coll.iterrows():
+        errors[str(row["Chq/DD No"]).split('.')[0]][row["BillNumber"]] = row["Error Description"]
+        
+    return cheque_upload_status
+
+
+def process_grid_collection(ikea, grid_collections: list, errors: dict) -> pd.DataFrame:
+    """
+    Process collections via Ikea's Collection Grid API and return a status DataFrame.
+    Updates the errors dict in-place with any failure reasons returned from the server.
+    """
+    if len(grid_collections) == 0:
+        return pd.DataFrame()
+        
+    # Prepare dates and client UIDs
+    today_ist = datetime.date.today()
+    collection_date_str = today_ist.strftime("%d/%m/%Y")
+    
+    previous_day = today_ist - datetime.timedelta(days=1)
+    collection_date_iso = previous_day.strftime("%Y-%m-%dT18:30:00.000Z")
+    
+    client_req_uid = "mpset" + ''.join(random.choice(string.ascii_lowercase + string.digits) for _ in range(13))
+    
+    # Get live outstanding collection grid data
+    try:
+        large_input_data = ikea.get_collection_grid()
+        bill_lookup = {bill["rn"]: bill for bill in large_input_data.get("csl", [])}
+    except Exception as e:
+        large_input_data = {"csl": []}
+        bill_lookup = {}
+        
+    collections_payload_list = []
+    for item in grid_collections:
+        collections_payload_list.append({
+            "bill_num": item["bill_num"],
+            "cheque_number": item["cheque_number"],
+            "amt": item["amt"]
+        })
+        
+    extra_in = {
+        "client_req_uid": client_req_uid,
+        "collection_date_str": collection_date_str,
+        "collection_date_iso": collection_date_iso,
+        "bank_name": "KVB 650",
+        "bank_id_1": "2",
+        "bank_id_2": "1",
+        "payment_type": "Cheque/DD",
+        "transaction_type": "2",
+        "collections": collections_payload_list
+    }
+    
+    def map_bill_collection(store_info, collection_date_str, collection_date_iso, cheque_number, amt, extra_in):
+        default_epoch = "1899-12-29T18:38:50.000Z"
+        
+        payment_list = [{
+            "cqa": amt,
+            "cd": collection_date_str,
+            "cqn": cheque_number,
+            "mpc": store_info["pc"],
+            "pc": store_info["pc"],
+            "pch": store_info["pch"],
+            "reb": extra_in["bank_name"],
+            "rbi": extra_in["bank_id_1"],
+            "rb": extra_in["bank_id_2"],
+            "tty": extra_in["payment_type"],
+            "trt": extra_in["transaction_type"]
+        }]
+        
+        return {
+            "cd": collection_date_iso,
+            "cb": store_info["rn"],
+            "cri": store_info["rd"],
+            "phll": store_info["pch"],
+            "ba": f"{store_info['bl']:.2f}",
+            "pa": int(store_info["pa"]),
+            "ca": store_info["ca"],
+            "cqa": 0,
+            "cm": 1,
+            "cqn": "",
+            "cqd": default_epoch,
+            "cdd": default_epoch,
+            "cbi": 0,
+            "rbi": 0,
+            "cqi": 0,
+            "cqs": 0,
+            "cds": "0.00",
+            "cbd": default_epoch,
+            "cra": "0.00",
+            "dba": "0.00",
+            "iso": 0,
+            "cdl": 0,
+            "cbc": "0.00",
+            "cr": " ",
+            "cc": store_info["ccd"],
+            "pc": store_info["pc"],
+            "exa": "0.00",
+            "bpl": store_info["bPP"],
+            "pyl": payment_list,
+            "crl": [],
+            "dbl": []
+        }
+
+    def generate_output(base_in, extra_in):
+        client_item_list = []
+        collections_list = extra_in.get("collections", [])
+        
+        for coll in collections_list:
+            bill_num = coll["bill_num"]
+            store_info = bill_lookup.get(bill_num)
+            if store_info:
+                client_item = map_bill_collection(
+                    store_info=store_info,
+                    collection_date_str=extra_in["collection_date_str"],
+                    collection_date_iso=extra_in["collection_date_iso"],
+                    cheque_number=coll["cheque_number"],
+                    amt=coll["amt"],
+                    extra_in=extra_in
+                )
+                client_item_list.append(client_item)
+        return {
+            "cv": 1,
+            "cds": extra_in["collection_date_str"],
+            "cd": extra_in["collection_date_iso"],
+            "cil": client_item_list,
+            "ccd": "ALL",
+            "CLIENT_REQ_UID": extra_in["client_req_uid"]
+        }
+        
+    payload = generate_output(large_input_data, extra_in)
+    
+    # Post collection grid payload to Ikea
+    grid_res = {}
+    vd_success = False
+    try:
+        grid_res = ikea.post_collection_grid(payload)
+        vd_success = grid_res.get("vd", False)
+    except Exception as e:
+        grid_res = {"error": str(e), "vd": False}
+        vd_success = False
+        
+    # Build DataFrame rows for each collection grid item
+    grid_rows = []
+    for item in grid_collections:
+        status_str = "Grid Success" if vd_success else "Grid Failure"
+        err_desc = "" if vd_success else json.dumps(grid_res)
+        
+        grid_rows.append({
+            "BillNumber": item["bill_num"],
+            "Amount": float(item["amt"]),
+            "Chq/DD No": item["cheque_number"],
+            "Status": status_str,
+            "Error Description": err_desc
+        })
+        
+        if not vd_success:
+            errors[str(item["cheque_number"]).split('.')[0]][item["bill_num"]] = err_desc
+            
+    return pd.DataFrame(grid_rows)
+
+
 def create_cheques(ikea,bankstatement_objs: list[BankStatement],files_dir) -> tuple[pd.DataFrame, dict[str,dict[str,str]]]:
     coll:pd.DataFrame = ikea.download_manual_collection() # type: ignore
     errors = defaultdict(dict)
+    
     manual_rows = []
+    grid_collections = [] # Stores bills that fallback to the collection grid method
+    
     for bank_obj in bankstatement_objs:
         temp_rows = []
+        temp_grid_items = []
         cheque_number = bank_obj.statement_id
         if cheque_number is None : 
             raise Exception("There is no cheque number (statement_id) assigned for BankStatement {}".format(bank_obj.pk))
+            
+        cheque_has_error = False
+        fallback_to_grid = False
+        
         for coll_obj in bank_obj.all_collection:
             bill_no  = coll_obj.bill
             row = coll[coll["Bill No"] == bill_no].copy()
             if len(row) == 0 : 
                 errors[cheque_number][bill_no] = "Bill not found in manual collection"
+                cheque_has_error = True
                 continue
-
+                
             outstanding_amt = row.iloc[0]["O/S Amount"]
-            # row = row.iloc[0]
             if row.iloc[0]["Collection Code"].lower() == "unassigned" : 
                 errors[cheque_number][bill_no] = "Unassigned collection code"
+                cheque_has_error = True
                 continue
-
+                
             if outstanding_amt + 1 < coll_obj.amt : 
-                errors[cheque_number][bill_no] = f"O/S Amount Rs.{row['O/S Amount']} < Collection Amount Rs.{coll_obj.amt}"
+                errors[cheque_number][bill_no] = f"O/S Amount Rs.{outstanding_amt} < Collection Amount Rs.{coll_obj.amt}"
+                cheque_has_error = True
                 continue
-
-            row["Mode"] = "Cheque/DD"
-            row["Retailer Bank Name"] = "KVB 650"
-            row["Chq/DD Date"]  = bank_obj.date.strftime("%d/%m/%Y")
-            chq_no = bank_obj.statement_id
-            row["Chq/DD No"] = chq_no
-            row["Amount"] = min(outstanding_amt,coll_obj.amt)
-            temp_rows.append(row)
-
-        if len(errors[cheque_number]) == 0 : 
-            manual_rows += temp_rows
-
-    if len(manual_rows) == 0 : 
-        return pd.DataFrame(), errors 
-
-    #Remove all manual collection entry if a single collection or bill has an error for that bank statement obj
-    manual_coll = pd.concat(manual_rows) #type: ignore
-    manual_coll["Collection Date"] = datetime.date.today()
-    manual_coll.to_excel(f"{files_dir}/manual_collection.xlsx")
-    
-    f = BytesIO()
-    manual_coll.to_excel(f,index=False)
-    f.seek(0)
-    res = ikea.upload_manual_collection(f)
-    cheque_upload_status = pd.read_excel(ikea.fetch_durl_content(res["ul"]))
-    cheque_upload_status.to_excel(f"{files_dir}/cheque_upload_status.xlsx")
-    error_coll = cheque_upload_status[cheque_upload_status["Status"] != "Success"]
-    for _,row in error_coll.iterrows() : 
-        errors[ str(row["Chq/DD No"]).split('.')[0] ][row["BillNumber"]] = row["Error Description"]
-    return cheque_upload_status,errors
+                
+            # If the collection amount != outstanding amount, we must use the collection grid method
+            # Since even if one bill of a cheque does not satisfy this, all bills of that cheque fallback
+            if abs(outstanding_amt - coll_obj.amt) > 0.01:
+                fallback_to_grid = True
+                
+            # Prepare row for Excel method (full settlement)
+            row_excel = row.copy()
+            row_excel["Mode"] = "Cheque/DD"
+            row_excel["Retailer Bank Name"] = "KVB 650"
+            row_excel["Chq/DD Date"]  = bank_obj.date.strftime("%d/%m/%Y")
+            row_excel["Chq/DD No"] = cheque_number
+            row_excel["Amount"] = min(outstanding_amt, coll_obj.amt)
+            temp_rows.append(row_excel)
+            
+            # Prepare data for Collection Grid method
+            temp_grid_items.append({
+                "bill_num": bill_no,
+                "cheque_number": cheque_number,
+                "amt": f"{float(coll_obj.amt):.2f}"
+            })
+            
+        if not cheque_has_error:
+            if fallback_to_grid:
+                grid_collections += temp_grid_items
+            else:
+                manual_rows += temp_rows
+                
+    if len(manual_rows) == 0 and len(grid_collections) == 0:
+        return pd.DataFrame(), errors
+    print("Manual Rows:",manual_rows)
+    print("Grid Collections:",grid_collections)
+    excel_df = process_excel_collection(ikea, manual_rows, files_dir, errors)
+    grid_df = process_grid_collection(ikea, grid_collections, errors)
+    print("Excel DF :",excel_df)
+    print("Grid DF :",grid_df)
+    # Combine status DataFrames
+    if not excel_df.empty and not grid_df.empty:
+        cheque_upload_status = pd.concat([excel_df, grid_df], ignore_index=True)
+    elif not excel_df.empty:
+        cheque_upload_status = excel_df
+    else:
+        cheque_upload_status = grid_df
+        
+    # Save the combined upload status to excel
+    cheque_upload_status.to_excel(f"{files_dir}/cheque_upload_status.xlsx", index=False)
+    return cheque_upload_status, errors
 
 def settle_cheques(ikea,cheque_numbers,files_dir) -> tuple[pd.DataFrame, list[str] ,dict[str,str]] : 
     """Settle Cheques and returns list of cheque numbers that were successfully settled and errors"""

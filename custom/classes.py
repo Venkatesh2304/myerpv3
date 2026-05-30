@@ -382,6 +382,14 @@ class Ikea(IkeaReports):
          }
         return self.post("/rsunify/app/chequeMaintenance/chequeUpload",files = files,data = {}).json()
     
+    def get_collection_grid(self):
+        data = {"ccl":["EXP00175","FL000001","FL000002","FL000003","FL000004","FL000005","FL000006","NME00001","SMN00001","SMN00002","SMN00003","SMN00004","SMN00005","SMN00006","SMN00007","SMN00008","SMN00009","SMN00010","SMN00011","SMN00012","SMN00013","SMN00014","SMN00015","SMN00016","SMN00017","SMN00018","SMN00019","SMN00020","SMN00021","SMN00022","SMN00023","SMN00024","SMN00025","SMN00026","SMN00027","SMN00028","SMN00029","SMN00030","SMN00031","SMN00032","SMN00033","TL000001","X00000001","X00000002","X00000003"],
+                "sd":"","dd":"","bdl":[],"vdl":[],"md":"","pd":"","bf":"","bt":"","fd":"01/01/2026","td":"30/05/2026","cf":"","ct":"","af":True,"sf":"ALL","sfId":"-1"}
+        return self.post("/rsunify/app/collection/collectionGrid",data={"jsonobjcollectionGrid":json.dumps(data)}).json()
+    
+    def post_collection_grid(self, data: dict):
+        return self.post("/rsunify/app/collection/insertcollection",json=data).json()
+
     def beat_report(self) -> pd.DataFrame :
         #TODO: Clean the function
         html = self.get("/rsunify/app/rssmBeatPlgLink/loadRssmBeatPlgLink").text
@@ -415,7 +423,6 @@ class Ikea(IkeaReports):
         sal_id = data["billHdVO"]["blhDsrId"]
         self.get("/rsunify/app/billing/deletemutable",params={"salesmanId":sal_id})
         return data
-
 
     def product_hsn(self) -> dict : 
         return get_curl("ikea/list_of_products").send(self).json()
