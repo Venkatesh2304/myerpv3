@@ -1,4 +1,6 @@
+import functools
 from requests.adapters import HTTPAdapter
+import  urllib.parse
 from urllib3 import Retry
 from requests import session
 import calendar
@@ -14,7 +16,6 @@ import json
 import uuid
 import random
 import numpy as np
-from functools import lru_cache
 import pandas as pd 
 import base64
 from .std import moc_range
@@ -25,8 +26,6 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import time
 import re
 from pathlib import Path    
-from multiprocessing.pool import ThreadPool
-from tqdm import tqdm
 from urllib.parse import parse_qsl, urljoin
 import hashlib
 import json
@@ -36,14 +35,52 @@ from .curl import get_curl , curl_replace
 from .Session import Session,StatusCodeError
 from bs4 import BeautifulSoup
 from PyPDF2 import PdfMerger
-from .std import add_image_to_bills
 from urllib.parse import urlencode
-import requests 
+import requests
 from PyPDF2 import PdfReader
 import os
-from requests.exceptions import ConnectionError
 
 warnings.filterwarnings("ignore", category=UserWarning, module=re.escape('openpyxl.styles.stylesheet'))
+
+
+
+def ikea_screen(screen_name: str):
+    
+    def ikea_screen_remove(self,screen_name: str):
+        files = {
+            'strJsonParams': (None, '{"screenName":"' + screen_name + '"}'),
+        }
+        res = self.post(
+            "/rsunify/app/ikeaCommonUtilController/removeScreenNameFromSession",
+            files=files,
+        )
+        return res 
+
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(self, *args, **kwargs):
+            data = {"screenName": screen_name, "pbayoutUpdate": "1","enfSyncFlag": "0"}
+            for i in range(2) :
+                screen = self.post("/rsunify/app/ikeaCommonUtilController/updateScreenNameIntoSession", data={
+                    'strJsonParams': urllib.parse.quote(json.dumps(data)),
+                }).json()
+                if screen["status"] == "SUCCESS": 
+                    break
+                #Something is not logged out correctly
+                print(f"Update screen status not success, retrying after removing {screen['message']}")
+                ikea_screen_remove(self,screen["message"])
+            
+            try:
+                return func(self, *args, **kwargs)
+            finally:
+                try:
+                    ikea_screen_remove(self,screen_name)        
+                except Exception as e:
+                    print(f"Failed to remove screen {screen_name}: {e}")
+        
+        return wrapper
+    
+    return decorator
 
 class WrongCredentials(Exception) :
     pass
@@ -125,7 +162,7 @@ class BaseIkea(Session):
         preauth_res_text = self.post("/rsunify/app/user/authentication",data={'userId': self.username , "g-recaptcha-response" : token,
                         'password': self.password, 'dbName': self.config["dbName"], 'datetime': time_epochs , 'diff': -330},headers={"dbName": self.config["dbName"]}).text
         print(preauth_res_text[:30])
-        if ("CLOUD_LOGIN_PASSWORD_EXPIRED" == preauth_res_text) : 
+        if ("CLOUD_LOGIN_PASSWORD_EXPIRED" == preauth_res_text): 
             raise IkeaPasswordExpired("Ikea Password Expired")
         elif ("<body>" in preauth_res_text) or ("Invalid Password" == preauth_res_text) : 
             raise IkeaWrongCredentails("Ikea Wrong Credentials")
@@ -198,6 +235,7 @@ class IkeaReports(BaseIkea):
         df[date_column] = pd.to_datetime(df[date_column],format = format).dt.date
         return df[(df[date_column] >= fromd) & (df[date_column] <= tod)] #type: ignore
 
+    @ikea_screen("gstReturnsReport")
     def gstr_report(self, fromd: datetime.date, tod: datetime.date, gstr_type: int = 1) -> pd.DataFrame:
         r = get_curl("ikea/gstr")
         r.url = curl_replace(r"(pramFromdate=).{10}(&paramToDate=).{10}(&gstrValue=).", 
@@ -206,6 +244,7 @@ class IkeaReports(BaseIkea):
         durl = r.send(self).text
         return pd.read_csv(self.fetch_durl_content(durl))
 
+    @ikea_screen("Collection Summary")
     def collection(self, fromd: datetime.date, tod: datetime.date) -> pd.DataFrame:
         date_col = "Collection Date"
         df = self.fetch_report_dataframe("ikea/collection", r'(":val10":").{10}(",":val11":").{10}(",":val12":".{10}",":val13":").{10}(.*?":val20":).{2}', 
@@ -237,6 +276,7 @@ class IkeaReports(BaseIkea):
         crnote = self.filter_by_date(crnote,"Adjusted/Collected/Cancelled Date",fromd,tod,format = "%Y-%m-%d")
         return crnote
     
+    @ikea_screen("Outstanding Report")
     def outstanding(self, date: datetime.date) -> pd.DataFrame:
         return self.fetch_report_dataframe("ikea/outstanding", r'(":val9":").{10}(.{34}).{10}', (date.strftime("%Y-%m-%d"), date.strftime("%Y-%m-%d")))
     
@@ -249,6 +289,7 @@ class IkeaReports(BaseIkea):
         return self.fetch_report_dataframe("ikea/download_settle_cheque", r'(":val1":").*(",":val2":").{10}(",":val3":").{10}(.{32}).{10}', 
                             (type, fromd.strftime("%d/%m/%Y"), tod.strftime("%d/%m/%Y"), datetime.date.today().strftime("%d/%m/%Y")))
     
+    @ikea_screen("Product Wise Purchase")
     def product_wise_purchase(self, fromd: datetime.date, tod: datetime.date) -> pd.DataFrame:
         return self.fetch_report_dataframe("ikea/product_wise_purchase", r'(":val1":").{10}(",":val2":").{10}', (fromd.strftime("%d/%m/%Y"), tod.strftime("%d/%m/%Y")))
     
@@ -261,6 +302,7 @@ class IkeaReports(BaseIkea):
     def current_stock(self, date: datetime.date) -> pd.DataFrame:
         return self.fetch_report_dataframe("ikea/current_stock", r'(":val16":").{10}', (date.strftime("%Y-%m-%d"),))
     
+    @ikea_screen("Sales Register")
     def sales_reg(self, fromd: datetime.date, tod: datetime.date) -> pd.DataFrame:
         df = self.fetch_report_dataframe("ikea/sales_reg", r'(":val1":").{10}(",":val2":").{10}',
                                                         (fromd.strftime("%d/%m/%Y"), tod.strftime("%d/%m/%Y")))
@@ -353,11 +395,13 @@ class IkeaReports(BaseIkea):
                             (fromd.strftime("%Y%m%d"), tod.strftime("%Y%m%d"), bills[0], bills[-1]))
         return df[df["Doc.No"].isin(bills)] #type: ignore
 
+    @ikea_screen("Pending statement")
     def pending_statement_excel(self, beats, date) -> pd.DataFrame:
         df = self.fetch_report_dataframe("ikea/pending_statement_excel", r'(":val5":").{0}(.*":val8":").{10}',
                             (",".join(beats), date.strftime("%Y-%m-%d")))
         return df
 
+    @ikea_screen("UPI/Online Payment Details")
     def upi_statement(self, fromd, tod) -> pd.DataFrame:
         return self.fetch_report_dataframe("ikea/upi_statement", r'(":val3":"\').{10}(\'",":val4":"\').{10}',
                                                         (fromd.strftime("%Y-%m-%d"), tod.strftime("%Y-%m-%d")))
@@ -412,6 +456,7 @@ class Ikea(IkeaReports):
         beats = beats.dropna(subset="id")
         return beats
         
+    @ikea_screen("E-Invoice")
     def einvoice_json(self,fromd,tod,bills) -> BytesIO: 
           return self.fetch_report_bytes("ikea/einvoice_json",r'(":val1":").{8}(",":val2":").{8}(.*":val9":")[^"]*' , 
                               (fromd.strftime("%Y%m%d"),tod.strftime("%Y%m%d"),",".join(bills)) )
@@ -427,6 +472,7 @@ class Ikea(IkeaReports):
     def product_hsn(self) -> dict : 
         return get_curl("ikea/list_of_products").send(self).json()
     
+    @ikea_screen("Pending Statement")
     def pending_statement_pdf(self,beats,date) : 
           r = get_curl("ikea/pending_statement_pdf")
           r.data["strJsonParams"] = curl_replace(r'(beatVal":").{0}(.*colToDate":").{10}(.*colToDateHdr":").{10}', 
@@ -434,6 +480,7 @@ class Ikea(IkeaReports):
           durl = r.send(self).text
           return self.fetch_durl_content(durl)
 
+    @ikea_screen("E-Invoice IRN Upload")
     def upload_irn(self,bytesio) : 
         files = {'file': ( "IRNGenByMe.xlsx" , bytesio )}
         res = self.post("/rsunify/app/stockmigration/eInvoiceIRNuploadFile",files=files)
@@ -482,6 +529,7 @@ class Ikea(IkeaReports):
             df = dfs[-1]
         return df
 
+    @ikea_screen("Beat Export")
     def beat_export(self,fromd,tod):
         self.post("/rsunify/app/sfmIkeaIntegration/callSfmIkeaIntegrationSync")
         data = self.post("/rsunify/app/quantumExport/getSalesmanData",
@@ -500,7 +548,6 @@ class Ikea(IkeaReports):
         self.post("/rsunify/app/sfmIkeaIntegration/callSfmIkeaIntegrationSync")
         self.post("/rsunify/app/api/callikeatocommoutletcreationallapimethods")
         self.post("/rsunify/app/fileUploadId/upload")
-
 
 class Billing(Ikea) :
 
@@ -590,16 +637,23 @@ class Billing(Ikea) :
         for party_data in party_datas :
             self.release_creditlock(party_data)
 
-    def Sync(self): 
-        return self.post('/rsunify/app/fileUploadId/download')
+    @ikea_screen("Order Sync")
+    def Sync(self):     
+        self.post("rsunify/app/sfmIkeaIntegration/callSfmIkeaIntegrationSync")
+        self.post("/rsunify/app/api/callikeatocommoutletcreationallapimethods")
+        #Order Sync
+        res = self.post('/rsunify/app/fileUploadId/download')
+        return res
 
     def Prevbills(self):
         delivery_req = get_curl("ikea/billing/getdelivery")
         delivery = delivery_req.send(self).json()["billHdBeanList"] or []
         self.prevbills = [ bill['blhRefrNo'] for bill in delivery ]
-        self.prevbills = [ bill['blhRefrNo'] for bill in delivery ]
         self.logger.info(f"Previous Delivery Bills: {self.prevbills}")
 
+
+
+    @ikea_screen("Market Collection")
     def Collection(self, order_date):
         self.get("/rsunify/app/quantumImport/init")
         self.get("/rsunify/app/quantumImport/filterValidation")
@@ -623,6 +677,7 @@ class Billing(Ikea) :
         postcollection = self.post("/rsunify/app/quantumImport/importSelectedCollection", json=coll_payload).json()
         self.logger.info(f"Post Collection Response: {postcollection}")
         
+    @ikea_screen("Market Order Billing")
     def get_market_order(self, order_date: datetime.date|None, beat_type: Literal['retail', 'wholesale','all'],allow_partial_bills = False) -> list:
         is_beat_allowed =  lambda beat_name : (("WHOLESALE" in beat_name) == (beat_type == "wholesale")) or (beat_type == "all")
         self.logger.info(f"Processing Order for Date: {order_date}")
