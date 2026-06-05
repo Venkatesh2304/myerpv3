@@ -69,12 +69,14 @@ def ikea_screen(screen_name: str):
                 #Something is not logged out correctly
                 print(f"Update screen status not success, retrying after removing {screen['message']}")
                 ikea_screen_remove(self,screen["message"])
+            print("Updated Screen : ",screen_name)
             
             try:
                 return func(self, *args, **kwargs)
             finally:
                 try:
                     ikea_screen_remove(self,screen_name)        
+                    print("Removed screen : ",screen_name)
                 except Exception as e:
                     print(f"Failed to remove screen {screen_name}: {e}")
         
@@ -645,13 +647,12 @@ class Billing(Ikea) :
         res = self.post('/rsunify/app/fileUploadId/download')
         return res
 
+    @ikea_screen("Delivery Process")
     def Prevbills(self):
         delivery_req = get_curl("ikea/billing/getdelivery")
         delivery = delivery_req.send(self).json()["billHdBeanList"] or []
         self.prevbills = [ bill['blhRefrNo'] for bill in delivery ]
         self.logger.info(f"Previous Delivery Bills: {self.prevbills}")
-
-
 
     @ikea_screen("Market Collection")
     def Collection(self, order_date):
@@ -704,6 +705,7 @@ class Billing(Ikea) :
         # Return full raw response as requested
         return self.market_order.get("mol")
 
+    @ikea_screen("Market Order Billing")
     def post_market_order(self, order_data: list, order_numbers: list[str], delete_order_numbers: list[str]):
 
         if delete_order_numbers :
@@ -747,6 +749,7 @@ class Billing(Ikea) :
         except Exception as e:
             self.logger.error(f"Failed to download/save log: {e}")
 
+    @ikea_screen("Delivery Process")
     def Delivery(self):
         if not self.config["auto_delivery_process"] : 
             self.logger.info("Auto delivery process is disabled in config. Skipping delivery.")
