@@ -150,9 +150,9 @@ def download_load_summary(request) :
     df["diff"] = df["load_qty"] - df["purchase_qty"]
     df = pd.merge(df, product_master[["sku","desc"]] , on="sku", how="left") 
     df = df[["cbu","sku","desc","mrp","purchase_qty","load_qty","diff"]]
-    mismatch = df[df["diff"] != 0]
+    mismatch = df[df["diff"] != 0].copy()
 
-    mismatch["diff_value"] = mismatch.apply(lambda row : int(row["diff"]) * int(row["mrp"]), axis=1)
+    mismatch["diff_value"] = mismatch["diff"].astype(int) * mismatch["mrp"].astype(int)
     cbu_diff_qty_map = mismatch.groupby("cbu")["diff"].sum().to_dict()
     cbu_diff_value_map = mismatch.groupby("cbu")["diff_value"].sum().to_dict()
     
