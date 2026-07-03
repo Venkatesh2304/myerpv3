@@ -1246,9 +1246,10 @@ class Einvoice(Session) :
           bulk_home = self.get("/Invoice/BulkUpload").text
           files = { "JsonFile" : ("einvoice.json", StringIO(json_data) ,'application/json') }
           form = extractForm(bulk_home)
-          print(form)
           upload_home = self.post("/Invoice/BulkUpload" ,  files = files , data = form ).text
-          with open("a.html","w+") as f : f.write(upload_home)
+          #Check if user is blocked due to two factor auth
+          if "This user is blocked" in upload_home : 
+             raise Exception("Einvoice Portal : This user is blocked from generation of eInvoices. Either complete Two Factor Authentication or complete Deferment of Two Factor Authentication")
           success = pd.read_excel( self.get("/Invoice/ExcelUploadedInvoiceDetails").content )
           failed = pd.read_excel( self.get("/Invoice/FailedInvoiceDetails").content )
           print(failed)
