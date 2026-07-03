@@ -1246,7 +1246,9 @@ class Einvoice(Session) :
           bulk_home = self.get("/Invoice/BulkUpload").text
           files = { "JsonFile" : ("einvoice.json", StringIO(json_data) ,'application/json') }
           form = extractForm(bulk_home)
+          print(form)
           upload_home = self.post("/Invoice/BulkUpload" ,  files = files , data = form ).text
+          with open("a.html","w+") as f : f.write(upload_home)
           success = pd.read_excel( self.get("/Invoice/ExcelUploadedInvoiceDetails").content )
           failed = pd.read_excel( self.get("/Invoice/FailedInvoiceDetails").content )
           print(failed)
