@@ -1237,6 +1237,8 @@ class Einvoice(Session) :
       def is_logged_in(self) : 
           try : 
             res = self.get("/Home/MainMenu")
+            with open("einv_homepage.html","w+") as f :
+                f.write(res.text)
           except Exception as e :
               print("Exception Occured on is_logged_in :",e) 
               return False
@@ -1244,6 +1246,8 @@ class Einvoice(Session) :
 
       def upload(self,json_data:str)  :  
           bulk_home = self.get("/Invoice/BulkUpload").text
+          with open("einv_bulkupload.html","w+") as f: 
+              f.write(bulk_home)
           files = { "JsonFile" : ("einvoice.json", StringIO(json_data) ,'application/json') }
           form = extractForm(bulk_home)
           upload_home = self.post("/Invoice/BulkUpload" ,  files = files , data = form ).text
