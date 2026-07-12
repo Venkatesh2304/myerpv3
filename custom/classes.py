@@ -206,7 +206,11 @@ class IkeaReports(BaseIkea):
         return self.fetch_durl_content(durl)
 
     def fetch_report_dataframe(self, key: str, pat: str = "", replaces: tuple = tuple(), **kwargs) -> pd.DataFrame:
-        buffer = self.fetch_report_bytes(key, pat, replaces)
+        try:
+            buffer = self.fetch_report_bytes(key, pat, replaces)
+        except (ReportFetchError, ValueError) as e:
+            self.logger.info(f"Failed to fetch report bytes for {key}: {e}. Returning empty DataFrame.")
+            return pd.DataFrame()
         excel_kwargs = kwargs.copy()
         if "engine" not in excel_kwargs:
             excel_kwargs["engine"] = "openpyxl"
@@ -232,6 +236,8 @@ class IkeaReports(BaseIkea):
         return pd.concat(dfs)
 
     def filter_by_date(self, df: pd.DataFrame, date_column: str, fromd: datetime.date, tod: datetime.date, format: str|None = None) -> pd.DataFrame:
+        if df.empty:
+            return df
         if date_column not in df.columns:
             raise Exception(f"Date column {date_column} not found in DataFrame")
         df[date_column] = pd.to_datetime(df[date_column],format = format).dt.date
@@ -244,6 +250,9 @@ class IkeaReports(BaseIkea):
                                 (fromd.strftime("%d/%m/%Y"), tod.strftime("%d/%m/%Y"), str(gstr_type)), r.url)
 
         durl = r.send(self).text
+        if not durl:
+            self.logger.info(f"GSTR report returned empty durl for {fromd} to {tod}. Returning empty DataFrame.")
+            return pd.DataFrame()
         return pd.read_csv(self.fetch_durl_content(durl))
 
     @ikea_screen("Collection Summary")
@@ -252,6 +261,8 @@ class IkeaReports(BaseIkea):
         df = self.fetch_report_dataframe("ikea/collection", r'(":val10":").{10}(",":val11":").{10}(",":val12":".{10}",":val13":").{10}(.*?":val20":).{2}', 
                         (fromd.strftime("%Y/%m/%d"), tod.strftime("%Y/%m/%d"), tod.strftime("%Y/%m/%d"),str(self.user_id)),
                         dtype = {date_col: "str"})
+        if df.empty:
+            return df
         
         df["raw_date"] = df[date_col].str.split(" ").str[0]
         df = df[df["raw_date"].notna()]
@@ -275,6 +286,8 @@ class IkeaReports(BaseIkea):
     def crnote(self, fromd: datetime.date, tod: datetime.date) -> pd.DataFrame:
         crnote = self.fetch_report_dataframe("ikea/crnote", r'(":val3":").{10}(",":val4":").{10}', ((fromd - datetime.timedelta(weeks=12)).strftime("%d/%m/%Y"),
                                                                                     tod.strftime("%d/%m/%Y")))
+        if crnote.empty:
+            return crnote
         crnote = self.filter_by_date(crnote,"Adjusted/Collected/Cancelled Date",fromd,tod,format = "%Y-%m-%d")
         return crnote
     
@@ -308,6 +321,8 @@ class IkeaReports(BaseIkea):
     def sales_reg(self, fromd: datetime.date, tod: datetime.date) -> pd.DataFrame:
         df = self.fetch_report_dataframe("ikea/sales_reg", r'(":val1":").{10}(",":val2":").{10}',
                                                         (fromd.strftime("%d/%m/%Y"), tod.strftime("%d/%m/%Y")))
+        if df.empty:
+            return df
         DATE_COLUMN = "BillDate/Sales Return Date"
         try:
             df[DATE_COLUMN] = pd.to_datetime(df[DATE_COLUMN], format="%Y-%m-%d").dt.date
@@ -1159,11 +1174,35 @@ class Gst(Session) :
             data = self.get(f"https://return.gst.gov.in/returns/auth/api/gstr1/summary?rtn_prd={period}",
                         headers = {"Referer": "https://return.gst.gov.in/returns/auth/gstr1"}).json()
             if data is not None  : 
-                data = { i["sec_nm"] : { "txval" : i.get("ttl_tax",None), 
-                                          "cgst" : i.get("ttl_cgst",None) , 
-                                          "sgst" : i.get("ttl_sgst",None)
-                                          } for i in data["data"]["sec_sum"] }
-                return data
+                res = {}
+                for i in data["data"]["sec_sum"]:
+                    sec_nm = i["sec_nm"]
+                    if sec_nm == "TTL_LIAB":
+                        sec_nm = "total"
+                    res[sec_nm] = {
+                        "txval": i.get("ttl_tax", None),
+                        "cgst": i.get("ttl_cgst", None),
+                        "sgst": i.get("ttl_sgst", None),
+                        "igst": i.get("ttl_igst", None),
+                        "cess": i.get("ttl_cess", None),
+                        "val": i.get("ttl_val", None),
+                        "ttl_rec": i.get("ttl_rec", None)
+                    }
+                    if "sub_sections" in i:
+                        res[sec_nm]["sub_sections"] = [
+                            {
+                                "sec_nm": sub.get("sec_nm") or sub.get("typ"),
+                                "txval": sub.get("ttl_tax", None),
+                                "cgst": sub.get("ttl_cgst", None),
+                                "sgst": sub.get("ttl_sgst", None),
+                                "igst": sub.get("ttl_igst", None),
+                                "cess": sub.get("ttl_cess", None),
+                                "val": sub.get("ttl_val", None),
+                                "ttl_rec": sub.get("ttl_rec", None)
+                            }
+                            for sub in i["sub_sections"]
+                        ]
+                return res
             else : 
                 raise Exception("GST Get Summary Failed Json data is None")
     
@@ -1252,8 +1291,8 @@ class Einvoice(Session) :
           form = extractForm(bulk_home)
           upload_home = self.post("/Invoice/BulkUpload" ,  files = files , data = form ).text
           #Check if user is blocked due to two factor auth
-          if "This user is blocked" in upload_home : 
-             raise Exception("Einvoice Portal : This user is blocked from generation of eInvoices. Either complete Two Factor Authentication or complete Deferment of Two Factor Authentication")
+          # if "This user is blocked" in upload_home : 
+          #    raise Exception("Einvoice Portal : This user is blocked from generation of eInvoices. Either complete Two Factor Authentication or complete Deferment of Two Factor Authentication")
           success = pd.read_excel( self.get("/Invoice/ExcelUploadedInvoiceDetails").content )
           failed = pd.read_excel( self.get("/Invoice/FailedInvoiceDetails").content )
           print(failed)
