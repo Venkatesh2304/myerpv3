@@ -72,8 +72,12 @@ def get_order(request):
             if billing_obj.stop:
                 return JsonResponse({"error": "Billing is stopped for this company"}, status=400)
 
-            if not created and billing_obj.ongoing :
-                return JsonResponse({"error": "Billing process is already running by {}".format(billing_obj.user)}, status=400)
+            lock_duration = (datetime.datetime.now() - billing_obj.time).total_seconds()
+            if not created and billing_obj.ongoing:
+                if lock_duration > 1800:  # 30 minutes
+                    billing_obj.ongoing = False
+                else:
+                    return JsonResponse({"error": "Billing process is already running by {}".format(billing_obj.user)}, status=400)
 
             last_fetch_seconds = (datetime.datetime.now() - billing_obj.time).total_seconds()
             if (billing_obj.process == "getorder") and (not created) and (last_fetch_seconds < timeout):
@@ -287,8 +291,12 @@ def post_order(request):
             if billing_obj.stop:
                 return JsonResponse({"error": "Billing is stopped for this company"}, status=400)
 
+            lock_duration = (datetime.datetime.now() - billing_obj.time).total_seconds()
             if billing_obj.ongoing:
-                return JsonResponse({"error": "Billing process is already ongoing"}, status=400)
+                if lock_duration > 1800:  # 30 minutes
+                    billing_obj.ongoing = False
+                else:
+                    return JsonResponse({"error": "Billing process is already ongoing"}, status=400)
             
             billing_obj.ongoing = True
             billing_obj.process = "postorder"
@@ -415,8 +423,12 @@ def manage_order(request):
             with transaction.atomic():
                 billing_obj = models.Billing.objects.select_for_update().get(company_id=company_id, date=today)
                 
+                lock_duration = (datetime.datetime.now() - billing_obj.time).total_seconds()
                 if billing_obj.ongoing:
-                    return JsonResponse({"error": "Billing process is ongoing. Please wait."}, status=400)
+                    if lock_duration > 1800:  # 30 minutes
+                        billing_obj.ongoing = False
+                    else:
+                        return JsonResponse({"error": "Billing process is ongoing. Please wait."}, status=400)
 
                 billing_obj.ongoing = True
                 billing_obj.process = "editing"
