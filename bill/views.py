@@ -21,6 +21,8 @@ from bill.credit_logic import PartyCreditLogic
 from bill.models import PartyCredit
 from report.models import PartyReport
 
+BILLING_LOCK_TIMEOUT = 900  # 15 minutes in seconds
+
 class ProcessStats:
     def __init__(self):
         self.stats = {}
@@ -74,7 +76,7 @@ def get_order(request):
 
             lock_duration = (datetime.datetime.now() - billing_obj.time).total_seconds()
             if not created and billing_obj.ongoing:
-                if lock_duration > 1800:  # 30 minutes
+                if lock_duration > BILLING_LOCK_TIMEOUT:
                     billing_obj.ongoing = False
                 else:
                     return JsonResponse({"error": "Billing process is already running by {}".format(billing_obj.user)}, status=400)
@@ -293,7 +295,7 @@ def post_order(request):
 
             lock_duration = (datetime.datetime.now() - billing_obj.time).total_seconds()
             if billing_obj.ongoing:
-                if lock_duration > 1800:  # 30 minutes
+                if lock_duration > BILLING_LOCK_TIMEOUT:
                     billing_obj.ongoing = False
                 else:
                     return JsonResponse({"error": "Billing process is already ongoing"}, status=400)
@@ -425,7 +427,7 @@ def manage_order(request):
                 
                 lock_duration = (datetime.datetime.now() - billing_obj.time).total_seconds()
                 if billing_obj.ongoing:
-                    if lock_duration > 1800:  # 30 minutes
+                    if lock_duration > BILLING_LOCK_TIMEOUT:
                         billing_obj.ongoing = False
                     else:
                         return JsonResponse({"error": "Billing process is ongoing. Please wait."}, status=400)
