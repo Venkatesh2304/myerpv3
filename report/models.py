@@ -132,6 +132,8 @@ class BaseReport(Generic[ArgsT]):
                 print("Retrying fetching data due to error :",e)
         if df is None :
             raise Exception("Failed to fetch data after retries")
+        if df.empty:
+            return df
         df = cls.basic_preprocessing(df)
         df = cls.custom_preprocessing(df)
         return df
@@ -149,6 +151,9 @@ class BaseReportModel(models.Model,Generic[ArgsT]):
     
     @classmethod
     def save_to_db(cls,df: pd.DataFrame) -> int | None:
+        if df.empty:
+            cls.on_commit()
+            return 0
         # Collect concrete, non-auto fields (exclude auto PK and m2m)
         fields = []
         for f in cls._meta.get_fields():
@@ -325,7 +330,7 @@ class SalesRegisterReport(DateReportModel):
             df["tax"] = df["Tax Amt"] - df["SRT Tax"]
             df["amt"] = df["BillValue"] + df["CR Adj"]
             df["other_discount"] = df["DisFin Adj"] + df["Reversed Payouts"]
-            df["type"] = df["amt"].apply(lambda x: "salesreturn" if x < 0 else "sales")
+            df["type"] = df.apply(lambda row: "salesreturn" if (row["amt"] < 0 or row["tax"] < 0) else "sales", axis=1)
             return df
 
 class IkeaGSTR1Report(DateReportModel):
@@ -412,6 +417,94 @@ class DmgShtReport(DateReportModel):
             df["party_id"] = df["party_id"].fillna("HUL") #For RS entries
             return df
 
+class DseReport(DateReportModel):
+    inum = models.CharField(max_length=100, verbose_name="DSE Ref No")
+    date = models.DateField(verbose_name="DSE Date")
+    grn_no = models.CharField(max_length=100, verbose_name="GRN No", null=True, blank=True)
+    grn_date = models.DateField(verbose_name="GRN Date", null=True, blank=True)
+    ref = models.CharField(max_length=100, verbose_name="Company Inv No", null=True, blank=True)
+    ref_date = models.DateField(verbose_name="Company Inv Date", null=True, blank=True)
+    supplier = models.CharField(max_length=255, verbose_name="Supplier", null=True, blank=True)
+    stock_id = models.CharField(max_length=100, verbose_name="Product Code")
+    desc = models.CharField(max_length=255, verbose_name="Product Name", null=True, blank=True)
+    qty = models.IntegerField(verbose_name="Quantity In Units")
+    unit_rate = decimal_field(decimal_places=2, verbose_name="Unit Rate")
+    amt = decimal_field(decimal_places=2, verbose_name="Amount")
+    rt = decimal_field(decimal_places=1, verbose_name="Rate")
+    tax_amt = decimal_field(decimal_places=2, verbose_name="Tax Amount")
+    disc_amt = decimal_field(decimal_places=2, verbose_name="Disc Amt")
+    net_amt = decimal_field(decimal_places=2, verbose_name="TotNet Amount")
+    type = models.CharField(max_length=50, verbose_name="Type")
+    remarks = models.CharField(max_length=255, verbose_name="Remarks", null=True, blank=True)
+
+    class Meta:
+        db_table = "dse_report"
+
+    class Report(DateReportModel.Report):
+        fetcher = Ikea.dse
+        column_map = {
+            "DSE Ref No": "inum",
+            "DSE Date": "date",
+            "GRN No": "grn_no",
+            "GRN Date": "grn_date",
+            "Company Inv No": "ref",
+            "Company Inv Date": "ref_date",
+            "Supplier": "supplier",
+            "Product Code": "stock_id",
+            "Product Name": "desc",
+            "Quantity In Units": "qty",
+            "Unit Rate": "unit_rate",
+            "Amount": "amt",
+            "Tax%": "rt",
+            "Tax Amount": "tax_amt",
+            "Disc Amt": "disc_amt",
+            "TotNet Amount": "net_amt",
+            "Type": "type",
+            "Remarks": "remarks",
+        }
+        
+        @classmethod
+        def custom_preprocessing(cls, df: pd.DataFrame) -> pd.DataFrame:
+            df["grn_no"] = df["grn_no"].fillna("").astype(str)
+            df["ref"] = df["ref"].fillna("").astype(str)
+            df["supplier"] = df["supplier"].fillna("").astype(str)
+            df["remarks"] = df["remarks"].fillna("").astype(str)
+            
+            df["grn_date"] = pd.to_datetime(df["grn_date"], errors="coerce").dt.date
+            df["ref_date"] = pd.to_datetime(df["ref_date"], errors="coerce").dt.date
+            df["rt"] = df["rt"] / 2.0
+            
+            return df
+
+class DamageDebitNoteReport(DateReportModel):
+    inum = models.CharField(max_length=100, verbose_name="REFR NO")
+    date = models.DateField(verbose_name="DEBIT NOTE DATE")
+    stock_id = models.CharField(max_length=100, verbose_name="MATERIAL/ACTIVITY CODE")
+    qty = models.IntegerField(verbose_name="PROD QTY")
+    amt = decimal_field(decimal_places=2, verbose_name="TOTAL AMOUNT")
+    proposal_no = models.CharField(max_length=100, verbose_name="PROPOSAL NO", null=True, blank=True)
+
+    class Meta:
+        db_table = "damage_debitnote_report"
+
+    class Report(DateReportModel.Report):
+        fetcher = Ikea.damage_debitnote
+        column_map = {
+            "REFR NO": "inum",
+            "DEBIT NOTE DATE": "date",
+            "MATERIAL/ACTIVITY CODE": "stock_id",
+            "PROD QTY": "qty",
+            "TOTAL AMOUNT": "amt",
+            "PROPOSAL NO": "proposal_no",
+        }
+        date_format = "%Y-%m-%d"
+        
+        @classmethod
+        def custom_preprocessing(cls, df: pd.DataFrame) -> pd.DataFrame:
+            df["proposal_no"] = df["proposal_no"].fillna("").astype(str)
+            df["inum"] = df["inum"].fillna("").astype(str)
+            return df
+
 class CollectionReport(DateReportModel):
     collection_ref = models.CharField(max_length=15, verbose_name="Collection Ref")
     inum = models.CharField(max_length=15, verbose_name="BillRefNo")
@@ -425,6 +518,43 @@ class CollectionReport(DateReportModel):
     class Meta:  # type: ignore
         db_table = "collection_report"
 
+    @classmethod
+    def update_db(cls, fetcher_obj: object, company: Company, args: DateRangeArgs) -> int | None:
+        import datetime
+        
+        start_date = args.fromd
+        end_date = args.tod
+        delta = datetime.timedelta(days=15)
+        
+        # Delete existing entries for this company and date range first
+        cls.delete_before_insert(company, args)
+        
+        current_start = start_date
+        total_inserted = 0
+        
+        while current_start <= end_date:
+            current_end = min(current_start + delta - datetime.timedelta(days=1), end_date)
+            batch_args = DateRangeArgs(fromd=current_start, tod=current_end)
+            print(f"Downloading CollectionReport batch from {current_start} to {current_end}...")
+            
+            
+            try:
+                df = cls.Report.get_dataframe(fetcher_obj, batch_args)
+                if not df.empty:
+                    df["company_id"] = company.pk
+                    rows = cls.save_to_db(df)
+                    if rows is not None:
+                        total_inserted += rows
+            except Exception as e:
+                print(f"Error fetching CollectionReport batch {current_start} to {current_end}: {e}")
+                # We propagate the exception so that the import command throws an error and fails
+                raise e
+                
+            current_start += delta
+            
+        ReportSyncLog.update_log(cls, identifier=company.pk)
+        return total_inserted
+
     class Report(DateReportModel.Report):
         fetcher = Ikea.collection
         column_map = {"Collection Refr":"collection_ref","Collection Date":"date","Date": "bill_date","Coll. Amt" :"amt",
@@ -434,6 +564,8 @@ class CollectionReport(DateReportModel):
         
         @classmethod
         def custom_preprocessing(cls, df: pd.DataFrame) -> pd.DataFrame:
+            if df.empty:
+                return df
             df = df[df.Status != "CAN"][df.Status != "PND"]
             df["bank_entry_id"] = None 
             is_auto_pushed_chq = (df.Status == "CHQ") & (df["Collection Settlement Mode"] == "Excel Collection")
@@ -473,7 +605,6 @@ class OutstandingReport(EmptyReportModel):
                   try:
                       with open(mapping_path, "r") as f:
                           mapping = json.load(f)
-                      
                       # Apply mapping: bill_no -> {"beat": "...", "salesman": "..."}
                       def apply_mapping(row):
                           bill_no = row['inum']
@@ -712,6 +843,195 @@ class GSTR1Portal(OrganizationReportModel[MonthArgs]):
     @classmethod
     def delete_before_insert(cls, organization: Organization,args: MonthArgs):
         cls.objects.filter(organization = organization,period = str(args)).delete()
+
+class PurchaseDmgShtReport(DateReportModel):
+    inum = models.CharField(max_length=100, verbose_name="Trans Ref No")
+    date = models.DateField(verbose_name="Trans Ref Date")
+    stock_id = models.CharField(max_length=50, verbose_name="Product Code")
+    desc = models.CharField(max_length=255, verbose_name="Product Name", null=True)
+    qty = models.IntegerField(verbose_name="Final Approved Qty")
+    amt = decimal_field(required=True, decimal_places=2, verbose_name="Approx Claim Value")
+    ref = models.CharField(max_length=100, verbose_name="Proposal Ref No", null=True)
+    type = models.CharField(max_length=50, verbose_name="Type (Damage or Shortage)", choices=[("damage","damage"),("shortage","shortage")])
+
+    class Meta:
+        db_table = "purchase_dmgsht_report"
+
+    class Report(DateReportModel.Report):
+        fetcher = lambda ikea,fromd,tod : Ikea.damage_proposals(ikea,fromd,tod,"purchase")
+        column_map = {
+            "TRANS REF NO": "inum",
+            "TRANS REF DATE": "date",
+            "PRODUCT CODE": "stock_id",
+            "PRODUCT NAME": "desc",
+            "FINAL APPROVED QTY": "qty",
+            "APPROX CLAIM VALUE": "amt",
+            "PROP REF NO": "ref"
+        }
+
+        @classmethod
+        def custom_preprocessing(cls, df: pd.DataFrame) -> pd.DataFrame:
+            df["type"] = df["PROP TYPE"].apply(lambda x : "damage" if str(x).upper() == "DAMAGE" else "shortage")
+            df["desc"] = df["desc"].fillna("").astype(str)
+            return df
+
+class IkeaGSTR2Report(DateReportModel):
+    inum = models.CharField(max_length=50, verbose_name="Invoice No")
+    date = models.DateField(verbose_name="Invoice Date")
+    stock_id = models.CharField(max_length=50, verbose_name="UQC")
+    rt = decimal_field(required=True, decimal_places=1, verbose_name="Tax - Central Tax")
+    hsn = models.CharField(max_length=50, verbose_name="HSN")
+    qty = models.IntegerField(verbose_name="Total Quantity")
+    ctin = models.CharField(max_length=20, verbose_name="GSTIN/UIN", null=True, blank=True)
+    amt = decimal_field(required=True, verbose_name="Invoice Value")
+    txval = decimal_field(required=True, decimal_places=3, verbose_name="Taxable")
+    desc = models.CharField(max_length=255, verbose_name="Product Description", null=True, blank=True)
+    transactions = models.CharField(max_length=100, verbose_name="Transactions", null=True, blank=True)
+
+    class Meta:
+        db_table = "ikea_gstr2_report"
+
+    class Report(DateReportModel.Report):
+        fetcher = lambda ikea, fromd, tod: ikea.gstr_report(fromd, tod, gstr_type=2)
+        date_format = "%d/%m/%Y"
+        column_map = {
+            "Invoice No": "inum",
+            "Invoice Date": "date",
+            "UQC": "stock_id",
+            "Tax - Central Tax": "rt",
+            "HSN": "hsn",
+            "Total Quantity": "qty",
+            "GSTIN/UIN": "ctin",
+            "Invoice Value": "amt",
+            "Taxable": "txval",
+            "Product Description": "desc",
+            "Transactions": "transactions"
+        }
+
+        @classmethod
+        def custom_preprocessing(cls, df: pd.DataFrame) -> pd.DataFrame:
+            df["inum"] = df["inum"].astype(str).str.split(".").str[0]
+            df["hsn"] = df["hsn"].astype(str).str.replace(".", "", regex=False)
+            return df
+
+class Adjustment(DateReportModel):
+    company = models.ForeignKey('core.Company', on_delete=models.CASCADE, db_index=True, related_name='report_adjustments')
+    inum = models.CharField(max_length=100, verbose_name="Inum")
+    date = models.DateField(verbose_name="Adjustment Date")
+    adj_amt = decimal_field(required=True, verbose_name="Adjusted Amount")
+    party_id = models.CharField(max_length=100, verbose_name="Party Code")
+    to_bill_id = models.CharField(max_length=100, verbose_name="To Bill ID", null=True, blank=True)
+    from_bill_id = models.CharField(max_length=100, verbose_name="From Bill ID", null=True, blank=True)
+    amt = decimal_field(required=True, verbose_name="Net Amount")
+    is_collection_discount = models.BooleanField(default=False)
+    is_excess_collection = models.BooleanField(default=False)
+    narration = models.TextField(verbose_name="Narration", null=True, blank=True)
+
+    class Meta:
+        db_table = "adjustment_report"
+
+    class Report(DateReportModel.Report):
+        fetcher = Ikea.crnote
+        column_map = {
+            "CR/DR No.": "inum",
+            "Adjusted/Collected/Cancelled Date": "date",
+            "Adjusted Amt": "adj_amt",
+            "Party Code": "party_id",
+            "Adjusted /Collected Bill No": "to_bill_id",
+            "Sales Ret Refr No.": "from_bill_id",
+            "Narration": "narration",
+        }
+        dropna_columns = ["inum"]
+        max_retry = 2
+
+        @classmethod
+        def custom_preprocessing(cls, df: pd.DataFrame) -> pd.DataFrame:
+            if df.empty:
+                return df
+            df["is_collection_discount"] = False
+            df["is_excess_collection"] = False
+            if "narration" in df.columns:
+                narr_str = df["narration"].astype(str).str.strip()
+                df["is_collection_discount"] = (narr_str == "Discount in Collection")
+                df["is_excess_collection"] = narr_str.str.contains("Excess Collection", case=False, na=False)
+                
+                df.loc[df["narration"] == "From Sales Return", "from_bill_id"] = df.loc[
+                    df["narration"] == "From Sales Return", "inum"
+                ]
+            if "Sr No" in df.columns:
+                df["inum"] = df["inum"].astype(str) + "-" + df["Sr No"].astype(str)
+            df["amt"] = 0
+            if "date" in df.columns:
+                df["date"] = pd.to_datetime(df["date"]).dt.date
+            return df
+
+class ClaimsReport(DateReportModel):
+    sr_no = models.IntegerField(null=True, blank=True)
+    moc = models.CharField(max_length=50, verbose_name="CLAIM MOC REF")
+    claim_type_desc = models.CharField(max_length=100, verbose_name="TYPE OF CLAIM")
+    claim_type = models.CharField(max_length=100, verbose_name="CLAIM TYPE DESCRIPTION")
+    activity_moc = models.CharField(max_length=50, verbose_name="ACTIVITY MOC REF", null=True, blank=True)
+    code = models.CharField(max_length=50, verbose_name="ACTIVITY CODE")
+    desc = models.TextField(verbose_name="ACTIVITY DESCRIPTION", null=True, blank=True)
+    amt = decimal_field(decimal_places=2, verbose_name="CLAIM AMOUNT")
+    status = models.CharField(max_length=100, verbose_name="STATUS")
+    date = models.DateField(verbose_name="STATUS PUBLISH DATE")
+    download_date = models.DateField(verbose_name="DOWNLOAD DATE", null=True, blank=True)
+    ref = models.CharField(max_length=100, verbose_name="DEBIT NOTE/SERVICE INVOICE NO", null=True, blank=True)
+    ref_amt = decimal_field(decimal_places=2, verbose_name="DN/SI AMOUNT")
+    remarks = models.TextField(verbose_name="REMARKS", null=True, blank=True)
+
+    class Meta:
+        db_table = "claims_report"
+
+    class Report(DateReportModel.Report):
+        fetcher = Ikea.claim_status
+        column_map = {
+            "Sr No": "sr_no",
+            "CLAIM MOC REF": "moc",
+            "TYPE OF CLAIM": "claim_type_desc",
+            "CLAIM TYPE DESCRIPTION": "claim_type",
+            "ACTIVITY MOC REF": "activity_moc",
+            "ACTIVITY CODE": "code",
+            "ACTIVITY DESCRIPTION \\ GIFT DESCRIPTION": "desc",
+            "CLAIM AMOUNT": "amt",
+            "STATUS": "status",
+            "STATUS PUBLISH DATE": "date",
+            "DOWNLOAD DATE": "download_date",
+            "DEBIT NOTE/SERVICE INVOICE NO": "ref",
+            "DN/SI AMOUNT": "ref_amt",
+            "REMARKS": "remarks"
+        }
+        dropna_columns = ["date", "moc"]
+        max_retry = 2
+
+        @classmethod
+        def custom_preprocessing(cls, df: pd.DataFrame) -> pd.DataFrame:
+            if df.empty:
+                return df
+            
+            # Fallback for NaN date
+            if "date" in df.columns and "download_date" in df.columns:
+                df["date"] = df["date"].fillna(df["download_date"])
+                
+            df = df.dropna(subset=["date"])
+            
+            # Format date columns to python date objects
+            df["date"] = pd.to_datetime(df["date"]).dt.date
+            if "download_date" in df.columns:
+                df["download_date"] = pd.to_datetime(df["download_date"]).dt.date
+                
+            # Cast datatypes and fill NaNs
+            df["sr_no"] = df["sr_no"].fillna(0).astype(int)
+            df["ref_amt"] = df["ref_amt"].fillna(0.0)
+            df["amt"] = df["amt"].fillna(0.0)
+            df["ref"] = df["ref"].fillna("").astype(str).str.strip()
+            df["remarks"] = df["remarks"].fillna("").astype(str)
+            df["desc"] = df["desc"].fillna("").astype(str)
+            df["activity_moc"] = df["activity_moc"].fillna("").astype(str)
+            
+            return df
+
 
 # System check for models
 @register()
