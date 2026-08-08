@@ -1284,20 +1284,25 @@ class Einvoice(Session) :
           return "/Home/MainMenu" in res.url
 
       def upload(self,json_data:str)  :  
-          bulk_home = self.get("/Invoice/BulkUpload").text
-          with open("einv_bulkupload.html","w+") as f: 
-              f.write(bulk_home)
-          files = { "JsonFile" : ("einvoice.json", StringIO(json_data) ,'application/json') }
-          form = extractForm(bulk_home)
-          upload_home = self.post("/Invoice/BulkUpload" ,  files = files , data = form ).text
-          #Check if user is blocked due to two factor auth
-          # if "This user is blocked" in upload_home : 
-          #    raise Exception("Einvoice Portal : This user is blocked from generation of eInvoices. Either complete Two Factor Authentication or complete Deferment of Two Factor Authentication")
-          success = pd.read_excel( self.get("/Invoice/ExcelUploadedInvoiceDetails").content )
-          failed = pd.read_excel( self.get("/Invoice/FailedInvoiceDetails").content )
-          print(failed)
-          failed.to_excel("failed_einv.xlsx")
-          return success , failed 
+           bulk_home = self.get("/Invoice/BulkUpload").text
+           with open("einv_bulkupload.html","w+") as f: 
+               f.write(bulk_home)
+           files = { "JsonFile" : ("einvoice.json", StringIO(json_data) ,'application/json') }
+           form = extractForm(bulk_home, all_forms=True)
+           post_data = {
+               '__RequestVerificationToken': form.get('__RequestVerificationToken'),
+               'name': '',
+               'submit': 'Upload'
+           }
+           upload_home = self.post("/Invoice/BulkUpload" ,  files = files , data = post_data ).text
+           #Check if user is blocked due to two factor auth
+           # if "This user is blocked" in upload_home : 
+           #    raise Exception("Einvoice Portal : This user is blocked from generation of eInvoices. Either complete Two Factor Authentication or complete Deferment of Two Factor Authentication")
+           success = pd.read_excel( self.get("/Invoice/ExcelUploadedInvoiceDetails").content )
+           failed = pd.read_excel( self.get("/Invoice/FailedInvoiceDetails").content )
+           print(failed)
+           failed.to_excel("failed_einv.xlsx")
+           return success , failed 
       
       def get_filed_einvs(self,date) -> pd.DataFrame : 
           """This functions works on today - 2 to today (Only 3 past days data available)"""
