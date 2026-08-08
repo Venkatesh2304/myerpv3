@@ -1344,12 +1344,13 @@ class Einvoice(Session) :
       ## Only works in Linux
       #Not working use gst module instead
       def getpdf(self,irn) : 
-          form = extractForm( self.get("https://einvoice1.gst.gov.in/Invoice/EInvoicePrint/Print").text )
+          form = extractForm( self.get("https://einvoice1.gst.gov.in/Invoice/EInvoicePrint/Print").text, all_forms=True )
           form = form | {"ModeofPrint": "IRN" , "PrintOption": "IRN","submit": "Print",
           "InvoiceView.InvoiceDetails.Irn": irn }
           html = self.post("https://einvoice1.gst.gov.in/Invoice/EInvoicePrintAction",data=form).text
           html = re.sub(r'src=".*/(.*?)"','src="\\1"',html)
           html = re.sub(r'href=".*/(.*?)"','href="\\1"',html)
+          os.makedirs("print_includes", exist_ok=True)
           with open("print_includes/bill.html","w+") as f  : f.write(html)
       
       def upload_eway_bill(self,json_str:str) : 
