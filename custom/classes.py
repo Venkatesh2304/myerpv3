@@ -1120,8 +1120,8 @@ class Gst(Session) :
          year = (p.year - 1) if p.month < 4 else p.year 
          fy = f"{year}-{(year+1)%100}"
          params = {'stin': seller_gstin ,'fy': fy ,'doctype': doctype ,'docnum': str(inum) ,'usertype': 'seller'}
-         data = self.get('https://einvoice.gst.gov.in/einvoice/auth/api/getIrnData',
-             params=params, headers = { 'Referer': 'https://einvoice.gst.gov.in/einvoice/jsonDownload' }
+         data = self.get('https://einvoice.gst.gov.in/auth/api/getIrnData',
+             params=params, headers = { 'Referer': 'https://einvoice.gst.gov.in/jsonDownload' }
          ).json()
          if "error" in data : return None     
          data = json.loads(data["data"])["data"]
