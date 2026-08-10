@@ -1,3 +1,4 @@
+from collections import defaultdict
 from report.models import GSTR1Portal
 from core.models import Organization
 import decimal
@@ -301,6 +302,10 @@ def generate(organization:Organization,period:str,gst:Gst) -> dict[str,pd.DataFr
     detailed = invs[
         ["company_id", "inum", "date", "name", "ctin", "amt", "txval", "cgst"]
     ]
+    #Get saleschanges
+    companies = organization.companies.all().values_list("pk",flat=True) #type: ignore
+    change_ids = [ change.pk for change in models.SalesChanges.objects.filter(company_id__in = companies) if change.sales and change.sales.gst_period == period ]
+    changes = pd.DataFrame(models.SalesChanges.objects.filter(pk__in = change_ids).values())
 
     writer = pd.ExcelWriter(f"static/{organization.pk}/workings_{period}.xlsx", engine="xlsxwriter")
     addtable(
@@ -314,7 +319,8 @@ def generate(organization:Organization,period:str,gst:Gst) -> dict[str,pd.DataFr
             count_stats,
         ],
     )
-    # addtable(writer = writer , sheet = "Changes" , name = ["CHANGES"] ,  data = [changes] )
+    if change_ids :
+        addtable(writer = writer , sheet = "Changes" , name = ["CHANGES"] ,  data = [changes])
     addtable(
         writer=writer,
         sheet="Einvoice",
@@ -454,11 +460,11 @@ def generate(organization:Organization,period:str,gst:Gst) -> dict[str,pd.DataFr
                     "num": row_count,
                     "hsn_sc": row.hsn,
                     "txval": round(row.txval, 2),
-                    "qty": round(abs(row.qty)),
+                    "qty": round(abs(row.qty)) if not str(row.hsn).startswith("99") else 0,
                     "rt": round(row.rt, 1),
                     "camt": round(row.cgst, 2),
                     "samt": round(row.sgst, 2),
-                    "uqc": ("NOS" if not row.hsn.startswith("99") else "NA"),
+                    "uqc": ("NOS" if not str(row.hsn).startswith("99") else "NA"),
                     "iamt": 0,
                     "csamt": 0,
                 }
