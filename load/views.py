@@ -118,6 +118,7 @@ def download_load_summary(request) :
     dfs:list[pd.DataFrame] = []
     for company in request.user.organization.companies.all():
         df = Ikea(company.pk).product_wise_purchase(fromd,tod)
+        if len(df.colums) == 0 : continue
         df["sku"] = df["Item Code"].str.slice(0,5)
         df["desc"] = df["Item Name"]
         dfs.append(df[["sku","desc"]])
