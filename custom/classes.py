@@ -60,15 +60,22 @@ def ikea_screen(screen_name: str):
         @functools.wraps(func)
         def wrapper(self, *args, **kwargs):
             data = {"screenName": screen_name, "pbayoutUpdate": "1","enfSyncFlag": "0"}
+            success = False
             for i in range(2) :
                 screen = self.post("/rsunify/app/ikeaCommonUtilController/updateScreenNameIntoSession", data={
                     'strJsonParams': urllib.parse.quote(json.dumps(data)),
                 }).json()
                 if screen["status"] == "SUCCESS": 
+                    success = True
                     break
                 #Something is not logged out correctly
-                print(f"Update screen status not success, retrying after removing {screen['message']}")
-                ikea_screen_remove(self,screen["message"])
+                remove_name = screen["message"]
+                if remove_name == "Screen Already Exists":
+                    remove_name = screen_name
+                print(f"Update screen status not success, retrying after removing {remove_name}")
+                ikea_screen_remove(self,remove_name)
+            if not success:
+                raise Exception(f"Failed to update screen name into session for: {screen_name}. Response: {screen}")
             print("Updated Screen : ",screen_name)
             
             try:
