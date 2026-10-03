@@ -1,3 +1,5 @@
+import os
+from django.conf import settings
 from io import BytesIO
 import pandas as pd
 from custom.classes import Einvoice, Gst, IkeaDownloader
@@ -66,8 +68,7 @@ g = Einvoice("devaki")
 for cookie in g.cookies:
     print(cookie.name, cookie.value)
 while not g.is_logged_in():
-    import os
-    files_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))), "files")
+    files_dir = settings.FILES_DIR
     os.makedirs(files_dir, exist_ok=True)
     with open(os.path.join(files_dir, "captcha.png"), "wb+") as f:
         f.write(g.captcha())

@@ -622,7 +622,7 @@ class OutstandingReport(EmptyReportModel):
                       df1["new_beat"] = df["beat"]
                       df1["new_salesman"] = df["salesman"]
                       df1 = df1[["inum","bill_date","party_name","old_beat","old_salesman","new_beat","new_salesman","balance"]]
-                      files_dir = getattr(settings, 'FILES_DIR', os.path.join(settings.BASE_DIR, 'files'))
+                      files_dir = settings.FILES_DIR
                       os.makedirs(files_dir, exist_ok=True)
                       df1.to_excel(os.path.join(files_dir, "outstanding.xlsx"), index=False)
                   except Exception as e:

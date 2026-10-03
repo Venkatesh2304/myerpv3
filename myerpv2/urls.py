@@ -3,8 +3,6 @@ from django.contrib import admin
 from django.urls import path, include
 from django.conf.urls.static import static
 
-FILES_ROOT = getattr(settings, 'FILES_ROOT', settings.BASE_DIR / 'files')
-
 api_patterns = [
     path('', include('core.urls')),
     path('', include('gst.urls')),
@@ -17,9 +15,9 @@ api_patterns = [
     path('', include('ledger.urls')),
     path('', include('product_scan.urls')),
     path('', include('misc.urls')),
-]
+] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT, show_indexes=True) + static(settings.FILES_URL, document_root=settings.FILES_DIR, show_indexes=True)
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/', include(api_patterns)),
-] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT, show_indexes=True)   + static('api/files/', document_root=FILES_ROOT, show_indexes=True)
+]

@@ -1,4 +1,5 @@
 from collections import defaultdict
+from django.conf import settings
 from report.models import GSTR1Portal
 from core.models import Organization
 import decimal
@@ -162,8 +163,7 @@ def generate(organization:Organization,period:str,gst:Gst) -> dict[str,pd.DataFr
     invs = pd.DataFrame(invs_qs.iterator())
     if invs.empty:
         raise ValueError(f"No sales invoices found for period {period} in the accounting ledger. Please run the monthly GST import first.")
-    from django.conf import settings
-    files_dir = getattr(settings, 'FILES_DIR', os.path.join(settings.BASE_DIR, 'files'))
+    files_dir = settings.FILES_DIR
     os.makedirs(files_dir, exist_ok=True)
     invs.to_excel(os.path.join(files_dir, "gst.xlsx"), index=False)
     items_qs = (
