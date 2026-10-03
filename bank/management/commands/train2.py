@@ -127,6 +127,10 @@ if __name__ == "__main__":
             continue
         data = [ (desc,f"{company}/{party_id}") for (desc,company,party_id) in data ]
         vectorizer, model = train_tfidf_logistic(data)
-        joblib.dump(vectorizer, f"tfidf_vectorizer_{bank_id}.joblib")
-        joblib.dump(model, f"party_classifier_{bank_id}.joblib")
-        print(f"Model and vectorizer saved for bank {bank_id}")
+        import os
+        from django.conf import settings
+        ml_models_dir = os.path.join(settings.BASE_DIR, "bank", "ml_models")
+        os.makedirs(ml_models_dir, exist_ok=True)
+        joblib.dump(vectorizer, os.path.join(ml_models_dir, f"tfidf_vectorizer_{bank_id}.joblib"))
+        joblib.dump(model, os.path.join(ml_models_dir, f"party_classifier_{bank_id}.joblib"))
+        print(f"Model and vectorizer saved for bank {bank_id} to {ml_models_dir}")

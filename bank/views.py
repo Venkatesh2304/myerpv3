@@ -183,8 +183,11 @@ def smart_match(queryset):
         bank_objs_map[obj.bank_id].append(obj)
     for bank_id, objs in bank_objs_map.items() :
         company_ids = Bank.objects.get(id = bank_id).companies.all().values_list("name",flat=True)
-        vectorizer = joblib.load(f"tfidf_vectorizer_{bank_id}.joblib")
-        model = joblib.load(f"party_classifier_{bank_id}.joblib")
+        import os
+        from django.conf import settings
+        ml_models_dir = os.path.join(settings.BASE_DIR, "bank", "ml_models")
+        vectorizer = joblib.load(os.path.join(ml_models_dir, f"tfidf_vectorizer_{bank_id}.joblib"))
+        model = joblib.load(os.path.join(ml_models_dir, f"party_classifier_{bank_id}.joblib"))
         for obj in objs :
             chq_matches = list(find_cheque_match(obj,company_ids, allowed_diff=0))
             #Strict match to have cheque number in desc

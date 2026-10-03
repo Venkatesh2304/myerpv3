@@ -6,6 +6,7 @@ AGENT_GUIDE.md
 *.xlsx
 *.csv
 *.joblib
+!bank/ml_models/*.joblib
 env/
 logs/
 .cache/
