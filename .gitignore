@@ -1,12 +1,10 @@
 AGENTS.md
 AGENT_GUIDE.md
 .agents/
+.github/
+.workflows/
 *.xlsx
 *.csv
-!bankcollection.csv
-!bankcollection_rural.csv
-!bankstatement.csv
-!bankstatement_rural.csv
 *.joblib
 env/
 logs/
@@ -39,7 +37,6 @@ profile.html
 !custom/gst_error_codes.json
 !custom/data/**/*.json
 *.txt
-!custom/curl/ikea/*.txt
 bank/management/commands/fraud.py
 bank/management/commands/payment.py
 bill_scan/management/commands/impact_analysis.py
