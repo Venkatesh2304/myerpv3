@@ -22,5 +22,4 @@ api_patterns = [
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/', include(api_patterns)),
-    path('', include(api_patterns)),
-] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT, show_indexes=True)   + static('media/', document_root=settings.MEDIA_ROOT, show_indexes=True)   + static('api/files/', document_root=FILES_ROOT, show_indexes=True)   + static('files/', document_root=FILES_ROOT, show_indexes=True)
+] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT, show_indexes=True)   + static('api/files/', document_root=FILES_ROOT, show_indexes=True)
