@@ -1,0 +1,878 @@
+[
+  {
+    "title": "Party Request Proposal Status Report",
+    "controller": "reportsControllers",
+    "action": "reportScreen",
+    "viewpage": "partyMaster/partyrequestproposalStatusReport"
+  },
+  {
+    "title": "E-Way Bill",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "Utility/eWayBillGeneration"
+  },
+  {
+    "title": "E-Invoice",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "Utility/eInvoiceGeneration"
+  },
+  {
+    "title": "E-Invoice IRN Upload",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "Utility/eInvoiceIRNUpload"
+  },
+  {
+    "title": "Claim Status Report",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "claims/pncc/claimsStatusReport"
+  },
+  {
+    "title": "Claims Status Report",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "claims/pncc/claimsStatusReport"
+  },
+  {
+    "title": "Month Operating Cycle (MOC) Reports",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "mocClose/mocReports"
+  },
+  {
+    "title": "QOC - Sales Report",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "qoc/tsoReviewReports/rsPerformanceReview/salesReport"
+  },
+  {
+    "title": "Promo Pack Sales Report",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "qoc/tsoReviewReports/rsPerformanceReview/promoPackSalesReport"
+  },
+  {
+    "title": "Channel Sales Summary Report",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "qoc/tsoReviewReports/rsPerformanceReview/channelSalesSummaryReport"
+  },
+  {
+    "title": "Channel Wise Top 20 SKU Report",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "qoc/tsoReviewReports/rsPerformanceReview/channelWiseTop20SkuReport"
+  },
+  {
+    "title": "GST 2.0 Stock Conversion Report",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/gstStockConversionReport"
+  },
+  {
+    "title": "Product Master Report",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/productMaster"
+  },
+  {
+    "title": "Service Accounting Code ( SAC) Master",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/sacTaxMaster"
+  },
+  {
+    "title": "Price Master",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/priceMaster"
+  },
+  {
+    "title": "Party Master Report",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/partyMaster"
+  },
+  {
+    "title": "PartyWise Asset Master",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/partywise_asset_master_report"
+  },
+  {
+    "title": "Chanel Product Listing",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/channelProductListing"
+  },
+  {
+    "title": "Salesperson Master Report",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/salesmanMasterReport"
+  },
+  {
+    "title": "Outlet Transfer Report (OTR)",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/outletTransferReport"
+  },
+  {
+    "title": "User Log Report",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/userLogReport"
+  },
+  {
+    "title": "HUL Scheme Master",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/hulSchemeMaster"
+  },
+  {
+    "title": "RS Scheme Master",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/rsSchemeMaster"
+  },
+  {
+    "title": "TOT Scheme Master",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/totSchemeMaster"
+  },
+  {
+    "title": "Sales Pivot",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/salespivot"
+  },
+  {
+    "title": "Daily Sales",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/dailySales"
+  },
+  {
+    "title": "Party wise Sales",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/partyWiseSales"
+  },
+  {
+    "title": "MOC Wise Sales",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/mocWiseSales"
+  },
+  {
+    "title": "Product Wise Sales",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/productWiseSales"
+  },
+  {
+    "title": "Bill Wise Sales",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/billWiseSales"
+  },
+  {
+    "title": "Cumulative Sales Report",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/cumulativeSalesReport"
+  },
+  {
+    "title": "Outlet Category Wise Sales",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/outletCategoryWiseSales"
+  },
+  {
+    "title": "Sales Register",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/salesRegister"
+  },
+  {
+    "title": "Sales Summary",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/salesSummary"
+  },
+  {
+    "title": "Channel Wise Sales Summary",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/channelWiseSalesSummary"
+  },
+  {
+    "title": "Item Wise Sales",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/itemWiseSales"
+  },
+  {
+    "title": "Trend Analysis",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/trendAnalysis"
+  },
+  {
+    "title": "Party Wise Average Sales",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/partyWiseAverageSales"
+  },
+  {
+    "title": "Undelivered Bills Report",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/undeliveredBills"
+  },
+  {
+    "title": "OTR Sales Report",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/otrSalesReport"
+  },
+  {
+    "title": "Daily Sales - SS Serviced",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/dailySalesSSServiced"
+  },
+  {
+    "title": "Order to Delivery",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/orderToDelivery"
+  },
+  {
+    "title": "E-Invoice IRN and QR Code Report",
+    "controller": "reportsController",
+    "action": "reportScreenIRNQRCode",
+    "viewpage": "report/eInvoiceIRNandQRCodeReport"
+  },
+  {
+    "title": "Stock N Sales",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/stockNsales"
+  },
+  {
+    "title": "Current Stock",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/currentStockReport"
+  },
+  {
+    "title": "Stock Ledger",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/stockLedger"
+  },
+  {
+    "title": "Daily Stock",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/dailyStock"
+  },
+  {
+    "title": "Trans1 Report",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/trans1Report"
+  },
+  {
+    "title": "Saleable Stock Movement Report",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/salableStockReturnReport"
+  },
+  {
+    "title": "NMSM Report",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/nmsmReport"
+  },
+  {
+    "title": "Shogun Report",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/shogunReport"
+  },
+  {
+    "title": "Delivery Status Report",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/deliveryStatusReport"
+  },
+  {
+    "title": "Return Pick Status",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/returnPickStatusReport"
+  },
+  {
+    "title": "Collection Summary",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/collectionSummary"
+  },
+  {
+    "title": "Salesperson Wise Collection",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/salesmanWiseCollection"
+  },
+  {
+    "title": "Party Wise Collection",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/partywisecollection"
+  },
+  {
+    "title": "Date Wise Collection",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/datewisecollection"
+  },
+  {
+    "title": "Ageing Analysis Report",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/ageinganalysis"
+  },
+  {
+    "title": "Bank Statement",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/bankStatement"
+  },
+  {
+    "title": "Outstanding Report",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/outstanding"
+  },
+  {
+    "title": "Pay In Slip Report",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/payinSlip"
+  },
+  {
+    "title": "Cheque Status Report",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/chequereport"
+  },
+  {
+    "title": "Pending statement",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/pendingstatement"
+  },
+  {
+    "title": "Pending Bill",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/pendingbill"
+  },
+  {
+    "title": "Bill Ageing Analysis Report",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/billageinganalysis"
+  },
+  {
+    "title": "UPI/Online Payment Details",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/upiPaymentDetails"
+  },
+  {
+    "title": "Credit Line Status",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/creditLineStatus"
+  },
+  {
+    "title": "Retailer Credit Tracker",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/retailerCreditTracker"
+  },
+  {
+    "title": "DSE/Truck Acknowledgement Report",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/dsetTruckaAcknowledgementReport"
+  },
+  {
+    "title": "Purchase Return Register",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/purchasereturnRegister"
+  },
+  {
+    "title": "Product wise Purchase Return",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/productWiseReturn"
+  },
+  {
+    "title": "Sales Return Register",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/salesReturnRegister"
+  },
+  {
+    "title": "Sales Return Detail",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/salesReturnDetail"
+  },
+  {
+    "title": "DateWise SalesReturn Report",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/datewisesalesvsReturnreport"
+  },
+  {
+    "title": "Slab wise Scheme Analysis Report",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/slabwiseSchemeAnalysisReport"
+  },
+  {
+    "title": "Bill Wise Scheme Analysis",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/billWiseSchemeAnalysis"
+  },
+  {
+    "title": "HUL Scheme Report",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/HulSchemeReport"
+  },
+  {
+    "title": "RS Claim Actual Report",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/rsClaimActualReport"
+  },
+  {
+    "title": "PECOM Budget Report",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/pcomBudgetReport"
+  },
+  {
+    "title": "Current Scheme Status Report",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/currentSchemeStatusReport"
+  },
+  {
+    "title": "Payout Report",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/payoutReport"
+  },
+  {
+    "title": "IQ Incentive Payout Report",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/IQIncentivePayoutReport"
+  },
+  {
+    "title": "Outlet Payout Report",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/outletPayoutReport"
+  },
+  {
+    "title": "Current MOC Pending Payout Report",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/currentMocPendingPayoutReport"
+  },
+  {
+    "title": "Reversed Payouts",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/reversedPayout"
+  },
+  {
+    "title": "TOT Scheme Discount Report",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/totSchemeDiscountReport"
+  },
+  {
+    "title": "RS Product Discount Report",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/rsProductDiscountReport"
+  },
+  {
+    "title": "Shikhar Scheme Discount Report",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/shikharSchemeDiscReport"
+  },
+  {
+    "title": "RS Operated Discount",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/nonClaimDiscRpt"
+  },
+  {
+    "title": "BTPR Scheme Report",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/btprSchmeRpt"
+  },
+  {
+    "title": "Product Wise",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/productWiseABCAnalysis"
+  },
+  {
+    "title": "Beat Wise",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/beatWiseABCAnalysis"
+  },
+  {
+    "title": "Party Wise",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/partyWiseABCAnalysis"
+  },
+  {
+    "title": "Productivity Analysis",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/productivityAnalysis"
+  },
+  {
+    "title": "Distribution Width",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/distributionwidth"
+  },
+  {
+    "title": "Effective Coverage Outlets (ECO) Monitor",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/ecomonitor"
+  },
+  {
+    "title": "Non Effective Coverage Outlets (ECO) Monitor",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/nonecomonitor"
+  },
+  {
+    "title": "Top Outlets",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/topoutlets"
+  },
+  {
+    "title": "Beat Wise Productive Outlet Listing",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/betawiseproductivity"
+  },
+  {
+    "title": "Vijeta Sales Analysis Old",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/vijetaSalesAnalysisOld"
+  },
+  {
+    "title": "RSSP-Area-Product Sales Qty And Value",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/rssmAreaProductSalesQty"
+  },
+  {
+    "title": "RSSP-Area-Party Wise Sales Value with Scheme",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/rssmAreaPartyWiseSalesValueWithScheme"
+  },
+  {
+    "title": "RSSP-Area-Partywise Product Sales Qty And Value",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/RSSM-partwise-product-sales-qty-and-Value"
+  },
+  {
+    "title": "RSSP-Area-Product-Party Sales Qty And Value With Scheme",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/rssmAreaProductpartysalesQtynValuewtScheme"
+  },
+  {
+    "title": "RSSM-Area-Sales Value With No Of Bills and TLSD",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/rssmAreasalesvaluewithNoofbillsandTLSD"
+  },
+  {
+    "title": "RSSP-Sales Value With No Of Bills and TLSD",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/rssmSalesvaluewithNoofbillsandTLSD"
+  },
+  {
+    "title": "RSSP Sales Value With Sales Return",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/rssmSalesvaluewithSalesReturn"
+  },
+  {
+    "title": "Stock Adjustment",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/stockAdjustments"
+  },
+  {
+    "title": "Stock Transfer",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/stockTransfer"
+  },
+  {
+    "title": "Itemwise Tax/GST Summary",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/itemWiseTaxVatSummary"
+  },
+  {
+    "title": "Goods & Service Tax (GST) Summary",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/salesTaxVatSummary"
+  },
+  {
+    "title": "Daywise Tax Summary",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/dayWiseTaxSummary"
+  },
+  {
+    "title": "Party wise Slab wise GST Report",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/partyWiseSlabWiseVatReport"
+  },
+  {
+    "title": "Bill-wise TIN-wise Tax Reports",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/billwiseTinwiseTaxReport"
+  },
+  {
+    "title": "TCS Eligibility/TDS report",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/tcsReport"
+  },
+  {
+    "title": "TDS - Secondary Billing",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/tds194RReport"
+  },
+  {
+    "title": "Damage/Shortage Proposal Status Report",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/damageshortageproposalstatusReport"
+  },
+  {
+    "title": "Godown Wise Proposal Stock Value Report",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/godownWiseproposalstockvalueReport"
+  },
+  {
+    "title": "SAP Acknowledgement Report",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/sapAcknowledgementReport"
+  },
+  {
+    "title": "Damage - Debit Note Report",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/damageDebiteNoteReport"
+  },
+  {
+    "title": "TOT Discount Report",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/totdiscountreport"
+  },
+  {
+    "title": "Outlet Target Vs Achievement Report",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/outletTargetVSachievementReport"
+  },
+  {
+    "title": "Booster Pack Target Vs Achievement Report",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/BoosterPackTargetVsAchievementReport"
+  },
+  {
+    "title": "Value Achievement Report",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/valueAchievementReport"
+  },
+  {
+    "title": "Order Fulfillment Report",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/orderFulfillmentReport"
+  },
+  {
+    "title": "Customer Case Fill On Time (CCFOT)",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/CCFOTreport"
+  },
+  {
+    "title": "RSSP GPS FOS REPORT",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/rssmGpsFosReport"
+  },
+  {
+    "title": "Visibility Packs Report",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/VisibilityPacksReports"
+  },
+  {
+    "title": "Usage Tracker",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/usageTracker"
+  },
+  {
+    "title": "RSSP Call Time Analysis",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/rssmCallTimeAnalysis"
+  },
+  {
+    "title": "Purchase Order Report",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/purchaseOrderReport"
+  },
+  {
+    "title": "Telecalling Report",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/telecallingReports"
+  },
+  {
+    "title": "Effective Feet On Street (EFOS)",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/efosReport"
+  },
+  {
+    "title": "New Outlet - Proposal vs Order Report",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/newOutletProposalvsOrderReport"
+  },
+  {
+    "title": "LeverEDGE Sync Report",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/LeverEdge_syncReport"
+  },
+  {
+    "title": "Asset Reassurance Report",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/assetReassuranceReport"
+  },
+  {
+    "title": "Stock Adjustment Workflow Report",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/stockadjestmentworkflow"
+  },
+  {
+    "title": "View Good Stock Report",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/viewGoodStockReport"
+  },
+  {
+    "title": "Goods & Service Tax (GST) Returns",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/gstReturnsReport"
+  },
+  {
+    "title": "Ushop Points Ledger",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/UnipayPointsLedgerReport"
+  },
+  {
+    "title": "Service Invoice Upload",
+    "controller": "gstInvoiceUpload",
+    "action": "GSTInvUpload",
+    "viewpage": "gstInvoiceUpload/GST_ServiceInvoiceUpload"
+  },
+  {
+    "title": "Online Log Viewer",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "Utility/onlineLogger"
+  },
+  {
+    "title": "Beat Mapping Utility Backup Report",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "Utility/beatmapUtilityBackUpReport"
+  },
+  {
+    "title": "ASN Report - Product Wise",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/ASN_ProductWiseReport"
+  },
+  {
+    "title": "Order Tracking Report",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "report/limenOrderTrackingReport"
+  },
+  {
+    "title": "Stock Correction - Approval",
+    "controller": "reportsController",
+    "action": "reportScreen",
+    "viewpage": "Utility/stockCorrectionApproval"
+  }
+]
