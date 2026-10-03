@@ -7,13 +7,13 @@
 
 ## 1. Operating Environment & Hardware Constraints
 
-- **Host**: AWS Ubuntu EC2 instance (`13.235.142.203`).
+- **Host**: AWS Ubuntu EC2 instance (`devakihul.duckdns.org`).
 - **Resource Constraints**: **Strictly Limited RAM & CPU**.
   - Background processes use CPU throttling (e.g. `systemd-run -p CPUQuota=20%`).
   - Gunicorn runs with only 2 workers, 4 threads (`gthread`), `preload_app=False` on `0.0.0.0:5000` (see [gunicorn.py](file:///home/ubuntu/myerpv3/gunicorn.py)).
   - **Rule for Agents**: Avoid memory-heavy operations in single requests. Do NOT load massive unindexed datasets into memory without filtering by date/company or chunking. Never spin up headless browser instances (Selenium/Playwright) on request threads.
 - **Port Mapping**:
-  - **Backend API**: `http://13.235.142.203:5000` (Django 5.1 + Django REST Framework + SimpleJWT).
+  - **Backend API**: `http://devakihul.duckdns.org:5000` (Django 5.1 + Django REST Framework + SimpleJWT).
   - **Frontend UI**: Port `8000` (Node / Web UI).
   - **Database**: PostgreSQL on `localhost:5432` (`myerpv3_exp`).
   - **Cache & Queues**: Redis on `localhost:6379` (used for asynchronous token and auth worker requests).
