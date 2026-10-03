@@ -66,7 +66,10 @@ g = Einvoice("devaki")
 for cookie in g.cookies:
     print(cookie.name, cookie.value)
 while not g.is_logged_in():
-    with open("captcha.png", "wb+") as f:
+    import os
+    files_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))), "files")
+    os.makedirs(files_dir, exist_ok=True)
+    with open(os.path.join(files_dir, "captcha.png"), "wb+") as f:
         f.write(g.captcha())
     captcha_input = input("Enter Captcha : ")
     status = g.login(captcha_input)

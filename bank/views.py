@@ -399,7 +399,9 @@ def bounce_cheques(ikea,cheque_numbers):
         return
     settle_coll = settle_coll[ settle_coll.apply(lambda row : (str(row["CHEQUE NO"]) in cheque_numbers) and (row["STATUS"] == "PENDING") ,axis=1) ]
     settle_coll["STATUS"] = "CANCELLED"
-    settle_coll.to_csv("cancel_pending_cheques.csv",index=False)
+    files_dir = getattr(settings, 'FILES_DIR', os.path.join(settings.BASE_DIR, 'files'))
+    os.makedirs(files_dir, exist_ok=True)
+    settle_coll.to_csv(os.path.join(files_dir, "cancel_pending_cheques.csv"), index=False)
     if len(settle_coll) == 0 : 
         return 
     with BytesIO() as f : 

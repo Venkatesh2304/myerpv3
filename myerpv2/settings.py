@@ -183,11 +183,12 @@ LOGGING = {
             "class": "logging.StreamHandler",
         },
         "sql_file": {
-            "class": "logging.handlers.RotatingFileHandler",
-            "filename": "sql.log",  # path to your log file
-            "maxBytes": 10 * 1024 * 1024,
-            "backupCount": 2,
-            "formatter": "verbose",  # optional
+            "class": "logging.handlers.TimedRotatingFileHandler",
+            "filename": str(BASE_DIR / "logs" / "sql.log"),
+            "when": "D",
+            "interval": 1,
+            "backupCount": 7,
+            "formatter": "verbose",
         },
     },
     "formatters": {

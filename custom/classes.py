@@ -1,3 +1,5 @@
+import os
+from django.conf import settings
 import functools
 import logging
 from requests.adapters import HTTPAdapter
@@ -294,7 +296,9 @@ class IkeaReports(BaseIkea):
                 raise Exception(f"Collection Date is greater than to date : {tod}")            
         except Exception as e: 
             self.logger.error(f"Failed to fetch collection report for {fromd} to {tod}: {e}", exc_info=True)
-            df.to_excel(f"collection_date_exception_{uid}.xlsx",index = False)
+            files_dir = getattr(settings, 'FILES_DIR', os.path.join(settings.BASE_DIR, 'files'))
+            os.makedirs(files_dir, exist_ok=True)
+            df.to_excel(os.path.join(files_dir, f"collection_date_exception_{uid}.xlsx"), index=False)
             raise 
         return df 
     
@@ -1458,7 +1462,7 @@ class Einvoice(Session) :
            success = pd.read_excel( self.get("/Invoice/ExcelUploadedInvoiceDetails").content )
            failed = pd.read_excel( self.get("/Invoice/FailedInvoiceDetails").content )
            print(failed)
-           failed.to_excel("failed_einv.xlsx")
+           failed.to_excel(os.path.join(getattr(settings, 'FILES_DIR', os.path.join(settings.BASE_DIR, 'files')), "failed_einv.xlsx"))
            return success , failed 
       
       def get_filed_einvs(self,date) -> pd.DataFrame : 

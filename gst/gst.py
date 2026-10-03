@@ -162,7 +162,10 @@ def generate(organization:Organization,period:str,gst:Gst) -> dict[str,pd.DataFr
     invs = pd.DataFrame(invs_qs.iterator())
     if invs.empty:
         raise ValueError(f"No sales invoices found for period {period} in the accounting ledger. Please run the monthly GST import first.")
-    invs.to_excel("gst.xlsx",index=False)
+    from django.conf import settings
+    files_dir = getattr(settings, 'FILES_DIR', os.path.join(settings.BASE_DIR, 'files'))
+    os.makedirs(files_dir, exist_ok=True)
+    invs.to_excel(os.path.join(files_dir, "gst.xlsx"), index=False)
     items_qs = (
         models.Inventory.objects.filter(company__organization=organization, sales__gst_period=period)
         .exclude(txval=0)
