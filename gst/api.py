@@ -118,13 +118,14 @@ def load_irns(request,gst = True,einvoice = True):
     if einvoice : 
         # Update using einvoice (last 3 days)
         einvoice_client = Einvoice(organization.pk)
-        for days_ago in range(3) : 
-            date = datetime.date.today() - datetime.timedelta(days=days_ago)
-            einv_data = einvoice_client.get_filed_einvs(date = date)
-            if einv_data is None : 
-                continue
-            for _,row in einv_data.iterrows() : 
-                irn_mapping[row["Doc No"]] = row["IRN"]
+        if einvoice_client.is_logged_in():
+            for days_ago in range(3) : 
+                date = datetime.date.today() - datetime.timedelta(days=days_ago)
+                einv_data = einvoice_client.get_filed_einvs(date = date)
+                if einv_data is None : 
+                    continue
+                for _,row in einv_data.iterrows() : 
+                    irn_mapping[row["Doc No"]] = row["IRN"]
 
     invs = list(models.Sales.objects.filter(inum__in=irn_mapping.keys(), gst_period=period,company__organization=organization))
     for inv in invs : 
@@ -140,6 +141,7 @@ def einvoice_reload(request):
 
 @api_view(["POST"])
 @check_login(Einvoice)
+@check_login(Gst)
 def einvoice_stats(request):
     period = request.data.get("period")
     type = request.data.get("type")
@@ -187,7 +189,7 @@ def file_einvoice(request):
 
     sales_qs = qs.filter(type__in=["sales","salesreturn"])
     json_data = []
-    #Disable getting json from ikea
+    #TODO: Disable getting json from ikea
     if False and sales_qs.exists():
         company_to_inums = defaultdict(list)
         for inv in sales_qs:
@@ -308,13 +310,16 @@ def einvoice_pdf(request):
         os.remove(f"static/{organization}/bills.zip")
     
     def fetch_inv(row) :     
-        doctype = "INV" if row.type in ("sales","claimservice") else "CRN"
-        data = gst.get_einv_data( gstin , row.date.strftime("%m%Y") ,  doctype , row.inum )
-        if data is None : 
-           print(f"Einv data not found for {row.inum}")
-           return
-        c = template.Context(data | {"path" : path })
-        forms.append(tform.render(c))
+        try:
+            doctype = "INV" if row.type in ("sales","claimservice") else "CRN"
+            data = gst.get_einv_data( gstin , row.date.strftime("%m%Y") ,  doctype , row.inum )
+            if data is None : 
+               print(f"Einv data not found for {row.inum}")
+               return
+            c = template.Context(data | {"path" : path })
+            forms.append(tform.render(c))
+        except Exception as e:
+            print(f"Error fetching einv data for {row.inum}: {e}")
 
     invs = list(qs)
     BATCH_SIZE = 20
@@ -341,6 +346,7 @@ def einvoice_pdf(request):
             party = inums_to_party.get(inum,"unknown")
             zip_file.writestr(f"{party}/{inum}.pdf", bytesio.getvalue())
 
+    os.makedirs(f"static/{organization}", exist_ok=True)
     with open(f"static/{organization}/bills.zip", "wb") as f:
         f.write(zip_buffer.getvalue())
 
@@ -349,11 +355,15 @@ def einvoice_pdf(request):
 #Gst Monthly Return APIs
 @api_view(["POST"])
 @check_login(Gst)
-@check_login(Einvoice)
 def generate_gst_return(request):
     period = request.data.get("period")
-    load_irns(request)
     organization = request.user.organization
+    if not models.Sales.objects.filter(company__organization=organization, gst_period=period).exists():
+        return JsonResponse(
+            {"error": f"No sales data found for period {period}. Please complete the monthly GST import from LeverEDGE before generating the return."},
+            status=400
+        )
+    load_irns(request)
     gst_instance = Gst(organization.pk)
     #It creates the workings excel and json 
     summary = gst.generate(organization, period, gst_instance)

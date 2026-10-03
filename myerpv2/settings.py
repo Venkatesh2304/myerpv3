@@ -94,6 +94,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "core.middleware.ApiAuditLoggingMiddleware",
 ]
 
 ROOT_URLCONF = "myerpv2.urls"
@@ -182,8 +183,10 @@ LOGGING = {
             "class": "logging.StreamHandler",
         },
         "sql_file": {
-            "class": "logging.FileHandler",
+            "class": "logging.handlers.RotatingFileHandler",
             "filename": "sql.log",  # path to your log file
+            "maxBytes": 10 * 1024 * 1024,
+            "backupCount": 2,
             "formatter": "verbose",  # optional
         },
     },

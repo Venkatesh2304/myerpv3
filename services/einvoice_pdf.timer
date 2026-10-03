@@ -1,0 +1,11 @@
+[Unit]
+Description=Trigger Monthly Damage E-Invoice PDF Generator on 15th of every month
+Requires=einvoice_pdf.service
+
+[Timer]
+OnCalendar=*-*-15 09:00:00
+Persistent=true
+Unit=einvoice_pdf.service
+
+[Install]
+WantedBy=timers.target

@@ -83,8 +83,14 @@ def sales_scan_id(request):
     if sales_scan and sales_scan.is_posted:
         return JsonResponse({'id': sales_scan.id})
 
-    ikea = Ikea(company_id)
-    bill_data = ikea.retrive_bill(bill_no)
+    try:
+        ikea = Ikea(company_id)
+        bill_data = ikea.retrive_bill(bill_no)
+    except Exception as e:
+        if "Not Logged In" in str(e):
+            return JsonResponse({'error': 'LeverEDGE (IKEA) session has expired. Please log in via the desktop client to sync cookies.'}, status=401)
+        return JsonResponse({'error': f'Failed to retrieve bill from LeverEDGE: {str(e)}'}, status=500)
+
     if not bill_data or 'billingProductMasterVOList' not in bill_data:
         return JsonResponse({'error': 'Bill not found in Ikea API, Check Company'}, status=404)
 

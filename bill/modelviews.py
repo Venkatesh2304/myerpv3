@@ -49,8 +49,8 @@ class BillViewSet(viewsets.ModelViewSet):
             raise Exception("Date is required For Bill")
         if SalesRegisterReport.get_oldness(company) > datetime.timedelta(minutes=5) :
             date_args = DateRangeArgs(fromd=date, tod=date)
-            ikea = Ikea(company.pk)
             try:
+                ikea = Ikea(company.pk)
                 SalesRegisterReport.update_db(ikea,company,date_args)
             except Exception as e:
                 print("Exception in SalesRegisterReport Sync From OrderListView :",e)

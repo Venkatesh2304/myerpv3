@@ -123,7 +123,10 @@ def get_order(request):
                 CollectionReport.update_db(billing, company, DateRangeArgs(today, today))
             except :
                 pass
-            OutstandingReport.update_db(billing, company, EmptyArgs())
+            try:
+                OutstandingReport.update_db(billing, company, EmptyArgs())
+            except Exception as e:
+                print(f"Warning: Failed to update OutstandingReport during get_order: {e}")
 
         with tracker.step("Order"):
             order_data:list = billing.get_market_order(order_date,beat_type = beat_type)

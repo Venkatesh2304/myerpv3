@@ -1,4 +1,5 @@
 import functools
+import logging
 from requests.adapters import HTTPAdapter
 import  urllib.parse
 from urllib3 import Retry
@@ -46,46 +47,53 @@ warnings.filterwarnings("ignore", category=UserWarning, module=re.escape('openpy
 
 def ikea_screen(screen_name: str):
     
-    def ikea_screen_remove(self,screen_name: str):
+    def ikea_screen_remove(self, name: str):
         files = {
-            'strJsonParams': (None, '{"screenName":"' + screen_name + '"}'),
+            'strJsonParams': (None, '{"screenName":"' + name + '"}'),
         }
-        res = self.post(
+        return self.post(
             "/rsunify/app/ikeaCommonUtilController/removeScreenNameFromSession",
             files=files,
         )
-        return res 
 
     def decorator(func):
         @functools.wraps(func)
         def wrapper(self, *args, **kwargs):
-            data = {"screenName": screen_name, "pbayoutUpdate": "1","enfSyncFlag": "0"}
+            data = {"screenName": screen_name, "pbayoutUpdate": "1", "enfSyncFlag": "0"}
             success = False
-            for i in range(2) :
-                screen = self.post("/rsunify/app/ikeaCommonUtilController/updateScreenNameIntoSession", data={
-                    'strJsonParams': urllib.parse.quote(json.dumps(data)),
-                }).json()
-                if screen["status"] == "SUCCESS": 
+            for attempt in range(2):
+                screen = self.post(
+                    "/rsunify/app/ikeaCommonUtilController/updateScreenNameIntoSession",
+                    data={'strJsonParams': urllib.parse.quote(json.dumps(data))}
+                ).json()
+                status = screen.get("status")
+                msg = screen.get("message")
+                
+                if status == "SUCCESS":
                     success = True
+                    getattr(self, "logger", logging).info(f"[IKEA Screen] Successfully acquired screen lock for '{screen_name}' (attempt {attempt + 1}/2)")
                     break
-                #Something is not logged out correctly
-                remove_name = screen["message"]
-                if remove_name == "Screen Already Exists":
-                    remove_name = screen_name
-                print(f"Update screen status not success, retrying after removing {remove_name}")
-                ikea_screen_remove(self,remove_name)
+                
+                # Non-SUCCESS status (EXISTS, LIMITEXCEEDED, etc.): release and retry
+                getattr(self, "logger", logging).info(
+                    f"[IKEA Screen] Screen '{screen_name}' lock returned status: {status} ({msg}). "
+                    f"Releasing screen lock '{screen_name}' and retrying (attempt {attempt + 1}/2)..."
+                )
+                ikea_screen_remove(self, screen_name)
+            
             if not success:
-                raise Exception(f"Failed to update screen name into session for: {screen_name}. Response: {screen}")
-            print("Updated Screen : ",screen_name)
+                getattr(self, "logger", logging).warning(
+                    f"[IKEA Screen] Failed to acquire screen lock for '{screen_name}' after 2 attempts (Response: {screen}). Proceeding with execution..."
+                )
             
             try:
                 return func(self, *args, **kwargs)
             finally:
                 try:
-                    ikea_screen_remove(self,screen_name)        
-                    print("Removed screen : ",screen_name)
+                    ikea_screen_remove(self, screen_name)
+                    getattr(self, "logger", logging).info(f"[IKEA Screen] Successfully released screen lock for '{screen_name}'")
                 except Exception as e:
-                    print(f"Failed to remove screen {screen_name}: {e}")
+                    getattr(self, "logger", logging).error(f"[IKEA Screen] Failed to release screen lock for '{screen_name}': {e}")
         
         return wrapper
     
@@ -335,10 +343,13 @@ class IkeaReports(BaseIkea):
             df[DATE_COLUMN] = pd.to_datetime(df[DATE_COLUMN], format="%Y-%m-%d").dt.date
         except:
             try: 
-                df[DATE_COLUMN] = pd.to_datetime(df[DATE_COLUMN], format="%d/%m/%Y").dt.date
-            except Exception as e: 
-                print(df[DATE_COLUMN])
-                raise Exception(f"Sales Register Date Format Not Supported : {e}")
+                df[DATE_COLUMN] = pd.to_datetime(df[DATE_COLUMN], format="%d/%m/%Y", errors="coerce").dt.date
+            except Exception: 
+                try:
+                    df[DATE_COLUMN] = pd.to_datetime(df[DATE_COLUMN], format="mixed", errors="coerce").dt.date
+                except Exception as e:
+                    print(df[DATE_COLUMN])
+                    raise Exception(f"Sales Register Date Format Not Supported : {e}")
         #Check if all the dates are within the fromd and tod
         wrong_dates_df = df[((df[DATE_COLUMN] < fromd) | (df[DATE_COLUMN] > tod)) & df[DATE_COLUMN].notna()]
         if not wrong_dates_df.empty:
@@ -436,7 +447,138 @@ class IkeaReports(BaseIkea):
         return self.fetch_report_dataframe("ikea/stock_movement", r'(":val10":").{10}(",":val11":").{10}',
                                                         (fromd.strftime("%Y-%m-%d"), tod.strftime("%Y-%m-%d")))
 
-class Ikea(IkeaReports):
+class IkeaDynamicReports(BaseIkea):
+    """
+    Handles LeverEDGE reports and screens generated via direct payload
+    dispatch rather than pre-saved cURL templates.
+    """
+
+    def generate_report_buffer(self, payload: dict) -> BytesIO | None:
+        """
+        Dispatches payload to generatereport and downloads the resulting file buffer.
+        Reuses BaseIkea.fetch_durl_content() without making assumptions about file format.
+        """
+        res = self.post(self.IKEA_GENERATE_REPORT_URL, data=payload)
+        durl = res.text.strip()
+        if not durl or durl.startswith("<"):
+            return None
+        return self.fetch_durl_content(durl)
+
+    @ikea_screen("Outlet Payout Report")
+    def outlet_payout(self, moc: str) -> pd.DataFrame:
+        """
+        Outlet Payout Report:
+        Tracks trade scheme discount payouts and performance incentives credited to retail counters.
+        Details settled vs pending amounts, TDS u/s 194R deductions, and linked bill references.
+        Used by distributor accountants to reconcile retailer claims and credit adjustments for the MOC.
+        """
+        payload = {
+            'jsonData': json.dumps([]),
+            'jsonObjforheaders': json.dumps([{
+                '1': 'RS Code:', '2': '', '3': 'RS Name:', '4': '', '5': 'MOC:', '6': 'Party Name:', '7': 'Activity Code:',
+                'val1': self.config.get('dbName', ''), 'val2': '', 'val3': self.config.get('name', ''), 'val4': '',
+                'val5': moc, 'val6': '', 'val7': ''
+            }]),
+            'jsonObjfileInfi': json.dumps([{
+                'title': 'Outlet Payout Report,Outlet Payout Report',
+                'reportfilename': 'Outlet Payout',
+                'viewpage': 'report/outletPayoutReport',
+                'viewname': 'SP_OUTLET_PEYOUT_REPORT',
+                'querycount': 1
+            }]),
+            'jsonObjWhereClause': json.dumps({
+                ':val1': f"'''{moc}'''",
+                ':val2': '',
+                ':val3': ''
+            }),
+            'orderBy': '[Activity Code]'
+        }
+
+        buf = self.generate_report_buffer(payload)
+        if not buf:
+            return pd.DataFrame()
+
+        df_raw = pd.read_excel(buf)
+        if len(df_raw) > 6:
+            df = df_raw.iloc[7:].copy()
+            df.columns = [str(c).strip() for c in df_raw.iloc[6].values]
+            if 'Sr No' in df.columns:
+                df = df[df['Sr No'].notna()]
+            for col in ['Payout Amount With Tax', 'Settled Amount With Tax', 'TDS 194R on Settled Amount', 'Settled Amount Post TDS 194R', 'Pending Amount With Tax']:
+                if col in df.columns:
+                    df[col] = pd.to_numeric(df[col], errors='coerce')
+            return df
+        return pd.DataFrame()
+
+    @ikea_screen("CCFOT Report")
+    def ccfot_report(
+        self,
+        moc: str = '09/2026',
+        from_date: str = None,
+        to_date: str = None,
+        report_type: str = 'OrderVsBill',
+        order_source: str = 'ALL'
+    ) -> pd.DataFrame:
+        """
+        CCFOT Report (Customer Channel Fulfilment On Time):
+        Tracks retail outlet orders against billed invoices.
+        Contains Order Quantity/Value vs Bill Quantity/Value, Basepack descriptions,
+        SKU codes, beats, and delivery fulfillment status.
+        Often used to analyze party-level bill value and order execution by MOC and beat.
+        """
+        if not from_date or not to_date:
+            parts = [int(x) for x in moc.split('/')]
+            m, y = parts[0], parts[1]
+            prev_m = 12 if m == 1 else m - 1
+            prev_y = y - 1 if m == 1 else y
+            from_date = f"{prev_y}-{prev_m:02d}-21"
+            to_date = f"{y}-{m:02d}-20"
+
+        val2 = '0'
+        try:
+            res_moc = self.get('/rsunify/app/reportsController/getReportScreenData?jasonParam=' + json.dumps({'viewName': 'MOC_VIEW'}))
+            if res_moc.status_code == 200:
+                rows = res_moc.json()[0]
+                for r in rows[1:]:
+                    if len(r) >= 3 and r[2] == moc:
+                        val2 = str(r[1])
+                        break
+        except Exception:
+            pass
+
+        payload = {
+            'jsonData': json.dumps([]),
+            'jsonObjforheaders': json.dumps([]),
+            'jsonObjfileInfi': json.dumps([{
+                'title': f'CCFOTReport,{report_type}',
+                'reportfilename': 'CCFOTReport',
+                'viewpage': 'report/CCFOTreport',
+                'viewname': 'CCFOT_REPORT',
+                'querycount': 1
+            }]),
+            'jsonObjWhereClause': json.dumps({
+                ':val1': moc,
+                ':val2': val2,
+                ':val3': str(from_date),
+                ':val4': str(to_date),
+                ':val5': report_type,
+                ':soo': order_source,
+                ':subquerycount': 1
+            })
+        }
+
+        buf = self.generate_report_buffer(payload)
+        if not buf:
+            return pd.DataFrame()
+
+        df = pd.read_excel(buf)
+        for col in ['Bill Value', 'Order Value', 'Bill Quantity', 'Actual Order Quantity', 'Suggested Order Quantity', 'TUR']:
+            if col in df.columns:
+                df[col] = pd.to_numeric(df[col], errors='coerce')
+        return df
+
+
+class Ikea(IkeaReports, IkeaDynamicReports):
 
     def upload_manual_collection(self,file : BytesIO) -> dict :
         files = {
@@ -989,14 +1131,18 @@ class Gst(Session) :
          return len(self.getuser()) != 0 
 
      def getuser(self) : 
-           try : 
-            data = self.get("https://services.gst.gov.in/services/api/ustatus",
-            headers = {"Referer": "https://services.gst.gov.in/services/auth/fowelcome"}).json()
-           except Exception as e : 
-               print("Exception Occured on get user :",e)
-               print("Bypassing get_user and returning empty user list")
-               return []
-           return data 
+         for attempt in range(3):
+             try : 
+                 data = self.get("https://services.gst.gov.in/services/api/ustatus",
+                 headers = {"Referer": "https://services.gst.gov.in/services/auth/fowelcome"}).json()
+                 return data
+             except Exception as e : 
+                 if attempt < 2:
+                     time.sleep(0.5)
+                     continue
+                 print("Exception Occured on get user :",e)
+                 print("Bypassing get_user and returning empty user list")
+                 return [] 
      
      def getinvs(self,period,types,gstr_type="gstr1") :
          uploaded_by = 'OE' if 'B2CS' in types.upper()  else 'SU'
@@ -1133,8 +1279,11 @@ class Gst(Session) :
          if "error" in data : return None     
          data = json.loads(data["data"])["data"]
          signed_inv = data["SignedInvoice"]
-         while len(signed_inv) % 4 != 0: signed_inv += "="
-         payload = base64.b64decode(signed_inv.split(".")[1] + "==").decode("utf-8")
+         payload_b64 = signed_inv.split(".")[1]
+         rem = len(payload_b64) % 4
+         if rem > 0:
+             payload_b64 += "=" * (4 - rem)
+         payload = base64.urlsafe_b64decode(payload_b64).decode("utf-8", errors="replace")
          inv = json.loads( json.loads(payload)["data"] )
          qrcode = data["SignedQRCode"]
          return inv | { "qrcode" : qrcode }
@@ -1142,8 +1291,9 @@ class Gst(Session) :
      def upload(self,period,fname) : 
            files = {'upfile': ( "gst.json" , open(fname) , 'application/json', { 'Content-Disposition': 'form-data' })}
            ret_ref = {"Referer": "https://return.gst.gov.in/returns/auth/gstr/offlineupload"}
+           sz = str(os.path.getsize(fname))
            ref_id =  self.post(f"https://return.gst.gov.in/returndocs/offline/upload",
-                  headers = ret_ref | {"sz" : "304230" }, 
+                  headers = ret_ref | {"sz" : sz }, 
                   data = {  "ty": "ROUZ" , "rtn_typ": "GSTR1" , "ret_period": period } ,files=files).json()
            ref_id = ref_id['data']['reference_id']
            res = self.post("https://return.gst.gov.in/returns/auth/api/gstr1/upload" , headers = ret_ref,

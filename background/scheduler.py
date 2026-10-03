@@ -31,8 +31,8 @@ if not logger.handlers:
     console_handler.setFormatter(formatter)
     logger.addHandler(console_handler)
 
-COMPANIES = ["devaki_hul","lakme_rural","lakme_urban"]
-GST_COMPANIES = ["devaki_hul","lakme_rural","lakme_urban","murugan_hul"]
+COMPANIES = ["devaki_hul", "lakme_urban"]
+GST_COMPANIES = ["devaki_hul", "lakme_urban", "murugan_hul"]
 
 class BaseSession(requests.Session):
     def __init__(self, *args, **kwargs):

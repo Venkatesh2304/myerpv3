@@ -1,0 +1,16 @@
+[Unit]
+Description=Monthly Damage E-Invoice PDF Generator and Emailer (devaki)
+After=network.target backend.service
+
+[Service]
+Type=oneshot
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/home/ubuntu/myerpv3
+Environment="HOME=/home/ubuntu"
+Environment="PATH=/home/ubuntu/myerpv3/.venv/bin:/home/ubuntu/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin"
+ExecStart=/bin/bash /home/ubuntu/myerpv3/scripts/einvoice_pdf/run.sh
+TimeoutStartSec=900
+
+[Install]
+WantedBy=multi-user.target

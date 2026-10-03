@@ -53,3 +53,28 @@ class CompanyModel(models.Model):
       company = models.ForeignKey("core.Company",on_delete=models.CASCADE,db_index=True)
       class Meta :
             abstract = True
+
+
+class ApiRequestLog(models.Model):
+    timestamp = models.DateTimeField(auto_now_add=True, db_index=True)
+    user = models.CharField(max_length=150, null=True, blank=True, db_index=True)
+    company = models.CharField(max_length=100, null=True, blank=True, db_index=True)
+    method = models.CharField(max_length=10)
+    path = models.CharField(max_length=500, db_index=True)
+    query_params = models.JSONField(default=dict, blank=True)
+    request_body = models.TextField(null=True, blank=True)
+    status_code = models.IntegerField(db_index=True)
+    response_body = models.TextField(null=True, blank=True)
+    error_traceback = models.TextField(null=True, blank=True)
+    duration_ms = models.IntegerField(default=0)
+    is_error = models.BooleanField(default=False, db_index=True)
+
+    class Meta:
+        ordering = ["-timestamp"]
+        indexes = [
+            models.Index(fields=["-timestamp", "is_error"]),
+            models.Index(fields=["user", "-timestamp"]),
+        ]
+
+    def __str__(self):
+        return f"{self.timestamp} | {self.method} {self.path} | {self.status_code}"

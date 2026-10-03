@@ -160,6 +160,8 @@ def generate(organization:Organization,period:str,gst:Gst) -> dict[str,pd.DataFr
         "irn"
     )
     invs = pd.DataFrame(invs_qs.iterator())
+    if invs.empty:
+        raise ValueError(f"No sales invoices found for period {period} in the accounting ledger. Please run the monthly GST import first.")
     invs.to_excel("gst.xlsx",index=False)
     items_qs = (
         models.Inventory.objects.filter(company__organization=organization, sales__gst_period=period)
