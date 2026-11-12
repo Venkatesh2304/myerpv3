@@ -1063,3 +1063,22 @@ def reportmodel_date_field_check(app_configs, **kwargs):
                 )
             )
     return errors
+
+class PayslipRecord(models.Model):
+    company = models.ForeignKey('core.Company', on_delete=models.CASCADE, null=True, blank=True)
+    employee_name = models.CharField(max_length=255)
+    year = models.IntegerField()
+    month = models.IntegerField()
+    total_days = models.IntegerField()
+    working_days = models.IntegerField()
+    base_salary = models.DecimalField(max_digits=12, decimal_places=2)
+    calculated_pay = models.DecimalField(max_digits=12, decimal_places=2)
+    bonus = models.DecimalField(max_digits=12, decimal_places=2)
+    net_salary = models.DecimalField(max_digits=12, decimal_places=2)
+
+    class Meta:
+        db_table = 'payslip_records'
+        unique_together = ('company', 'employee_name', 'year', 'month')
+
+    def __str__(self):
+        return f"{self.employee_name} - {self.month}/{self.year}"

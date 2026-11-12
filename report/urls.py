@@ -16,5 +16,8 @@ urlpatterns = [
     path("stock_report/", views.stock_report, name="stock_report"),
     path("stock_ageing_report/", views.stock_ageing_report, name="stock_ageing_report"),
     path("pending_sheet/", views.pending_sheet, name="pending_sheet"),
+    path("payslip/generate-rough/", views.payslip_generate_helper, name="payslip_generate_helper"),
+    path("payslip/upload/", views.payslip_upload_excel, name="payslip_upload_excel"),
+    path("payslip/generate-pdf/", views.payslip_generate_pdf, name="payslip_generate_pdf"),
     path("", include(router.urls)),
 ]

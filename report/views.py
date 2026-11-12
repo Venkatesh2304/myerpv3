@@ -299,5 +299,116 @@ def pending_sheet(request) :
     return JsonResponse({"status":"success", "filepath": get_media_url(PENDING_SHEET_FILE)})
 
 
+import json
+import os
+import uuid
+from django.conf import settings
+from django.http import JsonResponse
+from rest_framework.decorators import api_view
+from report.models import PayslipRecord
+from report.payslip_generator import generate_rough_excel, generate_pdf_zip
+import pandas as pd
+from core.utils import get_media_url
+from core.models import Company
+
+@api_view(["POST"])
+def payslip_generate_helper(request):
+    try:
+        data = json.loads(request.body)
+        employees = data.get('employees', [])
+        start_period = data.get('start_period')
+        end_period = data.get('end_period')
+        company_id = data.get('company_id')
+        
+        if not employees or not start_period or not end_period or not company_id:
+            return JsonResponse({"error": "Missing required fields"}, status=400)
+            
+        company_dir = os.path.join(settings.MEDIA_ROOT, "report", str(company_id))
+        os.makedirs(company_dir, exist_ok=True)
+        filename = f"helper_payslips_{uuid.uuid4().hex[:8]}.xlsx"
+        filepath = os.path.join(company_dir, filename)
+        
+        generate_rough_excel(employees, start_period, end_period, filepath)
+        
+        return JsonResponse({"status": "success", "filepath": get_media_url(filepath)})
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=500)
+
+@api_view(["POST"])
+def payslip_upload_excel(request):
+    try:
+        company_id = request.POST.get('company_id')
+        excel_file = request.FILES.get('file')
+        
+        if not excel_file or not company_id:
+            return JsonResponse({"error": "Company ID and Excel file are required"}, status=400)
+            
+        company = Company.objects.get(name=company_id)
+        df = pd.read_excel(excel_file)
+        
+        for index, row in df.iterrows():
+            employee_name = str(row.get('Employee Name')).strip()
+            year = int(row.get('Year'))
+            month = int(row.get('Month'))
+            
+            PayslipRecord.objects.update_or_create(
+                company=company,
+                employee_name=employee_name,
+                year=year,
+                month=month,
+                defaults={
+                    'total_days': int(row.get('Total Days', 0)),
+                    'working_days': int(row.get('Working Days', 0)),
+                    'base_salary': float(row.get('Base Salary', 0)),
+                    'calculated_pay': float(row.get('Calculated Pay', 0)),
+                    'bonus': float(row.get('Bonus', 0)),
+                    'net_salary': float(row.get('Net Salary', 0)),
+                }
+            )
+            
+        return JsonResponse({"success": True, "message": f"Saved {len(df)} records successfully."})
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=500)
+
+@api_view(["GET"])
+def payslip_generate_pdf(request):
+    try:
+        company_id = request.GET.get('company_id')
+        start_year = int(request.GET.get('start_year'))
+        start_month = int(request.GET.get('start_month'))
+        end_year = int(request.GET.get('end_year'))
+        end_month = int(request.GET.get('end_month'))
+        
+        company = Company.objects.get(name=company_id)
+        
+        queryset = PayslipRecord.objects.filter(
+            company=company,
+            year__gte=start_year,
+            year__lte=end_year
+        )
+        
+        filtered_qs = []
+        for obj in queryset:
+            date_val = obj.year * 12 + obj.month
+            start_val = start_year * 12 + start_month
+            end_val = end_year * 12 + end_month
+            if start_val <= date_val <= end_val:
+                filtered_qs.append(obj.id)
+                
+        final_qs = PayslipRecord.objects.filter(id__in=filtered_qs).order_by('year', 'month', 'employee_name')
+        
+        company_dir = os.path.join(settings.MEDIA_ROOT, "report", str(company_id))
+        os.makedirs(company_dir, exist_ok=True)
+        filename = f"payslips_{uuid.uuid4().hex[:8]}.zip"
+        filepath = os.path.join(company_dir, filename)
+        
+        generate_pdf_zip(final_qs, filepath, company_name=company.name, company_address="ARIYAMANGALAM, TIRUCHIRAPPALLI, TAMIL NADU - 620010.")
+        
+        return JsonResponse({"status": "success", "filepath": get_media_url(filepath)})
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=500)
+
+
+
 
 
