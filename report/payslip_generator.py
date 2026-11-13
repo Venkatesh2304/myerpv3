@@ -45,7 +45,7 @@ def num_to_words(n):
         
     return "Indian Rupee " + " ".join(parts).strip() + " Only"
 
-def get_weekly_periods(year, month, monthly_salary):
+def get_weekly_periods(year, month, net_salary, base_salary=None, total_leaves=0, emp_name=None):
     num_days = calendar.monthrange(year, month)[1]
     
     # Collect all working days (Sunday = 6 strictly excluded)
@@ -55,34 +55,78 @@ def get_weekly_periods(year, month, monthly_salary):
         if cur_date.weekday() != 6:
             working_days.append(cur_date)
             
-    total_working_days = len(working_days)
-    daily_rate = monthly_salary / total_working_days if total_working_days > 0 else 0
+    total_calendar_working_days = len(working_days)
     
-    periods = []
+    # 1. Build weekly chunks (close on Saturday or month-end)
+    raw_chunks = []
     current_chunk = []
-    
     for cur_date in working_days:
         current_chunk.append(cur_date)
         if cur_date.weekday() == 5 or cur_date == working_days[-1]:
-            start_d = current_chunk[0]
-            end_d = current_chunk[-1]
-            days_count = len(current_chunk)
-            chunk_amount = round(daily_rate * days_count)
-            periods.append({
-                "start": start_d,
-                "end": end_d,
-                "period_str": f"{start_d.strftime('%d-%m-%Y')} to {end_d.strftime('%d-%m-%Y')}",
-                "voucher_date": end_d.strftime('%d %b %y'),
-                "working_days": days_count,
-                "amount": chunk_amount
+            raw_chunks.append({
+                "start": current_chunk[0],
+                "end": current_chunk[-1],
+                "cal_days": len(current_chunk),
             })
             current_chunk = []
             
-    total_calc = sum(p["amount"] for p in periods)
-    diff = round(monthly_salary - total_calc)
-    if diff != 0 and periods:
-        periods[-1]["amount"] += diff
+    # 2. Distribute leaves across chunks deterministically
+    chunk_leaves = [0] * len(raw_chunks)
+    leaves_to_distribute = min(max(0, int(total_leaves)), total_calendar_working_days)
+    
+    if leaves_to_distribute > 0 and raw_chunks:
+        seed_val = sum(ord(c) for c in (emp_name or 'emp')) + year * 12 + month
+        indices = list(range(len(raw_chunks)))
+        # Sort indices: prioritize chunks with max working days (6 days)
+        indices.sort(key=lambda idx: (-raw_chunks[idx]["cal_days"], (idx + seed_val) % len(raw_chunks)))
         
+        assigned = 0
+        while assigned < leaves_to_distribute:
+            for idx in indices:
+                if assigned >= leaves_to_distribute:
+                    break
+                if raw_chunks[idx]["cal_days"] - chunk_leaves[idx] > 1:
+                    chunk_leaves[idx] += 1
+                    assigned += 1
+            if assigned < leaves_to_distribute:
+                for idx in indices:
+                    if assigned >= leaves_to_distribute:
+                        break
+                    if raw_chunks[idx]["cal_days"] - chunk_leaves[idx] > 0:
+                        chunk_leaves[idx] += 1
+                        assigned += 1
+                break
+
+    # 3. Calculate actual working days and pro-rated amount per chunk
+    total_actual_working_days = sum(raw_chunks[i]["cal_days"] - chunk_leaves[i] for i in range(len(raw_chunks)))
+    daily_rate = net_salary / total_actual_working_days if total_actual_working_days > 0 else 0
+    
+    periods = []
+    for i, chk in enumerate(raw_chunks):
+        c_leaves = chunk_leaves[i]
+        c_working_days = chk["cal_days"] - c_leaves
+        c_amount = round(daily_rate * c_working_days)
+        start_d = chk["start"]
+        end_d = chk["end"]
+        periods.append({
+            "start": start_d,
+            "end": end_d,
+            "period_str": f"{start_d.strftime('%d-%m-%Y')} to {end_d.strftime('%d-%m-%Y')}",
+            "voucher_date": end_d.strftime('%d %b %y'),
+            "working_days": c_working_days,
+            "leaves": c_leaves,
+            "amount": c_amount
+        })
+        
+    # Reconcile rounding diff
+    total_calc = sum(p["amount"] for p in periods)
+    diff = round(net_salary - total_calc)
+    if diff != 0 and periods:
+        for p in reversed(periods):
+            if p["working_days"] > 0:
+                p["amount"] += diff
+                break
+                
     return periods
 
 def generate_rough_excel(employees_data, start_period, end_period, output_filepath):
@@ -93,7 +137,6 @@ def generate_rough_excel(employees_data, start_period, end_period, output_filepa
     """
     start_date = datetime.strptime(start_period, "%Y-%m")
     end_date = datetime.strptime(end_period, "%Y-%m")
-    
     end_date = end_date.replace(day=calendar.monthrange(end_date.year, end_date.month)[1])
     
     records = []
@@ -102,7 +145,8 @@ def generate_rough_excel(employees_data, start_period, end_period, output_filepa
         emp_name = emp.get('name', '').strip()
         base_salary = float(emp.get('salary', 0))
         
-        if not emp_name: continue
+        if not emp_name: 
+            continue
         
         current_date = start_date.replace(day=1)
         while current_date <= end_date:
@@ -113,12 +157,13 @@ def generate_rough_excel(employees_data, start_period, end_period, output_filepa
             sundays = count_sundays(year, month)
             max_working_days = total_days - sundays
             
-            # Default zero leaves
-            actual_worked_days = max_working_days
-            monthly_base = base_salary
-            actual_base_pay = int(monthly_base)
-            bonus = 0
-            total_pay = actual_base_pay + bonus
+            # Random leaves (0, 1, or 2 days)
+            leaves = int(np.random.choice([0, 1, 2], p=[0.7, 0.2, 0.1]))
+            actual_worked_days = max(0, max_working_days - leaves)
+            
+            # Single pay: prorated net salary based on working days
+            per_day_salary = base_salary / max_working_days if max_working_days > 0 else 0
+            net_salary = round(per_day_salary * actual_worked_days)
             
             records.append({
                 "Employee Name": emp_name,
@@ -126,10 +171,9 @@ def generate_rough_excel(employees_data, start_period, end_period, output_filepa
                 "Month": month,
                 "Total Days": total_days,
                 "Working Days": actual_worked_days,
-                "Base Salary": monthly_base,
-                "Calculated Pay": actual_base_pay,
-                "Bonus": bonus,
-                "Net Salary": total_pay
+                "Leaves": leaves,
+                "Base Salary": base_salary,
+                "Net Salary": net_salary
             })
             
             current_date += relativedelta(months=1)
@@ -154,7 +198,7 @@ class SalaryVoucherPDF(FPDF):
         self.gst_number = gst_number or "33AAPFD1365C1ZR"
         self.set_auto_page_break(False)
 
-    def draw_single_voucher(self, y_offset, voucher_date, emp_name, salary_period_str, amount):
+    def draw_single_voucher(self, y_offset, voucher_date, emp_name, salary_period_str, working_days, leaves, amount):
         left = 18
         right = 192
         col_split = 145
@@ -219,8 +263,13 @@ class SalaryVoucherPDF(FPDF):
         self.set_font('Helvetica', 'B', 8.5)
         self.cell(col_split - left - 6, 4, f"Salary for {salary_period_str}", 0, 1, 'L')
         
+        # Working days & Leaves
+        self.set_xy(left + 4, self.get_y() + 0.5)
+        self.set_font('Helvetica', '', 8.5)
+        self.cell(col_split - left - 6, 4, f"Working days : {working_days}    Leaves : {leaves}", 0, 1, 'L')
+        
         # Amount in words
-        self.ln(14)
+        self.ln(10)
         self.set_x(left + 2)
         self.set_font('Helvetica', '', 8.5)
         self.cell(0, 4, "Amount (in words) :", 0, 1, 'L')
@@ -258,6 +307,8 @@ class SalaryVoucherPDF(FPDF):
             voucher_date=v1_data['voucher_date'],
             emp_name=v1_data['emp_name'],
             salary_period_str=v1_data['period_str'],
+            working_days=v1_data['working_days'],
+            leaves=v1_data['leaves'],
             amount=v1_data['amount']
         )
         
@@ -267,13 +318,15 @@ class SalaryVoucherPDF(FPDF):
                 voucher_date=v2_data['voucher_date'],
                 emp_name=v2_data['emp_name'],
                 salary_period_str=v2_data['period_str'],
+                working_days=v2_data['working_days'],
+                leaves=v2_data['leaves'],
                 amount=v2_data['amount']
             )
 
 def generate_pdf_zip(queryset, output_filepath, company_name=None, company_address=None):
     df = pd.DataFrame(list(queryset.values(
         'employee_name', 'year', 'month', 'total_days', 'working_days', 
-        'base_salary', 'calculated_pay', 'bonus', 'net_salary'
+        'leaves', 'base_salary', 'net_salary'
     )))
     
     if df.empty:
@@ -294,8 +347,27 @@ def generate_pdf_zip(queryset, output_filepath, company_name=None, company_addre
             month = int(row['month'])
             emp_name = str(row['employee_name'])
             net_salary = float(row['net_salary'])
+            base_salary = float(row.get('base_salary', net_salary))
+            working_days = int(row.get('working_days', 0))
+            leaves = int(row.get('leaves', 0))
             
-            periods = get_weekly_periods(year, month, net_salary)
+            total_days = int(row.get('total_days', calendar.monthrange(year, month)[1]))
+            sundays = count_sundays(year, month)
+            max_working_days = total_days - sundays
+            
+            if leaves == 0 and working_days > 0 and working_days < max_working_days:
+                leaves = max_working_days - working_days
+            if working_days == 0:
+                working_days = max_working_days - leaves
+            
+            periods = get_weekly_periods(
+                year=year,
+                month=month,
+                net_salary=net_salary,
+                base_salary=base_salary,
+                total_leaves=leaves,
+                emp_name=emp_name
+            )
             
             pdf = SalaryVoucherPDF(
                 company_name=c_name,
@@ -309,6 +381,8 @@ def generate_pdf_zip(queryset, output_filepath, company_name=None, company_addre
                     "emp_name": emp_name,
                     "voucher_date": p["voucher_date"],
                     "period_str": p["period_str"],
+                    "working_days": p["working_days"],
+                    "leaves": p["leaves"],
                     "amount": p["amount"]
                 })
                 

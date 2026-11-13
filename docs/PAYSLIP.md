@@ -14,11 +14,16 @@ The Payslip / Salary Voucher Generator provides an end-to-end workflow inside th
    - **Sundays Strictly Excluded**: Date ranges span working days only (Monday to Saturday, or Month-Start to Saturday). Sundays are never part of any date range.
    - **Month-End Closing**: The final period of the month closes on the last day of the month, and the next month starts fresh from that month's first working day.
    - **Voucher Date = Last Day of Salary Period**: The `Dated :` field on the voucher is always the exact end date of that voucher's salary period (e.g. `03 Oct 26`, `10 Oct 26`, `17 Oct 26`, `24 Oct 26`, `31 Oct 26`).
-5. **Dual Signatures**:
+5. **Single Pay & Working Days / Leaves**:
+   - **No Bonus**: Only a single pay (`Net Salary`), prorated from the employee's `Base Salary` by actual `Working Days`.
+   - **Working Days & Leaves Line**: Under the salary period line, each voucher displays:
+     `Working days : {working_days}    Leaves : {leaves}`
+   - **Weekly Pro-Ration**: If leaves are taken, they are distributed across weeks and each week's voucher amount is pro-rated according to its actual working days, guaranteeing the sum of weekly vouchers equals the monthly net salary with zero rounding difference.
+6. **Dual Signatures**:
    - Bottom-left: `Employee Signature`
    - Bottom-right: `Employer Signature`
-6. **No Clutter**: Stripped out `Through / Cash` block, `Account` wording, and `No. :`.
-7. **Database as Source of Truth**: Data is uploaded and stored in PostgreSQL (`PayslipRecord`), and PDFs are generated directly from the database.
+7. **No Clutter**: Stripped out `Through / Cash` block, `Account` wording, and `No. :`.
+8. **Database as Source of Truth**: Data is uploaded and stored in PostgreSQL (`payslip_records`), and PDFs are generated directly from the database.
 
 ---
 

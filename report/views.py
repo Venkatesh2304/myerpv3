@@ -351,18 +351,29 @@ def payslip_upload_excel(request):
             year = int(row.get('Year'))
             month = int(row.get('Month'))
             
+            total_days = int(row.get('Total Days', 0))
+            working_days = int(row.get('Working Days', 0))
+            leaves = int(row.get('Leaves', 0))
+            base_salary = float(row.get('Base Salary', 0))
+            
+            # Single pay: Net Salary
+            net_salary_val = row.get('Net Salary', row.get('Salary', row.get('Calculated Pay', None)))
+            if net_salary_val is not None and not pd.isna(net_salary_val):
+                net_salary = float(net_salary_val)
+            else:
+                net_salary = base_salary
+            
             PayslipRecord.objects.update_or_create(
                 company=company,
                 employee_name=employee_name,
                 year=year,
                 month=month,
                 defaults={
-                    'total_days': int(row.get('Total Days', 0)),
-                    'working_days': int(row.get('Working Days', 0)),
-                    'base_salary': float(row.get('Base Salary', 0)),
-                    'calculated_pay': float(row.get('Calculated Pay', 0)),
-                    'bonus': float(row.get('Bonus', 0)),
-                    'net_salary': float(row.get('Net Salary', 0)),
+                    'total_days': total_days,
+                    'working_days': working_days,
+                    'leaves': leaves,
+                    'base_salary': base_salary,
+                    'net_salary': net_salary,
                 }
             )
             

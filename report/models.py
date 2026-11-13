@@ -837,6 +837,8 @@ class GSTR1Portal(OrganizationReportModel[MonthArgs]):
             gst_portal_cdnr[["invtxval","invcamt","invsamt"]] = -gst_portal_cdnr[["invtxval","invcamt","invsamt"]]
             gst_portal_data = pd.concat([gst_portal_b2b,gst_portal_cdnr])
             gst_portal_data["period"] = period
+            gst_portal_data["idt"] = pd.to_datetime(gst_portal_data["idt"], format="%d-%m-%Y", errors="coerce").dt.date
+            gst_portal_data["irngendate"] = pd.to_datetime(gst_portal_data["irngendate"], format="%d-%m-%Y", errors="coerce").dt.date
             return gst_portal_data
         
     class Meta: # type: ignore
@@ -1071,9 +1073,8 @@ class PayslipRecord(models.Model):
     month = models.IntegerField()
     total_days = models.IntegerField()
     working_days = models.IntegerField()
+    leaves = models.IntegerField(default=0)
     base_salary = models.DecimalField(max_digits=12, decimal_places=2)
-    calculated_pay = models.DecimalField(max_digits=12, decimal_places=2)
-    bonus = models.DecimalField(max_digits=12, decimal_places=2)
     net_salary = models.DecimalField(max_digits=12, decimal_places=2)
 
     class Meta:
