@@ -215,10 +215,10 @@ class SalaryVoucherPDF(FPDF):
         if self.gst_number:
             self.cell(0, 4.0, f"GSTIN : {self.gst_number}", 0, 1, 'C')
             
-        # 2. Title: Salary Voucher
+        # 2. Title: Payment Voucher
         self.ln(1.5)
         self.set_font('Helvetica', '', 10.5)
-        self.cell(0, 5, "Salary Voucher", 0, 1, 'C')
+        self.cell(0, 5, "Payment Voucher", 0, 1, 'C')
         
         # 3. Dated (Last day of salary period)
         self.ln(1.5)
@@ -250,7 +250,7 @@ class SalaryVoucherPDF(FPDF):
         # Employee Name (Bold)
         self.set_xy(left + 2, body_y)
         self.set_font('Helvetica', 'B', 8.5)
-        self.cell(col_split - left - 4, 4, emp_name.upper(), 0, 0, 'L')
+        self.cell(col_split - left - 4, 4, f"Name: {emp_name.upper()}", 0, 0, 'L')
         
         # Amount on right
         self.set_xy(col_split, body_y)
@@ -258,10 +258,10 @@ class SalaryVoucherPDF(FPDF):
         amt_str = f"{amount:,.0f}" if amount == int(amount) else f"{amount:,.2f}"
         self.cell(right - col_split - 2, 4, amt_str, 0, 1, 'R')
         
-        # Salary period
+        # Account: Salary period
         self.set_xy(left + 4, self.get_y() + 0.5)
         self.set_font('Helvetica', 'B', 8.5)
-        self.cell(col_split - left - 6, 4, f"Salary for {salary_period_str}", 0, 1, 'L')
+        self.cell(col_split - left - 6, 4, f"Account: Salary for {salary_period_str}", 0, 1, 'L')
         
         # Working days & Leaves
         self.set_xy(left + 4, self.get_y() + 0.5)
@@ -395,7 +395,7 @@ def generate_pdf_zip(queryset, output_filepath, company_name=None, company_addre
             
             month_str = calendar.month_abbr[month]
             emp_safe = "".join([c if c.isalnum() else "_" for c in emp_name])
-            filename = f"{year}_{month:02d}_{month_str}_{emp_safe}_weekly_salary_vouchers.pdf"
+            filename = f"{year}_{month:02d}_{month_str}_{emp_safe}_weekly_payment_vouchers.pdf"
             zf.writestr(filename, pdf_bytes)
 
     return output_filepath
